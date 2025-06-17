@@ -71,7 +71,7 @@ const Home = () => {
             </h1>
             
             <h2 className="text-2xl md:text-3xl lg:text-4xl font-semibold text-blue-200 mb-8 animate-slide-up animation-delay-200">
-              Kiambu National Polytechnic Hub
+              Kiambu National Polytechnic Club
             </h2>
 
             {/* Subtitle */}

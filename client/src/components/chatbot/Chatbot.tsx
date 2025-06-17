@@ -299,8 +299,8 @@ const Chatbot = () => {
   }
 
   const ContactOptions = () => (
-    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-2">
-      <h4 className="font-semibold text-blue-900 mb-3 flex items-center">
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4 mt-2">
+            <h4 className="font-semibold text-red-900 mb-3 flex items-center">
         <User className="w-4 h-4 mr-2" />
         Contact Our Support Team
       </h4>
@@ -321,12 +321,12 @@ const Chatbot = () => {
         
         <a
           href="mailto:support@ajiradigital.kinap.ac.ke"
-          className="flex items-center p-3 bg-blue-100 hover:bg-blue-200 rounded-lg transition-colors"
+          className="flex items-center p-3 bg-red-100 hover:bg-red-200 rounded-lg transition-colors"
         >
-          <Mail className="w-5 h-5 text-blue-600 mr-3" />
+          <Mail className="w-5 h-5 text-red-600 mr-3" />
           <div>
-            <div className="font-medium text-blue-800">Email Support</div>
-            <div className="text-sm text-blue-600">support@ajiradigital.kinap.ac.ke</div>
+            <div className="font-medium text-red-800">Email Support</div>
+            <div className="text-sm text-red-600">support@ajiradigital.kinap.ac.ke</div>
           </div>
         </a>
         
@@ -346,7 +346,7 @@ const Chatbot = () => {
       {/* Chat Button */}
       <button
         onClick={() => setIsOpen(true)}
-        className={`fixed bottom-6 right-6 bg-gradient-to-r from-blue-600 to-purple-600 text-white p-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 ${
+        className={`fixed bottom-6 right-6 bg-gradient-to-r from-red-600 to-black text-white p-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 ${
           isOpen ? 'scale-0' : 'scale-100'
         } z-40 group`}
       >
@@ -364,7 +364,7 @@ const Chatbot = () => {
         } z-50 max-h-[90vh] flex flex-col rounded-t-xl sm:bottom-6 sm:right-6 sm:max-h-[600px] sm:rounded-xl border border-gray-200`}
       >
         {/* Header */}
-        <div className="flex items-center justify-between bg-gradient-to-r from-blue-600 to-purple-600 text-white p-4 rounded-t-xl">
+                  <div className="flex items-center justify-between bg-gradient-to-r from-red-600 to-black text-white p-4 rounded-t-xl">
           <div className="flex items-center">
             <div className="relative">
               <Bot className="w-6 h-6 mr-3" />
@@ -372,7 +372,7 @@ const Chatbot = () => {
             </div>
             <div>
               <div className="font-semibold">Ajira Digital Assistant</div>
-              <div className="text-xs text-blue-100">KiNaP Club Support</div>
+              <div className="text-xs text-red-100">KiNaP Club Support</div>
             </div>
           </div>
           <button
@@ -394,7 +394,7 @@ const Chatbot = () => {
             >
               <div className={`flex items-start space-x-2 max-w-[85%]`}>
                 {message.sender === 'bot' && (
-                  <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center flex-shrink-0">
+                  <div className="w-8 h-8 bg-gradient-to-r from-red-500 to-black rounded-full flex items-center justify-center flex-shrink-0">
                     <Bot className="w-4 h-4 text-white" />
                   </div>
                 )}
@@ -402,7 +402,7 @@ const Chatbot = () => {
                 <div
                   className={`rounded-2xl px-4 py-3 ${
                     message.sender === 'user'
-                      ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white'
+                      ? 'bg-gradient-to-r from-red-600 to-black text-white'
                       : 'bg-white text-gray-800 shadow-sm border border-gray-100'
                   }`}
                 >
@@ -414,7 +414,7 @@ const Chatbot = () => {
                         <button
                           key={index}
                           onClick={() => handleQuickAction(option)}
-                          className="block w-full text-left p-2 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors text-sm font-medium text-blue-700"
+                          className="block w-full text-left p-2 bg-red-50 hover:bg-red-100 rounded-lg transition-colors text-sm font-medium text-red-700"
                         >
                           {option}
                         </button>
@@ -441,7 +441,7 @@ const Chatbot = () => {
           {isTyping && (
             <div className="flex justify-start">
               <div className="flex items-start space-x-2">
-                <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
+                <div className="w-8 h-8 bg-gradient-to-r from-red-500 to-black rounded-full flex items-center justify-center">
                   <Bot className="w-4 h-4 text-white" />
                 </div>
                 <div className="bg-white rounded-2xl px-4 py-3 shadow-sm border border-gray-100">
@@ -466,13 +466,13 @@ const Chatbot = () => {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="Type your message..."
-              className="flex-1 px-4 py-3 border border-gray-300 rounded-full focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+              className="flex-1 px-4 py-3 border border-gray-300 rounded-full focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none transition-all"
               disabled={isTyping}
             />
             <button
               type="submit"
               disabled={!input.trim() || isTyping}
-              className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-3 rounded-full hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+              className="bg-gradient-to-r from-red-600 to-black text-white p-3 rounded-full hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
             >
               <Send className="w-5 h-5" />
             </button>
@@ -481,7 +481,7 @@ const Chatbot = () => {
           <div className="mt-2 text-center">
             <button
               onClick={() => handleQuickAction('Speak to Agent')}
-              className="text-xs text-blue-600 hover:text-blue-800 transition-colors"
+              className="text-xs text-red-600 hover:text-red-800 transition-colors"
             >
               Need to speak with a human agent? Click here
             </button>

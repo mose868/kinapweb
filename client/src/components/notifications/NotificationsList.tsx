@@ -28,7 +28,7 @@ const NotificationsList = () => {
   const getNotificationIcon = (type: Notification['type']) => {
     switch (type) {
       case 'message':
-        return <MessageSquare className="w-5 h-5 text-blue-500" />;
+        return <MessageSquare className="w-5 h-5 text-red-500" />;
       case 'order':
         return <Package className="w-5 h-5 text-green-500" />;
       case 'review':
@@ -68,7 +68,7 @@ const NotificationsList = () => {
             <div
               key={notification.id}
               className={`bg-white rounded-lg border p-4 transition-colors ${
-                !notification.isRead ? 'bg-blue-50' : ''
+                !notification.isRead ? 'bg-red-50' : ''
               }`}
             >
               <div className="flex items-start gap-3">

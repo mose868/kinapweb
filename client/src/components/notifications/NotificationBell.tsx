@@ -65,7 +65,7 @@ const NotificationBell = () => {
   const getNotificationIcon = (type: Notification['type']) => {
     switch (type) {
       case 'message':
-        return <MessageSquare className="w-5 h-5 text-blue-500" />;
+        return <MessageSquare className="w-5 h-5 text-red-500" />;
       case 'order':
         return <Package className="w-5 h-5 text-green-500" />;
       case 'review':

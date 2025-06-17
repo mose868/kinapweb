@@ -347,10 +347,19 @@ const MazungumzoHub = () => {
       return group;
     });
 
-    setCurrentGroup(prev => prev ? { ...prev, messages: [...prev.messages, message] } : null);
+    // Update the group's messages (in a real app, this would be handled by state management)
+    if (currentGroup) {
+      currentGroup.messages.push(message);
+    }
     setNewMessage('');
   };
 
+  // Use demo groups as the main groups data
+  const groups = demoGroups;
+  
+  // Get current group based on selected group ID
+  const currentGroup = groups.find(group => group.id === selectedGroup) || null;
+  
   const filteredGroups = groups.filter(group =>
     group.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     group.description.toLowerCase().includes(searchQuery.toLowerCase())
@@ -366,7 +375,7 @@ const MazungumzoHub = () => {
         <div className="p-4 border-b border-gray-200">
           <div className="flex items-center justify-between mb-4">
             {!sidebarCollapsed && (
-              <h1 className="text-xl font-bold text-gray-800">Mazungumzo Hub</h1>
+              <h1 className="text-xl font-bold text-red-600">Mazungumzo Hub</h1>
             )}
             <button
               onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
@@ -384,7 +393,7 @@ const MazungumzoHub = () => {
                 placeholder="Search groups..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full pl-10 pr-4 py-2 bg-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
               />
             </div>
           )}
@@ -397,7 +406,7 @@ const MazungumzoHub = () => {
               key={group.id}
               onClick={() => setSelectedGroup(group.id)}
               className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors ${
-                selectedGroup === group.id ? 'bg-blue-50 border-r-2 border-r-blue-500' : ''
+                selectedGroup === group.id ? 'bg-red-50 border-r-2 border-r-red-500' : ''
               }`}
             >
               <div className="flex items-center gap-3">
@@ -422,7 +431,7 @@ const MazungumzoHub = () => {
                     <div className="flex items-center justify-between mt-1">
                       <span className="text-xs text-gray-500">{group.members} members</span>
                       {group.unreadCount > 0 && (
-                        <span className="bg-blue-500 text-white text-xs rounded-full px-2 py-1 min-w-[20px] text-center">
+                        <span className="bg-red-500 text-white text-xs rounded-full px-2 py-1 min-w-[20px] text-center">
                           {group.unreadCount}
                         </span>
                       )}
@@ -492,7 +501,7 @@ const MazungumzoHub = () => {
                     <div
                       className={`rounded-lg px-4 py-2 ${
                         message.isOwn
-                          ? 'bg-blue-500 text-white'
+                          ? 'bg-red-500 text-white'
                           : 'bg-gray-100 text-gray-900'
                       }`}
                     >
@@ -524,7 +533,7 @@ const MazungumzoHub = () => {
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
                     placeholder="Type a message..."
-                    className="w-full px-4 py-2 bg-gray-100 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-4 py-2 bg-gray-100 rounded-full focus:outline-none focus:ring-2 focus:ring-red-500"
                     onKeyPress={(e) => {
                       if (e.key === 'Enter') {
                         handleSendMessage();
@@ -538,7 +547,7 @@ const MazungumzoHub = () => {
                 <button
                   onClick={handleSendMessage}
                   disabled={!newMessage.trim()}
-                  className="p-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="p-2 bg-red-500 text-white rounded-full hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Send className="w-5 h-5" />
                 </button>

@@ -19,6 +19,7 @@ const Navbar = () => {
     { title: 'Team', description: 'Meet our team members', url: '/team', type: 'page' },
     { title: 'Events', description: 'Upcoming workshops and events', url: '/events', type: 'page' },
     { title: 'Community Hub', description: 'Connect with other members', url: '/community', type: 'page' },
+    { title: 'Mazungumzo Hub', description: 'Live chat and discussions with community', url: '/mazungumzo', type: 'page' },
     { title: 'Showcase', description: 'Member projects and achievements', url: '/showcase', type: 'page' },
     { title: 'Testimonials', description: 'Success stories from members', url: '/testimonials', type: 'page' },
     { title: 'Training', description: 'Digital skills training programs', url: '/training', type: 'page' },
@@ -26,7 +27,9 @@ const Navbar = () => {
     { title: 'Videos', description: 'Educational video content', url: '/videos', type: 'page' },
     { title: 'Blog', description: 'Latest articles and insights', url: '/blog', type: 'page' },
     { title: 'Marketplace', description: 'Digital services marketplace', url: '/marketplace', type: 'page' },
-    { title: 'Profile', description: 'Your personal profile', url: '/profile', type: 'page' },
+    { title: 'Profile', description: 'Your personal profile - complete to 100%', url: '/profile', type: 'page' },
+    { title: 'Sign In', description: 'Access your account and profile', url: '/auth', type: 'page' },
+    { title: 'Sign Up', description: 'Create account and build your profile', url: '/auth', type: 'page' },
     { title: 'Contact', description: 'Get in touch with us', url: '/contact', type: 'page' },
     
     // Skills and topics
@@ -110,7 +113,6 @@ const Navbar = () => {
       label: 'Community',
       items: [
         { label: 'Community Hub', to: '/community' },
-        { label: 'Mazungumzo', to: '/mazungumzo' },
         { label: 'Showcase', to: '/showcase' },
         { label: 'Testimonials', to: '/testimonials' },
         { label: 'Ambassador Program', to: '/ambassador' },
@@ -122,7 +124,6 @@ const Navbar = () => {
       items: [
         { label: 'Training', to: '/training' },
         { label: 'Mentorship', to: '/mentorship' },
-        { label: 'Videos', to: '/videos' },
         { label: 'Blog', to: '/blog' },
       ],
     },
@@ -137,6 +138,7 @@ const Navbar = () => {
     {
       label: 'Account',
       items: [
+        { label: 'Sign In / Sign Up', to: '/auth' },
         { label: 'Profile', to: '/profile' },
         { label: 'Orders', to: '/orders' },
         { label: 'Notifications', to: '/notifications' },
@@ -146,16 +148,16 @@ const Navbar = () => {
 
   return (
     <nav className="bg-white shadow sticky top-0 z-50">
-      <div className="container-custom flex items-center justify-between py-3 px-4">
+      <div className="max-w-7xl mx-auto flex items-center justify-between py-3 px-4">
         <Link to="/" className="text-2xl font-bold text-ajira-primary flex items-center gap-2">
-          <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+          <span className="bg-gradient-to-r from-red-600 to-black bg-clip-text text-transparent">
             Ajira Digital
           </span>
           <span className="text-sm text-gray-600 font-normal">KiNaP</span>
         </Link>
         
-        {/* Search Bar - Desktop */}
-        <div className="hidden md:flex items-center flex-1 max-w-md mx-8 relative" ref={searchRef}>
+        {/* Search Bar - Always Visible */}
+        <div className="flex items-center flex-1 max-w-lg mx-4 relative" ref={searchRef}>
           <div className="relative w-full">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <Search className="h-4 w-4 text-gray-400" />
@@ -165,7 +167,7 @@ const Navbar = () => {
               placeholder="Search pages, skills, or actions..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
+              className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none transition-all"
             />
             {searchQuery && (
               <button
@@ -188,12 +190,12 @@ const Navbar = () => {
                   <button
                     key={index}
                     onClick={() => handleSearchSelect(item)}
-                    className="w-full text-left px-3 py-3 hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 rounded-lg transition-all group"
+                    className="w-full text-left px-3 py-3 hover:bg-gradient-to-r hover:from-red-50 hover:to-gray-50 rounded-lg transition-all group"
                   >
                     <div className="flex items-start gap-3">
                       <span className="text-lg">{getTypeIcon(item.type)}</span>
                       <div className="flex-1 min-w-0">
-                        <div className="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
+                        <div className="font-semibold text-gray-900 group-hover:text-red-600 transition-colors">
                           {item.title}
                         </div>
                         <div className="text-sm text-gray-500 truncate">
@@ -233,6 +235,28 @@ const Navbar = () => {
             Home
           </NavLink>
           
+          <NavLink 
+            to="/mazungumzo" 
+            className={({ isActive }) => 
+              isActive 
+                ? 'text-ajira-accent font-semibold border-b-2 border-ajira-accent pb-1' 
+                : 'text-gray-700 hover:text-ajira-accent transition-colors'
+            }
+          >
+            Mazungumzo Hub
+          </NavLink>
+          
+          <NavLink 
+            to="/videos" 
+            className={({ isActive }) => 
+              isActive 
+                ? 'text-ajira-accent font-semibold border-b-2 border-ajira-accent pb-1' 
+                : 'text-gray-700 hover:text-ajira-accent transition-colors'
+            }
+          >
+            Videos
+          </NavLink>
+          
           {dropdowns.map((dd) => (
             <div key={dd.label} className="relative group">
               <button
@@ -266,8 +290,8 @@ const Navbar = () => {
                     key={item.to}
                     to={item.to}
                     className={({ isActive }) =>
-                      'block px-4 py-3 text-gray-700 hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 hover:text-ajira-accent transition-all ' +
-                      (isActive ? 'font-semibold text-ajira-accent bg-gradient-to-r from-blue-50 to-purple-50' : '')
+                                      'block px-4 py-3 text-gray-700 hover:bg-gradient-to-r hover:from-red-50 hover:to-gray-50 hover:text-ajira-accent transition-all ' +
+                (isActive ? 'font-semibold text-ajira-accent bg-gradient-to-r from-red-50 to-gray-50' : '')
                     }
                     onClick={() => setDropdown(null)}
                   >
@@ -279,10 +303,10 @@ const Navbar = () => {
           ))}
           
           <Link
-            to="/contact"
-            className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded-lg hover:shadow-lg transition-all duration-200 font-semibold"
+            to="/auth"
+            className="bg-gradient-to-r from-red-600 to-black text-white px-4 py-2 rounded-lg hover:shadow-lg transition-all duration-200 font-semibold"
           >
-            Contact
+            Join / Sign In
           </Link>
         </div>
         
@@ -305,57 +329,7 @@ const Navbar = () => {
       {menuOpen && (
         <div className="md:hidden bg-white shadow-lg border-t border-gray-100">
           <div className="px-4 py-2">
-            {/* Mobile Search */}
-            <div className="mb-4 relative" ref={searchRef}>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Search className="h-4 w-4 text-gray-400" />
-                </div>
-                <input
-                  type="text"
-                  placeholder="Search..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                />
-                {searchQuery && (
-                  <button
-                    onClick={clearSearch}
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                  >
-                    <X className="h-4 w-4 text-gray-400 hover:text-gray-600" />
-                  </button>
-                )}
-              </div>
-              
-              {/* Mobile Search Results */}
-              {showSearchResults && searchResults.length > 0 && (
-                <div className="mt-2 bg-gray-50 rounded-lg border border-gray-200 max-h-64 overflow-y-auto">
-                  {searchResults.map((item, index) => (
-                    <button
-                      key={index}
-                      onClick={() => {
-                        handleSearchSelect(item);
-                        setMenuOpen(false);
-                      }}
-                      className="w-full text-left px-3 py-2 hover:bg-white transition-all border-b border-gray-200 last:border-b-0"
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm">{getTypeIcon(item.type)}</span>
-                        <div className="flex-1 min-w-0">
-                          <div className="font-medium text-gray-900 text-sm">
-                            {item.title}
-                          </div>
-                          <div className="text-xs text-gray-500 truncate">
-                            {item.description}
-                          </div>
-                        </div>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+            {/* Removed duplicate mobile search bar for clarity */}
             
             <NavLink 
               to="/" 
@@ -369,6 +343,30 @@ const Navbar = () => {
               Home
             </NavLink>
             
+            <NavLink 
+              to="/mazungumzo" 
+              className={({ isActive }) => 
+                isActive 
+                  ? 'block py-3 text-ajira-accent font-semibold border-l-4 border-ajira-accent pl-4' 
+                  : 'block py-3 text-gray-700 hover:text-ajira-accent pl-4'
+              } 
+              onClick={() => setMenuOpen(false)}
+            >
+              Mazungumzo Hub
+            </NavLink>
+            
+            <NavLink 
+              to="/videos" 
+              className={({ isActive }) => 
+                isActive 
+                  ? 'block py-3 text-ajira-accent font-semibold border-l-4 border-ajira-accent pl-4' 
+                  : 'block py-3 text-gray-700 hover:text-ajira-accent pl-4'
+              } 
+              onClick={() => setMenuOpen(false)}
+            >
+              Videos
+            </NavLink>
+            
             {dropdowns.map((dd) => (
               <div key={dd.label} className="mb-4">
                 <div className="font-semibold text-gray-800 mb-2 px-4 py-2 bg-gray-50 rounded">
@@ -379,8 +377,8 @@ const Navbar = () => {
                     key={item.to}
                     to={item.to}
                     className={({ isActive }) =>
-                      'block px-6 py-2 text-gray-700 hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 hover:text-ajira-accent transition-all ' +
-                      (isActive ? 'font-semibold text-ajira-accent bg-gradient-to-r from-blue-50 to-purple-50 border-l-4 border-ajira-accent' : '')
+                                        'block px-6 py-2 text-gray-700 hover:bg-gradient-to-r hover:from-red-50 hover:to-gray-50 hover:text-ajira-accent transition-all ' +
+                  (isActive ? 'font-semibold text-ajira-accent bg-gradient-to-r from-red-50 to-gray-50 border-l-4 border-ajira-accent' : '')
                     }
                     onClick={() => setMenuOpen(false)}
                   >
@@ -391,11 +389,11 @@ const Navbar = () => {
             ))}
             
             <Link
-              to="/contact"
-              className="block mx-4 mb-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-3 rounded-lg text-center font-semibold"
+              to="/auth"
+              className="block mx-4 mb-4 bg-gradient-to-r from-red-600 to-black text-white px-4 py-3 rounded-lg text-center font-semibold"
               onClick={() => setMenuOpen(false)}
             >
-              Contact Us
+              Join / Sign In
             </Link>
           </div>
         </div>
