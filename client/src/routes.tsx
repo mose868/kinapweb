@@ -34,6 +34,9 @@ import Terms from './pages/Terms';
 import MediaUpload from './pages/MediaUpload';
 import Contact from './pages/Contact';
 
+// Import admin pages
+import AdminDashboard from './pages/admin/AdminDashboard';
+
 export interface RouteConfig {
   path: string;
   element: ReactNode;
@@ -286,6 +289,14 @@ export const routes: RouteConfig[] = [
           <ProfilePage />
         </ProtectedRoute>
       </Layout>
+    )
+  },
+  {
+    path: '/admin',
+    element: (
+      <ProtectedRoute requiredRole="admin">
+        <AdminDashboard />
+      </ProtectedRoute>
     )
   }
 ]; 

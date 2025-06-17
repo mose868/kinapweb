@@ -54,7 +54,8 @@ const Videos: React.FC = () => {
     {
       id: 1,
       title: "How I Earn $2000+ Monthly as a Kenyan Freelancer - Complete Guide 2025",
-      thumbnail: "https://img.youtube.com/vi/dQw4w9WgXcQ/maxresdefault.jpg",
+      thumbnail: "https://images.unsplash.com/photo-1611224923853-80b023f02d71?w=400&h=300&fit=crop",
+      videoUrl: "https://www.learningcontainer.com/wp-content/uploads/2020/05/sample-mp4-file.mp4",
       duration: "15:42",
       views: "125K",
       uploadDate: "2 days ago",

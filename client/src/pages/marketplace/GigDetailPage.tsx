@@ -1,22 +1,23 @@
-import { useState } from 'react'
+import React from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from 'react-query'
 import { doc, getDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore'
 import { db, COLLECTIONS } from '../../config/firebase'
 import type { Gig, GigPackage, UserProfile } from '../../types/marketplace'
-import { Star, Clock, RefreshCw, CheckCircle, MessageCircle, Share2, Flag, Eye } from 'lucide-react'
+import { Star, Clock, RefreshCw, CheckCircle, MessageCircle, Share2, Flag, Eye, ArrowLeft } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 // @ts-ignore
 import ImageGallery from 'react-image-gallery'
 import 'react-image-gallery/styles/css/image-gallery.css'
 import { toast } from 'react-hot-toast'
+import sampleGigs from '../../data/sampleGigs'
 
 // Format price as KES
 function formatKES(amount: number) {
   return `KES ${amount.toLocaleString('en-KE')}`;
 }
 
-const GigDetailPage = () => {
+const GigDetailPage: React.FC = () => {
   const { gigId } = useParams<{ gigId: string }>()
   const { user } = useAuth()
   const navigate = useNavigate()
@@ -118,14 +119,11 @@ const GigDetailPage = () => {
 
   if (!gig || !seller) {
     return (
-      <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Gig not found</h2>
-          <p className="text-gray-600 mb-4">The gig you're looking for doesn't exist or has been removed.</p>
-          <Link
-            to="/marketplace"
-            className="inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-ajira-primary hover:bg-ajira-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ajira-primary"
-          >
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Gig Not Found</h1>
+          <p className="text-gray-600 mb-4">The gig you're looking for doesn't exist.</p>
+          <Link to="/marketplace" className="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700">
             Back to Marketplace
           </Link>
         </div>
@@ -141,195 +139,142 @@ const GigDetailPage = () => {
   const selectedPkg = gig.packages.find(p => p.name === selectedPackage);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2">
-          {/* Breadcrumbs */}
-          <nav className="flex items-center text-sm text-gray-500 mb-4">
-            <Link to="/marketplace" className="hover:text-ajira-primary">Marketplace</Link>
-            <span className="mx-2">›</span>
-            <Link to={`/marketplace?category=${gig.category}`} className="hover:text-ajira-primary">{gig.category}</Link>
-            <span className="mx-2">›</span>
-            <span className="text-gray-900">{gig.subcategory}</span>
-          </nav>
+    <div className="min-h-screen bg-gray-50">
+      {/* Navigation */}
+      <div className="bg-white border-b">
+        <div className="max-w-6xl mx-auto px-4 py-4">
+          <Link 
+            to="/marketplace" 
+            className="flex items-center text-green-600 hover:text-green-700 mb-2"
+          >
+            <ArrowLeft size={20} className="mr-2" />
+            Back to Marketplace
+          </Link>
+          <div className="text-sm text-gray-600">
+            <span>Marketplace</span> / <span>Gigs</span> / <span className="text-gray-900">{gig.title}</span>
+          </div>
+        </div>
+      </div>
 
-          {/* Title and Stats */}
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">{gig.title}</h1>
-          
-          <div className="flex items-center gap-4 mb-6">
-            <Link to={`/profile/${seller.id}`} className="flex items-center gap-2">
-              <img
-                src={seller.photoURL}
-                alt={seller.displayName}
-                className="w-10 h-10 rounded-full"
+      <div className="max-w-6xl mx-auto px-4 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Main Content */}
+          <div className="lg:col-span-2">
+            {/* Gig Image */}
+            <div className="bg-white rounded-lg shadow-sm overflow-hidden mb-6">
+              <img 
+                src={gig.image} 
+                alt={gig.title}
+                className="w-full h-64 md:h-96 object-cover"
               />
-              <div>
-                <h4 className="text-sm font-medium text-gray-900">{seller.displayName}</h4>
-                <p className="text-xs text-gray-500">Level 1 Seller</p>
-              </div>
-            </Link>
-            <div className="flex items-center gap-4 text-sm text-gray-500">
-              <div className="flex items-center">
-                <Star className="w-4 h-4 text-yellow-400 mr-1" />
-                <span className="font-medium">{gig.stats.rating.toFixed(1)}</span>
-                <span className="text-gray-400 ml-1">({gig.stats.reviews})</span>
-              </div>
-              <span className="text-gray-300">•</span>
-              <div className="flex items-center">
-                <Eye className="w-4 h-4 mr-1" />
-                <span>{gig.stats.views} views</span>
-              </div>
             </div>
-          </div>
 
-          {/* Gallery */}
-          <div className="mb-8">
-            <ImageGallery
-              items={images}
-              showPlayButton={false}
-              showFullscreenButton={true}
-              showNav={true}
-              thumbnailPosition="bottom"
-            />
-          </div>
-
-          {/* Description */}
-          <section className="mb-8">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">About This Gig</h2>
-            <p className="text-gray-600 whitespace-pre-line">{gig.description}</p>
-          </section>
-
-          {/* About the Seller */}
-          <section className="mb-8">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">About The Seller</h2>
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
-              <div className="flex items-start gap-4">
-                <img
-                  src={seller.photoURL}
+            {/* Gig Title and Description */}
+            <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+              <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">
+                {gig.title}
+              </h1>
+              
+              {/* Seller Info */}
+              <div className="flex items-center mb-4">
+                <img 
+                  src={seller.photoURL} 
                   alt={seller.displayName}
-                  className="w-16 h-16 rounded-full"
+                  className="w-12 h-12 rounded-full object-cover mr-4"
                 />
                 <div>
-                  <h3 className="text-lg font-medium text-gray-900">{seller.displayName}</h3>
-                  <p className="text-gray-600 mb-2">{seller.bio}</p>
-                  <div className="flex items-center gap-4 text-sm text-gray-500">
-                    <div className="flex items-center">
-                      <Star className="w-4 h-4 text-yellow-400 mr-1" />
-                      <span>{seller.stats?.rating.toFixed(1) || 'N/A'} ({seller.stats?.reviews || 'N/A'})</span>
-                    </div>
-                    <span>•</span>
-                    <span>{seller.stats?.completedOrders || 'N/A'} Orders Completed</span>
-                  </div>
+                  <h3 className="font-semibold text-gray-900">{seller.displayName}</h3>
+                  <p className="text-sm text-gray-600">{gig.seller.level}</p>
                 </div>
+              </div>
+
+              {/* Rating */}
+              <div className="flex items-center mb-6">
+                <div className="flex items-center mr-4">
+                  <Star className="w-5 h-5 text-yellow-400 fill-current" />
+                  <span className="font-semibold ml-1">{gig.stats.rating.toFixed(1)}</span>
+                  <span className="text-gray-600 ml-1">({gig.stats.reviews})</span>
+                </div>
+                <div className="text-sm text-gray-600">
+                  {gig.stats.views} views
+                </div>
+              </div>
+
+              <p className="text-gray-700 leading-relaxed">
+                {gig.description}
+              </p>
+            </div>
+
+            {/* Features */}
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <h2 className="text-xl font-bold text-gray-900 mb-4">What you get</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {gig.features.map((feature, index) => (
+                  <div key={index} className="flex items-center">
+                    <Shield className="w-5 h-5 text-green-600 mr-3" />
+                    <span className="text-gray-700">{feature}</span>
+                  </div>
+                ))}
               </div>
             </div>
-          </section>
+          </div>
 
-          {/* FAQs */}
-          {gig.faqs && gig.faqs.length > 0 && (
-            <section className="mb-8">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">Frequently Asked Questions</h2>
-              <div className="space-y-4">
-                {gig.faqs.map((faq, index) => (
-                  <div key={index} className="bg-white rounded-lg border border-gray-200 p-4">
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">{faq.question}</h3>
-                    <p className="text-gray-600">{faq.answer}</p>
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
-        </div>
-
-        {/* Pricing Packages */}
-        <div className="lg:col-span-1">
-          <div className="sticky top-8">
-            <div className="bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden">
-              {/* Package Selector */}
-              <div className="flex border-b border-gray-200">
-                {gig.packages.map((pkg) => (
-                  <button
-                    key={pkg.name}
-                    onClick={() => setSelectedPackage(pkg.name)}
-                    className={`flex-1 px-4 py-3 text-sm font-medium ${
-                      selectedPackage === pkg.name
-                        ? 'bg-ajira-primary text-white'
-                        : 'text-gray-600 hover:bg-gray-50'
-                    }`}
-                  >
-                    {pkg.name.charAt(0).toUpperCase() + pkg.name.slice(1)}
-                  </button>
-                ))}
-              </div>
-
-              {/* Selected Package Details */}
-              {selectedPkg && (
-                <div className="p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <span className="text-2xl font-bold text-gray-900">
-                      {formatKES(selectedPkg.price)}
+          {/* Sidebar - Order Details */}
+          <div className="lg:col-span-1">
+            <div className="bg-white rounded-lg shadow-sm p-6 sticky top-4">
+              {/* Price */}
+              <div className="mb-6">
+                <div className="flex items-center justify-between mb-2">
+                  {gig.originalPrice > gig.price && (
+                    <span className="text-lg text-gray-400 line-through">
+                      {formatKES(gig.originalPrice)}
                     </span>
-                    <div className="flex items-center gap-4 text-sm text-gray-500">
-                      <div className="flex items-center">
-                        <Clock className="w-4 h-4 mr-1" />
-                        <span>{selectedPkg.deliveryTime} days</span>
-                      </div>
-                      <div className="flex items-center">
-                        <RefreshCw className="w-4 h-4 mr-1" />
-                        <span>{selectedPkg.revisions} revisions</span>
-                      </div>
-                    </div>
+                  )}
+                </div>
+                <div className="text-3xl font-bold text-gray-900">
+                  {formatKES(gig.price)}
+                </div>
+                <p className="text-gray-600">Starting price</p>
+              </div>
+
+              {/* Delivery Time */}
+              <div className="flex items-center mb-6">
+                <Clock className="w-5 h-5 text-gray-400 mr-2" />
+                <span className="text-gray-700">Delivery in {gig.deliveryTime} days</span>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="space-y-3">
+                <button
+                  onClick={handleOrder}
+                  disabled={createOrder.isLoading}
+                  className="w-full bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition-colors"
+                >
+                  {createOrder.isLoading ? 'Creating Order...' : 'Continue'}
+                </button>
+                <button className="w-full border border-green-600 text-green-600 py-3 rounded-lg font-semibold hover:bg-green-50 transition-colors">
+                  Contact Seller
+                </button>
+              </div>
+
+              {/* Seller Stats */}
+              <div className="mt-6 pt-6 border-t">
+                <h3 className="font-semibold text-gray-900 mb-4">About the seller</h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">From</span>
+                    <span className="text-gray-900">{gig.seller.country}</span>
                   </div>
-
-                  <p className="text-gray-600 mb-4">{selectedPkg.description}</p>
-
-                  <div className="space-y-3 mb-6">
-                    {selectedPkg.features.map((feature, index) => (
-                      <div key={index} className="flex items-center text-sm">
-                        <CheckCircle className="w-4 h-4 text-green-500 mr-2" />
-                        <span>{feature}</span>
-                      </div>
-                    ))}
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Response time</span>
+                    <span className="text-gray-900">{gig.seller.responseTime}</span>
                   </div>
-
-                  <div className="mb-4">
-                    <label htmlFor="requirements" className="block text-sm font-medium text-gray-700 mb-1">
-                      Requirements
-                    </label>
-                    <textarea
-                      id="requirements"
-                      rows={4}
-                      value={requirements}
-                      onChange={(e) => setRequirements(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-ajira-primary focus:border-ajira-primary"
-                      placeholder="Tell the seller what you need..."
-                    />
-                  </div>
-
-                  <button
-                    onClick={handleOrder}
-                    disabled={createOrder.isLoading}
-                    className="w-full bg-ajira-primary hover:bg-ajira-primary-dark text-white py-3 rounded-lg mb-4 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {createOrder.isLoading ? 'Creating Order...' : `Continue (${formatKES(selectedPkg.price)})`}
-                  </button>
-
-                  <div className="flex items-center justify-center space-x-4">
-                    <button className="flex items-center space-x-2 text-gray-500 hover:text-ajira-primary">
-                      <MessageCircle className="w-5 h-5" />
-                      <span>Contact Seller</span>
-                    </button>
-                    <button className="flex items-center space-x-2 text-gray-500 hover:text-ajira-primary">
-                      <Share2 className="w-5 h-5" />
-                      <span>Share</span>
-                    </button>
-                    <button className="flex items-center space-x-2 text-gray-500 hover:text-ajira-primary">
-                      <Flag className="w-5 h-5" />
-                      <span>Report</span>
-                    </button>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Last seen</span>
+                    <span className="text-gray-900">{gig.seller.lastSeen}</span>
                   </div>
                 </div>
-              )}
+              </div>
             </div>
           </div>
         </div>

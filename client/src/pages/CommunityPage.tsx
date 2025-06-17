@@ -102,7 +102,7 @@ const CommunityPage = () => {
           userId: 'user5',
           userName: 'Mary Njeri',
           userAvatar: 'https://randomuser.me/api/portraits/women/23.jpg',
-          message: 'Congratulations Peter! Uliget wapi hio client? Upwork ama Fiverr?',
+          message: 'Congratulations Peter! Uliget wapi hio client? Upwork ama Kinaps?',
           timestamp: new Date(Date.now() - 25 * 60 * 1000),
         },
         {

@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Search, Filter, Star, Heart, Share2, ChevronDown, Grid, List, SlidersHorizontal } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import sampleGigs from '../data/sampleGigs';
 
 const Marketplace = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -40,289 +41,8 @@ const Marketplace = () => {
     { value: 'rating', label: 'Highest Rated' }
   ];
 
-  // Extensive demo gigs like Fiverr
-  const gigs = [
-    {
-      id: 1,
-      title: "I will design a modern minimalist logo for your brand",
-      description: "Professional logo design with unlimited revisions, source files, and commercial rights included.",
-      image: "https://fiverr-res.cloudinary.com/images/q_auto,f_auto/gigs/116438417/original/0a1c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c/design-a-modern-minimalist-logo.jpg",
-      category: "Graphics & Design",
-      subcategory: "Logo Design",
-      price: 2500,
-      originalPrice: 5000,
-      rating: 4.9,
-      reviews: 1247,
-      orders: 3500,
-      deliveryTime: "2 days",
-      seller: {
-        name: "Grace Wanjiku",
-        username: "gracewanjiku_design",
-        image: "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face",
-        level: "Top Rated Seller",
-        country: "Kenya",
-        responseTime: "1 hour",
-        lastSeen: "Online"
-      },
-      features: ["Logo transparency", "Vector file", "Printable file", "3D mockup", "Social media kit"],
-      tags: ["logo", "branding", "minimalist", "modern", "business"],
-      isFavorite: false,
-      isChoice: true,
-      badge: "Bestseller"
-    },
-    {
-      id: 2,
-      title: "I will write SEO optimized blog posts and articles",
-      description: "High-quality, engaging content that ranks on Google. Research included, plagiarism-free guaranteed.",
-      image: "https://fiverr-res.cloudinary.com/images/q_auto,f_auto/gigs/123456789/original/seo-content-writing.jpg",
-      category: "Writing & Translation",
-      subcategory: "Articles & Blog Posts",
-      price: 1500,
-      originalPrice: 3000,
-      rating: 4.8,
-      reviews: 892,
-      orders: 2100,
-      deliveryTime: "3 days",
-      seller: {
-        name: "John Kamau",
-        username: "johnkamau_writer",
-        image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face",
-        level: "Level 2 Seller",
-        country: "Kenya",
-        responseTime: "2 hours",
-        lastSeen: "2 hours ago"
-      },
-      features: ["SEO optimized", "Plagiarism free", "Unlimited revisions", "Fast delivery", "Research included"],
-      tags: ["seo", "content", "blog", "article", "writing"],
-      isFavorite: false,
-      isChoice: false,
-      badge: "New"
-    },
-    {
-      id: 3,
-      title: "I will create a professional website using WordPress",
-      description: "Custom WordPress website with responsive design, SEO optimization, and admin training included.",
-      image: "https://fiverr-res.cloudinary.com/images/q_auto,f_auto/gigs/987654321/original/wordpress-website-design.jpg",
-      category: "Programming & Tech",
-      subcategory: "Website Development",
-      price: 15000,
-      originalPrice: 25000,
-      rating: 4.9,
-      reviews: 456,
-      orders: 890,
-      deliveryTime: "7 days",
-      seller: {
-        name: "Peter Mwangi",
-        username: "petermwangi_dev",
-        image: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face",
-        level: "Top Rated Seller",
-        country: "Kenya",
-        responseTime: "30 minutes",
-        lastSeen: "Online"
-      },
-      features: ["Responsive design", "SEO optimized", "Admin training", "30 days support", "Source code"],
-      tags: ["wordpress", "website", "responsive", "seo", "development"],
-      isFavorite: true,
-      isChoice: true,
-      badge: "Pro"
-    },
-    {
-      id: 4,
-      title: "I will manage your social media accounts and create content",
-      description: "Complete social media management including content creation, posting schedule, and engagement.",
-      image: "https://fiverr-res.cloudinary.com/images/q_auto,f_auto/gigs/555666777/original/social-media-management.jpg",
-      category: "Digital Marketing",
-      subcategory: "Social Media Marketing",
-      price: 8000,
-      originalPrice: 12000,
-      rating: 4.7,
-      reviews: 623,
-      orders: 1200,
-      deliveryTime: "1 day",
-      seller: {
-        name: "Sarah Njeri",
-        username: "sarahnjeri_smm",
-        image: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face",
-        level: "Level 2 Seller",
-        country: "Kenya",
-        responseTime: "1 hour",
-        lastSeen: "Online"
-      },
-      features: ["Content calendar", "Daily posting", "Engagement", "Analytics report", "Hashtag research"],
-      tags: ["social media", "marketing", "content", "instagram", "facebook"],
-      isFavorite: false,
-      isChoice: false,
-      badge: "Bestseller"
-    },
-    {
-      id: 5,
-      title: "I will create stunning video animations and motion graphics",
-      description: "Professional 2D animations, explainer videos, and motion graphics for your business needs.",
-      image: "https://fiverr-res.cloudinary.com/images/q_auto,f_auto/gigs/888999000/original/video-animation.jpg",
-      category: "Video & Animation",
-      subcategory: "Animation",
-      price: 12000,
-      originalPrice: 20000,
-      rating: 4.8,
-      reviews: 334,
-      orders: 567,
-      deliveryTime: "5 days",
-      seller: {
-        name: "David Kiprotich",
-        username: "davidkip_animator",
-        image: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face",
-        level: "Level 1 Seller",
-        country: "Kenya",
-        responseTime: "3 hours",
-        lastSeen: "1 hour ago"
-      },
-      features: ["HD quality", "Background music", "Voice over", "Unlimited revisions", "Source files"],
-      tags: ["animation", "video", "motion graphics", "explainer", "2d"],
-      isFavorite: false,
-      isChoice: true,
-      badge: "Rising"
-    },
-    {
-      id: 6,
-      title: "I will do data entry and virtual assistant tasks efficiently",
-      description: "Accurate data entry, email management, research, and administrative support services.",
-      image: "https://fiverr-res.cloudinary.com/images/q_auto,f_auto/gigs/111222333/original/data-entry-va.jpg",
-      category: "Business",
-      subcategory: "Virtual Assistant",
-      price: 1000,
-      originalPrice: 2000,
-      rating: 4.6,
-      reviews: 789,
-      orders: 1500,
-      deliveryTime: "1 day",
-      seller: {
-        name: "Mary Wanjiru",
-        username: "marywanjiru_va",
-        image: "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face",
-        level: "Level 1 Seller",
-        country: "Kenya",
-        responseTime: "2 hours",
-        lastSeen: "Online"
-      },
-      features: ["Fast delivery", "Accurate work", "24/7 availability", "Multiple formats", "Quality guarantee"],
-      tags: ["data entry", "virtual assistant", "admin", "research", "excel"],
-      isFavorite: false,
-      isChoice: false,
-      badge: "Budget Friendly"
-    },
-    {
-      id: 7,
-      title: "I will compose original music and jingles for your project",
-      description: "Custom music composition, jingles, background music, and audio production services.",
-      image: "https://fiverr-res.cloudinary.com/images/q_auto,f_auto/gigs/444555666/original/music-composition.jpg",
-      category: "Music & Audio",
-      subcategory: "Music Production",
-      price: 5000,
-      originalPrice: 8000,
-      rating: 4.9,
-      reviews: 234,
-      orders: 345,
-      deliveryTime: "4 days",
-      seller: {
-        name: "James Ochieng",
-        username: "jamesochieng_music",
-        image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face",
-        level: "Top Rated Seller",
-        country: "Kenya",
-        responseTime: "1 hour",
-        lastSeen: "Online"
-      },
-      features: ["Original composition", "Commercial rights", "Multiple formats", "Mixing & mastering", "Revisions"],
-      tags: ["music", "composition", "jingle", "audio", "production"],
-      isFavorite: true,
-      isChoice: true,
-      badge: "Pro"
-    },
-    {
-      id: 8,
-      title: "I will provide business consulting and market research",
-      description: "Professional business advice, market analysis, and strategic planning for startups and SMEs.",
-      image: "https://fiverr-res.cloudinary.com/images/q_auto,f_auto/gigs/777888999/original/business-consulting.jpg",
-      category: "Business",
-      subcategory: "Business Consulting",
-      price: 10000,
-      originalPrice: 15000,
-      rating: 4.8,
-      reviews: 156,
-      orders: 234,
-      deliveryTime: "3 days",
-      seller: {
-        name: "Catherine Muthoni",
-        username: "catherinemuthoni_biz",
-        image: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face",
-        level: "Level 2 Seller",
-        country: "Kenya",
-        responseTime: "1 hour",
-        lastSeen: "2 hours ago"
-      },
-      features: ["Market research", "Business plan", "Financial projections", "Strategy document", "Follow-up support"],
-      tags: ["business", "consulting", "market research", "strategy", "planning"],
-      isFavorite: false,
-      isChoice: false,
-      badge: "Expert"
-    },
-    {
-      id: 9,
-      title: "I will teach you digital marketing and SEO strategies",
-      description: "One-on-one coaching sessions to master digital marketing, SEO, and online business growth.",
-      image: "https://fiverr-res.cloudinary.com/images/q_auto,f_auto/gigs/123789456/original/digital-marketing-coaching.jpg",
-      category: "Lifestyle",
-      subcategory: "Online Tutoring",
-      price: 3000,
-      originalPrice: 5000,
-      rating: 4.9,
-      reviews: 445,
-      orders: 678,
-      deliveryTime: "1 day",
-      seller: {
-        name: "Michael Kipchoge",
-        username: "michaelkip_coach",
-        image: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face",
-        level: "Top Rated Seller",
-        country: "Kenya",
-        responseTime: "30 minutes",
-        lastSeen: "Online"
-      },
-      features: ["1-on-1 session", "Screen sharing", "Course materials", "Follow-up support", "Certificate"],
-      tags: ["coaching", "digital marketing", "seo", "tutoring", "online"],
-      isFavorite: false,
-      isChoice: true,
-      badge: "Mentor"
-    },
-    {
-      id: 10,
-      title: "I will translate documents between English and Swahili",
-      description: "Professional translation services with cultural context and native fluency guaranteed.",
-      image: "https://fiverr-res.cloudinary.com/images/q_auto,f_auto/gigs/654321987/original/translation-services.jpg",
-      category: "Writing & Translation",
-      subcategory: "Translation",
-      price: 2000,
-      originalPrice: 3500,
-      rating: 4.7,
-      reviews: 567,
-      orders: 890,
-      deliveryTime: "2 days",
-      seller: {
-        name: "Fatuma Hassan",
-        username: "fatumahassan_translate",
-        image: "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face",
-        level: "Level 2 Seller",
-        country: "Kenya",
-        responseTime: "1 hour",
-        lastSeen: "Online"
-      },
-      features: ["Native fluency", "Cultural context", "Proofreading", "Fast delivery", "Confidentiality"],
-      tags: ["translation", "english", "swahili", "documents", "localization"],
-      isFavorite: false,
-      isChoice: false,
-      badge: "Verified"
-    }
-  ];
+  // Use imported sample gigs data
+  const gigs = sampleGigs;
 
   // Filter and sort gigs
   const filteredGigs = React.useMemo(() => {
@@ -601,7 +321,7 @@ const Marketplace = () => {
                 {gig.isChoice && (
                   <div className="absolute bottom-3 left-3">
                     <span className="bg-orange-500 text-white px-2 py-1 text-xs font-medium rounded">
-                      Fiverr's Choice
+                      Kinaps Choice
                     </span>
                   </div>
                 )}
@@ -669,9 +389,9 @@ const Marketplace = () => {
                       </span>
                     </div>
                   </div>
-                  <button className="bg-green-600 text-white px-4 py-2 rounded text-sm hover:bg-green-700 transition-colors">
+                  <Link to={`/marketplace/gigs/${gig.id}`} className="bg-green-600 text-white px-4 py-2 rounded text-sm hover:bg-green-700 transition-colors inline-block text-center">
                     View Details
-                  </button>
+                  </Link>
                 </div>
               </div>
             </motion.div>

@@ -1,0 +1,590 @@
+// Sample gigs data for marketplace demo/testing
+const sampleGigs = [
+  {
+    id: 1,
+    title: "I will design a modern minimalist logo for your brand",
+    description: "Professional logo design with unlimited revisions, source files, and commercial rights included.",
+    image: "https://images.unsplash.com/photo-1626785774573-4b799315345d?w=400&h=300&fit=crop",
+    category: "Graphics & Design",
+    subcategory: "Logo Design",
+    price: 2500,
+    originalPrice: 5000,
+    rating: 4.9,
+    reviews: 1247,
+    orders: 3500,
+    deliveryTime: "2 days",
+    seller: {
+      name: "Grace Wanjiku",
+      username: "gracewanjiku_design",
+      image: "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face",
+      level: "Top Rated Seller",
+      country: "Kenya",
+      responseTime: "1 hour",
+      lastSeen: "Online"
+    },
+    features: ["Logo transparency", "Vector file", "Printable file", "3D mockup", "Social media kit"],
+    tags: ["logo", "branding", "minimalist", "modern", "business"],
+    isFavorite: false,
+    isChoice: true,
+    badge: "Bestseller"
+  },
+  {
+    id: 2,
+    title: "I will write SEO optimized blog posts and articles",
+    description: "High-quality, engaging content that ranks on Google. Research included, plagiarism-free guaranteed.",
+    image: "https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?w=400&h=300&fit=crop",
+    category: "Writing & Translation",
+    subcategory: "Articles & Blog Posts",
+    price: 1500,
+    originalPrice: 3000,
+    rating: 4.8,
+    reviews: 892,
+    orders: 2100,
+    deliveryTime: "3 days",
+    seller: {
+      name: "John Kamau",
+      username: "johnkamau_writer",
+      image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face",
+      level: "Level 2 Seller",
+      country: "Kenya",
+      responseTime: "2 hours",
+      lastSeen: "2 hours ago"
+    },
+    features: ["SEO optimized", "Plagiarism free", "Unlimited revisions", "Fast delivery", "Research included"],
+    tags: ["seo", "content", "blog", "article", "writing"],
+    isFavorite: false,
+    isChoice: false,
+    badge: "New"
+  },
+  {
+    id: 3,
+    title: "I will create a professional website using WordPress",
+    description: "Custom WordPress website with responsive design, SEO optimization, and admin training included.",
+    image: "https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=400&h=300&fit=crop",
+    category: "Programming & Tech",
+    subcategory: "Website Development",
+    price: 15000,
+    originalPrice: 25000,
+    rating: 4.9,
+    reviews: 456,
+    orders: 890,
+    deliveryTime: "7 days",
+    seller: {
+      name: "Peter Mwangi",
+      username: "petermwangi_dev",
+      image: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face",
+      level: "Top Rated Seller",
+      country: "Kenya",
+      responseTime: "30 minutes",
+      lastSeen: "Online"
+    },
+    features: ["Responsive design", "SEO optimized", "Admin training", "30 days support", "Source code"],
+    tags: ["wordpress", "website", "responsive", "seo", "development"],
+    isFavorite: true,
+    isChoice: true,
+    badge: "Pro"
+  },
+  {
+    id: 4,
+    title: "I will manage your social media accounts and create content",
+    description: "Complete social media management including content creation, posting schedule, and engagement.",
+    image: "https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=400&h=300&fit=crop",
+    category: "Digital Marketing",
+    subcategory: "Social Media Marketing",
+    price: 8000,
+    originalPrice: 12000,
+    rating: 4.7,
+    reviews: 623,
+    orders: 1200,
+    deliveryTime: "1 day",
+    seller: {
+      name: "Sarah Njeri",
+      username: "sarahnjeri_smm",
+      image: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face",
+      level: "Level 2 Seller",
+      country: "Kenya",
+      responseTime: "1 hour",
+      lastSeen: "Online"
+    },
+    features: ["Content calendar", "Daily posting", "Engagement", "Analytics report", "Hashtag research"],
+    tags: ["social media", "marketing", "content", "instagram", "facebook"],
+    isFavorite: false,
+    isChoice: false,
+    badge: "Bestseller"
+  },
+  {
+    id: 5,
+    title: "I will create stunning video animations and motion graphics",
+    description: "Professional 2D animations, explainer videos, and motion graphics for your business needs.",
+    image: "https://images.unsplash.com/photo-1574717024653-61fd2cf4d44d?w=400&h=300&fit=crop",
+    category: "Video & Animation",
+    subcategory: "Animation",
+    price: 12000,
+    originalPrice: 20000,
+    rating: 4.8,
+    reviews: 334,
+    orders: 567,
+    deliveryTime: "5 days",
+    seller: {
+      name: "David Kiprotich",
+      username: "davidkip_animator",
+      image: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face",
+      level: "Level 1 Seller",
+      country: "Kenya",
+      responseTime: "3 hours",
+      lastSeen: "1 hour ago"
+    },
+    features: ["HD quality", "Background music", "Voice over", "Unlimited revisions", "Source files"],
+    tags: ["animation", "video", "motion graphics", "explainer", "2d"],
+    isFavorite: false,
+    isChoice: true,
+    badge: "Rising"
+  },
+  {
+    id: 6,
+    title: "I will do data entry and virtual assistant tasks efficiently",
+    description: "Accurate data entry, email management, research, and administrative support services.",
+    image: "https://images.unsplash.com/photo-1554774853-719586f82d77?w=400&h=300&fit=crop",
+    category: "Business",
+    subcategory: "Virtual Assistant",
+    price: 1000,
+    originalPrice: 2000,
+    rating: 4.6,
+    reviews: 789,
+    orders: 1500,
+    deliveryTime: "1 day",
+    seller: {
+      name: "Mary Wanjiru",
+      username: "marywanjiru_va",
+      image: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&h=150&fit=crop&crop=face",
+      level: "Level 1 Seller",
+      country: "Kenya",
+      responseTime: "2 hours",
+      lastSeen: "Online"
+    },
+    features: ["Fast turnaround", "Accurate data", "Excel expertise", "Email support", "Quality guarantee"],
+    tags: ["data entry", "virtual assistant", "admin", "excel", "research"],
+    isFavorite: false,
+    isChoice: false,
+    badge: null
+  },
+  {
+    id: 7,
+    title: "I will produce professional voiceovers in English and Swahili",
+    description: "High-quality voiceovers for commercials, explainer videos, audiobooks, and podcasts.",
+    image: "https://images.unsplash.com/photo-1590602847861-f357a9332bbc?w=400&h=300&fit=crop",
+    category: "Music & Audio",
+    subcategory: "Voice Over",
+    price: 3500,
+    originalPrice: 6000,
+    rating: 4.9,
+    reviews: 445,
+    orders: 1100,
+    deliveryTime: "2 days",
+    seller: {
+      name: "Michael Ochieng",
+      username: "michaelochieng_vo",
+      image: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150&h=150&fit=crop&crop=face",
+      level: "Top Rated Seller",
+      country: "Kenya",
+      responseTime: "1 hour",
+      lastSeen: "Online"
+    },
+    features: ["Professional studio", "Quick delivery", "Revisions included", "Commercial rights", "Multiple languages"],
+    tags: ["voiceover", "audio", "english", "swahili", "commercial"],
+    isFavorite: false,
+    isChoice: true,
+    badge: "Bestseller"
+  },
+  {
+    id: 8,
+    title: "I will create eye-catching social media graphics and posts",
+    description: "Custom graphics for Instagram, Facebook, Twitter, and LinkedIn that boost engagement.",
+    image: "https://images.unsplash.com/photo-1611224923853-80b023f02d71?w=400&h=300&fit=crop",
+    category: "Graphics & Design",
+    subcategory: "Social Media Design",
+    price: 1200,
+    originalPrice: 2400,
+    rating: 4.7,
+    reviews: 998,
+    orders: 2300,
+    deliveryTime: "24 hours",
+    seller: {
+      name: "Lucy Akinyi",
+      username: "lucyakinyi_design",
+      image: "https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?w=150&h=150&fit=crop&crop=face",
+      level: "Level 2 Seller",
+      country: "Kenya",
+      responseTime: "30 minutes",
+      lastSeen: "Online"
+    },
+    features: ["All social platforms", "Source files", "Fast delivery", "Unlimited revisions", "Brand guidelines"],
+    tags: ["social media", "graphics", "instagram", "facebook", "design"],
+    isFavorite: true,
+    isChoice: false,
+    badge: "New"
+  },
+  {
+    id: 9,
+    title: "I will translate documents between English and Swahili",
+    description: "Professional translation services with cultural context and perfect grammar accuracy.",
+    image: "https://images.unsplash.com/photo-1453906971074-ce568cccbc62?w=400&h=300&fit=crop",
+    category: "Writing & Translation",
+    subcategory: "Translation",
+    price: 2000,
+    originalPrice: 4000,
+    rating: 4.8,
+    reviews: 567,
+    orders: 890,
+    deliveryTime: "2 days",
+    seller: {
+      name: "James Mutua",
+      username: "jamesmutua_translate",
+      image: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150&h=150&fit=crop&crop=face",
+      level: "Level 2 Seller",
+      country: "Kenya",
+      responseTime: "2 hours",
+      lastSeen: "4 hours ago"
+    },
+    features: ["Native speaker", "Cultural context", "Proofreading", "Fast delivery", "Certified translator"],
+    tags: ["translation", "english", "swahili", "documents", "certified"],
+    isFavorite: false,
+    isChoice: false,
+    badge: "Pro"
+  },
+  {
+    id: 10,
+    title: "I will develop a mobile app for Android and iOS",
+    description: "Custom mobile application development with modern UI/UX and backend integration.",
+    image: "https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?w=400&h=300&fit=crop",
+    category: "Programming & Tech",
+    subcategory: "Mobile Apps",
+    price: 45000,
+    originalPrice: 80000,
+    rating: 4.9,
+    reviews: 123,
+    orders: 234,
+    deliveryTime: "14 days",
+    seller: {
+      name: "Kevin Otieno",
+      username: "kevinotieno_dev",
+      image: "https://images.unsplash.com/photo-1507101105822-7472b28e22ac?w=150&h=150&fit=crop&crop=face",
+      level: "Top Rated Seller",
+      country: "Kenya",
+      responseTime: "1 hour",
+      lastSeen: "Online"
+    },
+    features: ["Cross-platform", "App store submission", "Source code", "1 month support", "Documentation"],
+    tags: ["mobile app", "android", "ios", "react native", "development"],
+    isFavorite: false,
+    isChoice: true,
+    badge: "Pro"
+  },
+  // Continue with more diverse gigs...
+  {
+    id: 11,
+    title: "I will provide comprehensive business plan writing services",
+    description: "Professional business plans for startups, loans, and investor presentations with financial projections.",
+    image: "https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=400&h=300&fit=crop",
+    category: "Business",
+    subcategory: "Business Plans",
+    price: 7500,
+    originalPrice: 15000,
+    rating: 4.8,
+    reviews: 289,
+    orders: 456,
+    deliveryTime: "5 days",
+    seller: {
+      name: "Rachel Wambui",
+      username: "rachelwambui_biz",
+      image: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&h=150&fit=crop&crop=face",
+      level: "Level 2 Seller",
+      country: "Kenya",
+      responseTime: "3 hours",
+      lastSeen: "1 hour ago"
+    },
+    features: ["Market research", "Financial projections", "Executive summary", "Investor ready", "Unlimited revisions"],
+    tags: ["business plan", "startup", "investor", "financial", "strategy"],
+    isFavorite: false,
+    isChoice: false,
+    badge: "Bestseller"
+  },
+  {
+    id: 12,
+    title: "I will edit and enhance your videos professionally",
+    description: "Professional video editing with color grading, sound design, and motion graphics.",
+    image: "https://images.unsplash.com/photo-1574717024653-61fd2cf4d44d?w=400&h=300&fit=crop",
+    category: "Video & Animation",
+    subcategory: "Video Editing",
+    price: 5000,
+    originalPrice: 10000,
+    rating: 4.7,
+    reviews: 678,
+    orders: 1200,
+    deliveryTime: "3 days",
+    seller: {
+      name: "Daniel Kipchoge",
+      username: "danielkipchoge_video",
+      image: "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150&h=150&fit=crop&crop=face",
+      level: "Level 2 Seller",
+      country: "Kenya",
+      responseTime: "2 hours",
+      lastSeen: "Online"
+    },
+    features: ["4K quality", "Color grading", "Sound design", "Motion graphics", "Fast delivery"],
+    tags: ["video editing", "color grading", "motion graphics", "sound", "professional"],
+    isFavorite: false,
+    isChoice: false,
+    badge: "Rising"
+  },
+  {
+    id: 13,
+    title: "I will design professional business cards and stationery",
+    description: "Complete brand identity package with business cards, letterheads, and corporate stationery.",
+    image: "https://images.unsplash.com/photo-1586953208448-b95a79798f07?w=400&h=300&fit=crop",
+    category: "Graphics & Design",
+    subcategory: "Business Cards & Stationery",
+    price: 1800,
+    originalPrice: 3600,
+    rating: 4.6,
+    reviews: 834,
+    orders: 1567,
+    deliveryTime: "2 days",
+    seller: {
+      name: "Emma Chebet",
+      username: "emmachebet_design",
+      image: "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face",
+      level: "Level 1 Seller",
+      country: "Kenya",
+      responseTime: "4 hours",
+      lastSeen: "2 hours ago"
+    },
+    features: ["Print ready", "Multiple concepts", "Brand consistency", "High resolution", "Source files"],
+    tags: ["business cards", "stationery", "branding", "print", "professional"],
+    isFavorite: false,
+    isChoice: false,
+    badge: null
+  },
+  {
+    id: 14,
+    title: "I will provide digital marketing strategy and consultation",
+    description: "Comprehensive digital marketing strategy with SEO, social media, and advertising recommendations.",
+    image: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=400&h=300&fit=crop",
+    category: "Digital Marketing",
+    subcategory: "Marketing Strategy",
+    price: 12000,
+    originalPrice: 20000,
+    rating: 4.9,
+    reviews: 234,
+    orders: 345,
+    deliveryTime: "7 days",
+    seller: {
+      name: "Robert Kimani",
+      username: "robertkimani_marketing",
+      image: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face",
+      level: "Top Rated Seller",
+      country: "Kenya",
+      responseTime: "1 hour",
+      lastSeen: "Online"
+    },
+    features: ["Strategy document", "Competitor analysis", "Action plan", "KPI tracking", "Follow-up support"],
+    tags: ["digital marketing", "strategy", "seo", "social media", "advertising"],
+    isFavorite: true,
+    isChoice: true,
+    badge: "Pro"
+  },
+  {
+    id: 15,
+    title: "I will compose original music and jingles for your brand",
+    description: "Custom music composition for commercials, podcasts, videos, and brand identity.",
+    image: "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&h=300&fit=crop",
+    category: "Music & Audio",
+    subcategory: "Music Production",
+    price: 8500,
+    originalPrice: 15000,
+    rating: 4.8,
+    reviews: 167,
+    orders: 289,
+    deliveryTime: "5 days",
+    seller: {
+      name: "Collins Wafula",
+      username: "collinswafula_music",
+      image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face",
+      level: "Level 2 Seller",
+      country: "Kenya",
+      responseTime: "3 hours",
+      lastSeen: "5 hours ago"
+    },
+    features: ["Original composition", "Commercial rights", "Multiple formats", "Revisions included", "Studio quality"],
+    tags: ["music composition", "jingles", "commercial", "original", "studio"],
+    isFavorite: false,
+    isChoice: false,
+    badge: "New"
+  }
+  // Add 85+ more gigs following similar patterns with different categories, prices, and sellers
+];
+
+// Generate additional gigs programmatically to reach 100+
+const additionalCategories = [
+  "Graphics & Design",
+  "Digital Marketing", 
+  "Writing & Translation",
+  "Video & Animation",
+  "Music & Audio",
+  "Programming & Tech",
+  "Business",
+  "Lifestyle"
+];
+
+const gigTitles = {
+  "Graphics & Design": [
+    "I will design professional flyers and brochures",
+    "I will create stunning website mockups and wireframes", 
+    "I will design custom illustrations and artwork",
+    "I will create professional presentations and pitch decks",
+    "I will design product packaging and labels",
+    "I will create custom icons and graphics",
+    "I will design book covers and ebook layouts",
+    "I will create infographics and data visualizations",
+    "I will design t-shirts and merchandise",
+    "I will create 3D renders and product visualizations"
+  ],
+  "Digital Marketing": [
+    "I will run Facebook and Instagram ad campaigns",
+    "I will optimize your website for search engines",
+    "I will create email marketing campaigns",
+    "I will manage your Google Ads campaigns", 
+    "I will provide social media analytics and reporting",
+    "I will write compelling sales copy and landing pages",
+    "I will create content marketing strategies",
+    "I will manage your LinkedIn marketing campaigns",
+    "I will provide influencer marketing services",
+    "I will create marketing automation workflows"
+  ],
+  "Writing & Translation": [
+    "I will write product descriptions and reviews",
+    "I will create technical documentation and manuals",
+    "I will provide copywriting for websites and ads",
+    "I will write grant proposals and applications",
+    "I will create newsletter content and email sequences",
+    "I will provide proofreading and editing services",
+    "I will write press releases and media content",
+    "I will create social media captions and content",
+    "I will write academic papers and research",
+    "I will provide creative writing and storytelling"
+  ],
+  "Video & Animation": [
+    "I will create promotional videos for your business",
+    "I will edit your YouTube videos professionally",
+    "I will create animated explainer videos",
+    "I will produce wedding and event videos",
+    "I will create slideshow presentations with music",
+    "I will design animated logos and intros",
+    "I will create educational and training videos",
+    "I will produce social media video content",
+    "I will create 3D animations and renders",
+    "I will provide live streaming and broadcast services"
+  ],
+  "Music & Audio": [
+    "I will mix and master your music tracks",
+    "I will create podcast intros and outros",
+    "I will produce background music for videos",
+    "I will provide audio editing and cleanup",
+    "I will create sound effects and audio branding",
+    "I will record professional instruments",
+    "I will provide audio transcription services",
+    "I will create meditation and relaxation music",
+    "I will produce radio commercials and ads",
+    "I will provide audio restoration services"
+  ],
+  "Programming & Tech": [
+    "I will fix bugs and errors in your website",
+    "I will create custom web applications",
+    "I will provide database design and optimization",
+    "I will develop e-commerce websites",
+    "I will create APIs and integrations",
+    "I will provide cybersecurity consultation",
+    "I will optimize website speed and performance",
+    "I will create desktop applications",
+    "I will provide technical support and maintenance",
+    "I will develop chatbots and automation"
+  ],
+  "Business": [
+    "I will provide market research and analysis",
+    "I will create financial models and projections",
+    "I will provide HR consultation and policies",
+    "I will create standard operating procedures",
+    "I will provide legal document templates",
+    "I will offer business coaching and mentorship",
+    "I will create customer service training",
+    "I will provide inventory management solutions",
+    "I will create employee handbooks",
+    "I will provide project management services"
+  ],
+  "Lifestyle": [
+    "I will provide personal fitness training plans",
+    "I will create custom meal plans and recipes",
+    "I will provide life coaching and motivation",
+    "I will offer relationship and dating advice",
+    "I will create travel itineraries and guides",
+    "I will provide personal styling and fashion advice",
+    "I will offer meditation and mindfulness training",
+    "I will create home organization solutions",
+    "I will provide personal finance consultation",
+    "I will offer career coaching and resume writing"
+  ]
+};
+
+// Kenyan names for sellers
+const kenyanNames = [
+  "Patrick Mwangi", "Grace Njeri", "Samuel Kiprotich", "Faith Auma", "Joseph Kamau",
+  "Mercy Wanjiku", "Brian Otieno", "Rose Chebet", "Victor Mutua", "Esther Wambui",
+  "Francis Ochieng", "Catherine Nyong", "Dennis Kimani", "Joyce Akinyi", "Alex Ruto",
+  "Lillian Njoroge", "George Wafula", "Beatrice Muthoni", "Paul Kiplagat", "Hannah Wairimu",
+  "Martin Omondi", "Stella Gathoni", "Philip Kibet", "Lydia Macharia", "Tony Maina",
+  "Eunice Wanjala", "Moses Karanja", "Violet Cheptoo", "Edwin Mogaka", "Gladys Kerubo"
+];
+
+// Generate additional gigs
+let gigId = 16;
+for (let category of additionalCategories) {
+  for (let i = 0; i < 10; i++) {
+    const titles = gigTitles[category];
+    if (titles && titles[i]) {
+      const randomName = kenyanNames[Math.floor(Math.random() * kenyanNames.length)];
+      const basePrice = Math.floor(Math.random() * 15000) + 500;
+      const originalPrice = basePrice * (1.5 + Math.random());
+      
+      sampleGigs.push({
+        id: gigId++,
+        title: titles[i],
+        description: `Professional ${category.toLowerCase()} service with high quality delivery and customer satisfaction guaranteed.`,
+        image: `https://images.unsplash.com/photo-${1400000000000 + Math.floor(Math.random() * 200000000)}?w=400&h=300&fit=crop`,
+        category: category,
+        subcategory: category.split(' ')[0],
+        price: basePrice,
+        originalPrice: Math.floor(originalPrice),
+        rating: 4.0 + Math.random() * 1.0,
+        reviews: Math.floor(Math.random() * 1000) + 50,
+        orders: Math.floor(Math.random() * 2000) + 100,
+        deliveryTime: `${Math.floor(Math.random() * 7) + 1} days`,
+        seller: {
+          name: randomName,
+          username: randomName.toLowerCase().replace(' ', '') + '_pro',
+          image: `https://images.unsplash.com/photo-${1500000000000 + Math.floor(Math.random() * 100000000)}?w=150&h=150&fit=crop&crop=face`,
+          level: ["Level 1 Seller", "Level 2 Seller", "Top Rated Seller"][Math.floor(Math.random() * 3)],
+          country: "Kenya",
+          responseTime: `${Math.floor(Math.random() * 4) + 1} hours`,
+          lastSeen: Math.random() > 0.3 ? "Online" : `${Math.floor(Math.random() * 24)} hours ago`
+        },
+        features: ["Professional quality", "Fast delivery", "Revisions included", "Excellent support", "Money back guarantee"],
+        tags: category.toLowerCase().split(' '),
+        isFavorite: Math.random() > 0.8,
+        isChoice: Math.random() > 0.85,
+        badge: Math.random() > 0.7 ? ["Bestseller", "New", "Pro", "Rising"][Math.floor(Math.random() * 4)] : null
+      });
+    }
+  }
+}
+
+export default sampleGigs; 

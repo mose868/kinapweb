@@ -132,7 +132,7 @@ const MarketplacePage = () => {
       <div className="bg-gray-50 min-h-screen">
         <section className="bg-ajira-primary text-white py-16 px-4 text-center">
           <h1 className="text-4xl md:text-5xl font-bold mb-4">Find the perfect freelance services for your business</h1>
-          <p className="text-lg mb-8">Get things done with top talent on Ajira Marketplace, inspired by Fiverr</p>
+          <p className="text-lg mb-8">Get things done with top talent on Ajira Marketplace, inspired by Kinaps</p>
         </section>
         <section className="py-12 px-4 max-w-6xl mx-auto">
           <h2 className="text-2xl font-bold mb-6 text-center">Featured Gigs (Demo)</h2>
@@ -165,7 +165,7 @@ const MarketplacePage = () => {
       {/* Hero Section */}
       <section className="bg-ajira-primary text-white py-16 px-4 text-center">
         <h1 className="text-4xl md:text-5xl font-bold mb-4">Find the perfect freelance services for your business</h1>
-        <p className="text-lg mb-8">Get things done with top talent on Ajira Marketplace, inspired by Fiverr</p>
+        <p className="text-lg mb-8">Get things done with top talent on Ajira Marketplace, inspired by Kinaps</p>
         <div className="max-w-xl mx-auto flex items-center bg-white rounded-full shadow px-4 py-2">
           <input
             type="text"
