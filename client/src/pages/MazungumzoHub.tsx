@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Search, Phone, MoreVertical, Send, Paperclip, Smile, Users, Hash, MessageCircle, Settings, Bell, User, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { Search, Phone, MoreVertical, Send, Paperclip, Smile, MessageCircle, Settings, Bell, User, ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface ChatMessage {
   id: string;
@@ -334,32 +334,15 @@ const MazungumzoHub = () => {
       isOwn: true
     };
 
-    // Update the current group's messages
-    const updatedGroups = groups.map(group => {
-      if (group.id === currentGroup.id) {
-        return {
-          ...group,
-          messages: [...group.messages, message],
-          lastMessage: `You: ${newMessage}`,
-          lastMessageTime: new Date()
-        };
-      }
-      return group;
-    });
-
     // Update the group's messages (in a real app, this would be handled by state management)
     if (currentGroup) {
       currentGroup.messages.push(message);
+      currentGroup.lastMessage = `You: ${newMessage}`;
+      currentGroup.lastMessageTime = new Date();
     }
     setNewMessage('');
   };
 
-  // Use demo groups as the main groups data
-  const groups = demoGroups;
-  
-  // Get current group based on selected group ID
-  const currentGroup = groups.find(group => group.id === selectedGroup) || null;
-  
   const filteredGroups = groups.filter(group =>
     group.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     group.description.toLowerCase().includes(searchQuery.toLowerCase())
