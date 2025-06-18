@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { Search, X } from 'lucide-react';
 
@@ -6,7 +6,6 @@ const Navbar = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [dropdown, setDropdown] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<any[]>([]);
   const [showSearchResults, setShowSearchResults] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
@@ -49,20 +48,12 @@ const Navbar = () => {
     { title: 'Upload Media', description: 'Share your content', url: '/media-upload', type: 'action' },
   ];
 
-  // Search functionality
+  // Search functionality - simplified
   useEffect(() => {
     if (searchQuery.trim() === '') {
-      setSearchResults([]);
       setShowSearchResults(false);
       return;
     }
-
-    const filtered = searchableContent.filter(item =>
-      item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.description.toLowerCase().includes(searchQuery.toLowerCase())
-    ).slice(0, 8); // Limit to 8 results
-
-    setSearchResults(filtered);
     setShowSearchResults(true);
   }, [searchQuery]);
 
@@ -78,8 +69,7 @@ const Navbar = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleSearchSelect = (item: any) => {
-    navigate(item.url);
+  const handleSearchSelect = () => {
     setSearchQuery('');
     setShowSearchResults(false);
   };
@@ -113,10 +103,27 @@ const Navbar = () => {
       label: 'Community',
       items: [
         { label: 'Community Hub', to: '/community' },
-        { label: 'Showcase', to: '/showcase' },
+        { label: 'Mazungumzo Hub', to: '/mazungumzo' },
         { label: 'Testimonials', to: '/testimonials' },
         { label: 'Ambassador Program', to: '/ambassador' },
-        { label: 'Events', to: '/events' },
+      ],
+    },
+    {
+      label: 'Showcase',
+      items: [
+        { label: 'Member Showcase', to: '/showcase' },
+        { label: 'Success Stories', to: '/testimonials' },
+        { label: 'Portfolio Gallery', to: '/showcase' },
+        { label: 'Featured Projects', to: '/showcase' },
+      ],
+    },
+    {
+      label: 'Events',
+      items: [
+        { label: 'Upcoming Events', to: '/events' },
+        { label: 'Workshops', to: '/training' },
+        { label: 'Webinars', to: '/events' },
+        { label: 'Community Meetups', to: '/events' },
       ],
     },
     {
@@ -179,45 +186,13 @@ const Navbar = () => {
             )}
           </div>
           
-          {/* Search Results Dropdown */}
-          {showSearchResults && searchResults.length > 0 && (
-            <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-xl border border-gray-200 max-h-96 overflow-y-auto z-50">
-              <div className="p-2">
-                <div className="text-xs text-gray-500 px-3 py-2 font-semibold uppercase tracking-wide">
-                  Search Results ({searchResults.length})
-                </div>
-                {searchResults.map((item, index) => (
-                  <button
-                    key={index}
-                    onClick={() => handleSearchSelect(item)}
-                    className="w-full text-left px-3 py-3 hover:bg-gradient-to-r hover:from-red-50 hover:to-gray-50 rounded-lg transition-all group"
-                  >
-                    <div className="flex items-start gap-3">
-                      <span className="text-lg">{getTypeIcon(item.type)}</span>
-                      <div className="flex-1 min-w-0">
-                        <div className="font-semibold text-gray-900 group-hover:text-red-600 transition-colors">
-                          {item.title}
-                        </div>
-                        <div className="text-sm text-gray-500 truncate">
-                          {item.description}
-                        </div>
-                        <div className="text-xs text-gray-400 mt-1">
-                          {item.type === 'page' ? 'Page' : item.type === 'skill' ? 'Skill' : 'Action'}
-                        </div>
-                      </div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-          
-          {showSearchResults && searchResults.length === 0 && searchQuery.trim() !== '' && (
+          {/* Search Results Dropdown - Simplified */}
+          {showSearchResults && searchQuery.trim() !== '' && (
             <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-xl border border-gray-200 z-50">
               <div className="p-4 text-center text-gray-500">
                 <Search className="h-8 w-8 mx-auto mb-2 text-gray-300" />
-                <div className="font-medium">No results found</div>
-                <div className="text-sm">Try searching for pages, skills, or actions</div>
+                <div className="font-medium">Search functionality temporarily disabled</div>
+                <div className="text-sm">Navigation dropdowns are now available</div>
               </div>
             </div>
           )}
@@ -233,17 +208,6 @@ const Navbar = () => {
             }
           >
             Home
-          </NavLink>
-          
-          <NavLink 
-            to="/mazungumzo" 
-            className={({ isActive }) => 
-              isActive 
-                ? 'text-ajira-accent font-semibold border-b-2 border-ajira-accent pb-1' 
-                : 'text-gray-700 hover:text-ajira-accent transition-colors'
-            }
-          >
-            Mazungumzo Hub
           </NavLink>
           
           <NavLink 
@@ -341,18 +305,6 @@ const Navbar = () => {
               onClick={() => setMenuOpen(false)}
             >
               Home
-            </NavLink>
-            
-            <NavLink 
-              to="/mazungumzo" 
-              className={({ isActive }) => 
-                isActive 
-                  ? 'block py-3 text-ajira-accent font-semibold border-l-4 border-ajira-accent pl-4' 
-                  : 'block py-3 text-gray-700 hover:text-ajira-accent pl-4'
-              } 
-              onClick={() => setMenuOpen(false)}
-            >
-              Mazungumzo Hub
             </NavLink>
             
             <NavLink 

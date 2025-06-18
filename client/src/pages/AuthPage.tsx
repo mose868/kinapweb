@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useMutation } from 'react-query'
+import axios from 'axios'
 import { register as apiRegister, login as apiLogin } from '../api/auth'
 import { Loader2, Mail, Lock, User, MapPin, Eye, EyeOff, AlertCircle } from 'lucide-react'
 import type { UserRole } from '../types/marketplace'
@@ -14,12 +15,14 @@ const TEMP_MAIL_DOMAINS = [
 interface FormData {
   email: string
   password: string
+  confirmPassword?: string
   displayName: string
   role: UserRole
-  location: string
+  idNumber?: string
+  phoneNumber?: string
   course?: string
   year?: string
-  digitalSkillsInterest?: string
+  skills?: string
   ajiraGoals?: string
   experienceLevel?: string
   preferredLearningMode?: string
@@ -36,12 +39,14 @@ const AuthPage = () => {
   const [formData, setFormData] = useState<FormData>({
     email: '',
     password: '',
+    confirmPassword: '',
     displayName: '',
     role: 'buyer',
-    location: '',
+    idNumber: '',
+    phoneNumber: '',
     course: '',
     year: '',
-    digitalSkillsInterest: '',
+    skills: '',
     ajiraGoals: '',
     experienceLevel: '',
     preferredLearningMode: '',
@@ -81,30 +86,72 @@ const AuthPage = () => {
     if (isTempMail(formData.email)) {
       throw new Error('Temporary/disposable email addresses are not allowed.')
     }
-    const { data } = await apiRegister({
-      name: formData.displayName || formData.email,
+    
+    // Prepare data for student registration API
+    const studentData = {
+      fullname: formData.displayName,
+      idNo: formData.idNumber,
+      course: formData.course,
+      year: formData.year,
+      skills: formData.skills || '',
+      experience: formData.experienceLevel,
       email: formData.email,
-      password: formData.password,
-      role: formData.role,
-    })
-    // Store token and redirect
+      phone: formData.phoneNumber,
+      password: formData.password
+    }
+
+    try {
+      const response = await axios.post('https://71bc-197-136-138-2.ngrok-free.app/api/students/register-student', studentData, {
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      })
+
+      const data = response.data
+      
+      // Store token if provided, otherwise redirect to login
+      if (data.token) {
     localStorage.setItem('token', data.token)
+      }
     navigate(from)
+    } catch (error: any) {
+      if (error.response?.data?.message) {
+        throw new Error(error.response.data.message)
+      }
+      throw new Error('Registration failed')
+    }
   })
 
   // Sign in mutation
   const signInMutation = useMutation(async () => {
-    const { data } = await apiLogin({
+    try {
+      const response = await axios.post('https://71bc-197-136-138-2.ngrok-free.app/api/students/login-student', {
       email: formData.email,
       password: formData.password,
+      }, {
+        headers: {
+          'Content-Type': 'application/json',
+        }
     })
+
+      const data = response.data
     localStorage.setItem('token', data.token)
-    navigate(from)
+      navigate('/profile')
+    } catch (error: any) {
+      if (error.response?.data?.message) {
+        throw new Error(error.response.data.message)
+      }
+      throw new Error('Login failed')
+    }
   })
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+    if (isSignUp && formData.password !== formData.confirmPassword) {
+      setError('Passwords do not match.')
+      return
+    }
     try {
       if (isSignUp) {
         await signUpMutation.mutateAsync()
@@ -220,37 +267,39 @@ const AuthPage = () => {
                   </div>
 
                   <div>
-                    <label htmlFor="location" className="block text-sm font-medium text-gray-700">
-                      Location
+                    <label htmlFor="idNumber" className="block text-sm font-medium text-gray-700">
+                      ID Number
                     </label>
                     <div className="mt-1 relative">
                       <input
-                        id="location"
-                        name="location"
+                        id="idNumber"
+                        name="idNumber"
                         type="text"
                         required
-                        value={formData.location}
+                        value={formData.idNumber}
                         onChange={handleChange}
                         className="appearance-none block w-full px-4 py-2 pl-10 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-ajira-accent/50 focus:border-transparent"
                       />
-                      <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                      <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
                     </div>
                   </div>
 
                   <div>
-                    <label htmlFor="role" className="block text-sm font-medium text-gray-700">
-                      I want to
+                    <label htmlFor="phoneNumber" className="block text-sm font-medium text-gray-700">
+                      Phone Number
                     </label>
-                    <select
-                      id="role"
-                      name="role"
-                      value={formData.role}
-                      onChange={handleChange}
-                      className="mt-1 block w-full pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-2 focus:ring-ajira-accent/50 focus:border-transparent sm:text-sm rounded-lg"
-                    >
-                      <option value="buyer">Hire Digital Services</option>
-                      <option value="seller">Offer Digital Services</option>
-                    </select>
+                    <div className="mt-1 relative">
+                      <input
+                        id="phoneNumber"
+                        name="phoneNumber"
+                        type="tel"
+                        required
+                        value={formData.phoneNumber}
+                        onChange={handleChange}
+                        className="appearance-none block w-full px-4 py-2 pl-10 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-ajira-accent/50 focus:border-transparent"
+                      />
+                      <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                    </div>
                   </div>
 
                   <div>
@@ -266,13 +315,12 @@ const AuthPage = () => {
                     >
                       <option value="">Select your course</option>
                       <option value="computer-science">Computer Science</option>
-                      <option value="information-technology">Information Technology</option>
-                      <option value="software-engineering">Software Engineering</option>
-                      <option value="business-information-technology">Business Information Technology</option>
-                      <option value="computer-engineering">Computer Engineering</option>
-                      <option value="multimedia">Multimedia Technology</option>
-                      <option value="networking">Computer Networks & Security</option>
-                      <option value="other">Other</option>
+                      <option value="building-tech">Building Tech</option>
+                      <option value="hospitality">Hospitality</option>
+                      <option value="human-resource">Human Resource</option>
+                      <option value="civil-engineering">Civil Engineering</option>
+                      <option value="business-management">Business Management</option>
+                      <option value="it">IT</option>
                     </select>
                   </div>
 
@@ -298,56 +346,6 @@ const AuthPage = () => {
                   </div>
 
                   <div>
-                    <label htmlFor="digitalSkillsInterest" className="block text-sm font-medium text-gray-700">
-                      Which Ajira Digital skills interest you most?
-                    </label>
-                    <select
-                      id="digitalSkillsInterest"
-                      name="digitalSkillsInterest"
-                      value={formData.digitalSkillsInterest}
-                      onChange={handleChange}
-                      className="mt-1 block w-full pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-2 focus:ring-ajira-accent/50 focus:border-transparent sm:text-sm rounded-lg"
-                    >
-                      <option value="">Select your interest</option>
-                      <option value="web-development">Web Development</option>
-                      <option value="mobile-app-development">Mobile App Development</option>
-                      <option value="digital-marketing">Digital Marketing</option>
-                      <option value="graphic-design">Graphic Design</option>
-                      <option value="data-entry">Data Entry</option>
-                      <option value="content-writing">Content Writing</option>
-                      <option value="virtual-assistance">Virtual Assistance</option>
-                      <option value="social-media-management">Social Media Management</option>
-                      <option value="video-editing">Video Editing</option>
-                      <option value="financial-markets">Financial Markets & Trading</option>
-                      <option value="e-commerce">E-commerce</option>
-                      <option value="freelancing">Freelancing</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label htmlFor="ajiraGoals" className="block text-sm font-medium text-gray-700">
-                      What are your main Ajira Digital goals?
-                    </label>
-                    <select
-                      id="ajiraGoals"
-                      name="ajiraGoals"
-                      value={formData.ajiraGoals}
-                      onChange={handleChange}
-                      className="mt-1 block w-full pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-2 focus:ring-ajira-accent/50 focus:border-transparent sm:text-sm rounded-lg"
-                    >
-                      <option value="">Select your primary goal</option>
-                      <option value="earn-income">Start earning income online</option>
-                      <option value="build-career">Build a digital career</option>
-                      <option value="learn-skills">Learn new digital skills</option>
-                      <option value="start-business">Start my own digital business</option>
-                      <option value="freelance-fulltime">Become a full-time freelancer</option>
-                      <option value="supplement-income">Supplement my current income</option>
-                      <option value="network-connect">Network and connect with others</option>
-                      <option value="mentor-others">Mentor and help others</option>
-                    </select>
-                  </div>
-
-                  <div>
                     <label htmlFor="experienceLevel" className="block text-sm font-medium text-gray-700">
                       What is your experience level?
                     </label>
@@ -366,36 +364,19 @@ const AuthPage = () => {
                   </div>
 
                   <div>
-                    <label htmlFor="preferredLearningMode" className="block text-sm font-medium text-gray-700">
-                      Preferred learning mode
-                    </label>
-                    <select
-                      id="preferredLearningMode"
-                      name="preferredLearningMode"
-                      value={formData.preferredLearningMode}
-                      onChange={handleChange}
-                      className="mt-1 block w-full pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-2 focus:ring-ajira-accent/50 focus:border-transparent sm:text-sm rounded-lg"
-                    >
-                      <option value="">Select preferred learning mode</option>
-                      <option value="online">Online</option>
-                      <option value="offline">Offline</option>
-                      <option value="hybrid">Hybrid</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label htmlFor="otherInfo" className="block text-sm font-medium text-gray-700">
-                      Other information (optional)
+                    <label htmlFor="skills" className="block text-sm font-medium text-gray-700">
+                      Digital Skills & Interests
                     </label>
                     <div className="mt-1 relative">
                       <input
-                        id="otherInfo"
-                        name="otherInfo"
+                        id="skills"
+                        name="skills"
                         type="text"
-                        value={formData.otherInfo}
+                        required
+                        value={formData.skills}
                         onChange={handleChange}
+                        placeholder="e.g., Web Development, Graphic Design, Digital Marketing"
                         className="appearance-none block w-full px-4 py-2 pl-10 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-ajira-accent/50 focus:border-transparent"
-                        placeholder="Anything else you'd like to share?"
                       />
                       <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
                     </div>
@@ -458,6 +439,27 @@ const AuthPage = () => {
                   </button>
                 )}
               </div>
+
+              {isSignUp && (
+                <div>
+                  <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
+                    Confirm Password
+                  </label>
+                  <div className="mt-1 relative">
+                    <input
+                      id="confirmPassword"
+                      name="confirmPassword"
+                      type={showPassword ? 'text' : 'password'}
+                      autoComplete="new-password"
+                      required
+                      value={formData.confirmPassword}
+                      onChange={handleChange}
+                      className="appearance-none block w-full px-4 py-2 pl-10 pr-10 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-ajira-accent/50 focus:border-transparent"
+                    />
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                  </div>
+                </div>
+              )}
 
               <div>
                 <button

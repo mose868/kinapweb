@@ -25,6 +25,7 @@ interface ChatGroup {
 }
 
 const MazungumzoHub = () => {
+  console.log('🎯 MazungumzoHub component is loading!');
   const [selectedGroup, setSelectedGroup] = useState<string>('');
   const [newMessage, setNewMessage] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -285,23 +286,22 @@ const MazungumzoHub = () => {
     }
   ];
 
-  const [groups] = useState<ChatGroup[]>(demoGroups);
   const [currentGroup, setCurrentGroup] = useState<ChatGroup | null>(null);
 
   // Auto-select first group on load for fast experience
   useEffect(() => {
-    if (groups.length > 0 && !selectedGroup) {
-      setSelectedGroup(groups[0].id);
-      setCurrentGroup(groups[0]);
+    if (demoGroups.length > 0 && !selectedGroup) {
+      setSelectedGroup(demoGroups[0].id);
+      setCurrentGroup(demoGroups[0]);
     }
-  }, [groups, selectedGroup]);
+  }, [selectedGroup]);
 
   useEffect(() => {
     if (selectedGroup) {
-      const group = groups.find(g => g.id === selectedGroup);
+      const group = demoGroups.find(g => g.id === selectedGroup);
       setCurrentGroup(group || null);
     }
-  }, [selectedGroup, groups]);
+  }, [selectedGroup, demoGroups]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -343,7 +343,7 @@ const MazungumzoHub = () => {
     setNewMessage('');
   };
 
-  const filteredGroups = groups.filter(group =>
+  const filteredGroups = demoGroups.filter(group =>
     group.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     group.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
