@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom'
 import { ArrowRight, Play, Users, Award, TrendingUp, Globe } from 'lucide-react'
-import StoryOfTheDay from '../components/StoryOfTheDay'
+import StoryOfTheDay from '../components/common/StoryOfTheDay'
 import TestimonialSlider from '../components/TestimonialSlider'
-import ImpactMetrics from '../components/ImpactMetrics'
+import ImpactMetrics from '../components/common/ImpactMetrics'
 
 const Home = () => {
   return (
