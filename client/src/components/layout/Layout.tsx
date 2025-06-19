@@ -1,7 +1,10 @@
 import { Outlet } from 'react-router-dom'
 import { Helmet } from 'react-helmet-async'
 import Navbar from './Navbar'
+<<<<<<< HEAD
 // @ts-ignore
+=======
+>>>>>>> dd25fd4ae581ae831578a3336b8c01d7a79d4ea9
 import Footer from './Footer.jsx'
 import Chatbot from '../chatbot/Chatbot'
 import React from 'react';
@@ -11,6 +14,10 @@ interface LayoutProps {
 }
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
+<<<<<<< HEAD
+=======
+
+>>>>>>> dd25fd4ae581ae831578a3336b8c01d7a79d4ea9
   return (
     <div className="min-h-screen bg-gray-50">
       <Helmet>

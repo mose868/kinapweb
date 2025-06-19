@@ -13,26 +13,26 @@ import ProfilePage from './pages/ProfilePage';
 import NotificationsPage from './pages/notifications/NotificationsPage';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 
-// Import all other pages
-import CommunityPage from './pages/CommunityPage';
-import MazungumzoHub from './pages/MazungumzoHub';
-import Videos from './pages/Videos';
-import EventsPage from './pages/EventsPage';
-import TestimonialsPage from './pages/TestimonialsPage';
-import Blog from './pages/Blog';
-import AmbassadorPage from './pages/AmbassadorPage';
-import ShowcasePage from './pages/ShowcasePage';
-import UpdatesPage from './pages/UpdatesPage';
-import TeamPage from './pages/TeamPage';
-import TrainingPage from './pages/TrainingPage';
-import MentorshipPage from './pages/MentorshipPage';
-import FaqPage from './pages/FaqPage';
-import PrivacyPolicy from './pages/PrivacyPolicy';
+// Import organized pages
+import CommunityPage from './pages/community/CommunityPage';
+import MazungumzoHub from './pages/community/MazungumzoHub';
+import TestimonialsPage from './pages/community/TestimonialsPage';
+import AmbassadorPage from './pages/community/AmbassadorPage';
+import ShowcasePage from './pages/community/ShowcasePage';
+import Videos from './pages/content/Videos';
+import EventsPage from './pages/content/EventsPage';
+import Blog from './pages/content/Blog';
+import TrainingPage from './pages/content/TrainingPage';
+import MentorshipPage from './pages/content/MentorshipPage';
+import UpdatesPage from './pages/about/UpdatesPage';
+import TeamPage from './pages/about/TeamPage';
+import FaqPage from './pages/about/FaqPage';
+import About from './pages/about/About';
+import Contact from './pages/about/Contact';
+import PrivacyPolicy from './pages/legal/PrivacyPolicy';
+import Terms from './pages/legal/Terms';
 import BecomeSeller from './pages/BecomeSeller';
-import About from './pages/About';
-import Terms from './pages/Terms';
 import MediaUpload from './pages/MediaUpload';
-import Contact from './pages/Contact';
 
 // Import admin pages
 import AdminDashboard from './pages/admin/AdminDashboard';

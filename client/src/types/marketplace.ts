@@ -17,6 +17,24 @@ export interface UserProfile {
   completedOrders: number
   languages: string[]
   id?: string
+  // Club member specific fields
+  course?: string
+  year?: string
+  preferredPlatforms?: string[]
+  experienceLevel?: string
+  ajiraGoals?: string
+  preferredLearningMode?: string
+  linkedinProfile?: string
+  githubProfile?: string
+  portfolioUrl?: string
+  phoneNumber?: string
+  idNumber?: string
+  achievements?: string[]
+  completedProjects?: number
+  mentorshipInterest?: boolean
+  availableForFreelance?: boolean
+  joinedDate?: string
+  lastActive?: string
   stats?: {
     rating: number
     reviews: number
