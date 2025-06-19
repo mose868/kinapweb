@@ -1,14 +1,53 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
-import { Search, X } from 'lucide-react';
+import { Search, X, User, LogOut, Bell, Settings } from 'lucide-react';
 
 const Navbar = () => {
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userEmail, setUserEmail] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
   const [dropdown, setDropdown] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearchResults, setShowSearchResults] = useState(false);
+  const [profileDropdown, setProfileDropdown] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+
+  // Check localStorage for authentication status
+  useEffect(() => {
+    const checkAuthStatus = () => {
+      const email = localStorage.getItem('userEmail');
+      const token = localStorage.getItem('token');
+      
+      if (email && token) {
+        setIsLoggedIn(true);
+        setUserEmail(email);
+      } else {
+        setIsLoggedIn(false);
+        setUserEmail('');
+      }
+    };
+
+    // Check on component mount
+    checkAuthStatus();
+
+    // Listen for storage changes (when user logs in/out in another tab)
+    window.addEventListener('storage', checkAuthStatus);
+    
+    return () => {
+      window.removeEventListener('storage', checkAuthStatus);
+    };
+  }, []);
+
+  // Custom logout function
+  const handleSignOut = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('userEmail');
+    setIsLoggedIn(false);
+    setUserEmail('');
+    setProfileDropdown(false);
+    navigate('/');
+  };
 
   // All searchable pages and content
   const searchableContent = [
@@ -57,11 +96,15 @@ const Navbar = () => {
     setShowSearchResults(true);
   }, [searchQuery]);
 
-  // Close search results when clicking outside
+  // Close search results and profile dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
         setShowSearchResults(false);
+      }
+      // Close profile dropdown when clicking outside
+      if (!(event.target as Element).closest('.profile-dropdown')) {
+        setProfileDropdown(false);
       }
     };
 
@@ -86,6 +129,10 @@ const Navbar = () => {
       case 'action': return '🚀';
       default: return '🔍';
     }
+  };
+
+  const handleLogout = () => {
+    handleSignOut();
   };
 
   // Dropdown groupings with all pages
@@ -221,7 +268,9 @@ const Navbar = () => {
             Videos
           </NavLink>
           
-          {dropdowns.map((dd) => (
+          {dropdowns
+            .filter(dd => !(dd.label === 'Account' && isLoggedIn)) // Hide Account dropdown when logged in
+            .map((dd) => (
             <div key={dd.label} className="relative group">
               <button
                 className="text-gray-700 hover:text-ajira-accent font-semibold px-2 py-1 focus:outline-none transition-colors flex items-center gap-1"
@@ -249,7 +298,9 @@ const Navbar = () => {
                 onMouseEnter={() => setDropdown(dd.label)}
                 onMouseLeave={() => setDropdown(null)}
               >
-                {dd.items.map((item) => (
+                {dd.items
+                  .filter(item => !(item.label === 'Sign In / Sign Up' && isLoggedIn)) // Hide sign in item when logged in
+                  .map((item) => (
                   <NavLink
                     key={item.to}
                     to={item.to}
@@ -266,12 +317,82 @@ const Navbar = () => {
             </div>
           ))}
           
-          <Link
-            to="/auth"
-            className="bg-gradient-to-r from-red-600 to-black text-white px-4 py-2 rounded-lg hover:shadow-lg transition-all duration-200 font-semibold"
-          >
-            Join / Sign In
-          </Link>
+          {isLoggedIn ? (
+            // Profile dropdown for authenticated users
+            <div className="relative profile-dropdown">
+              <button
+                onClick={() => setProfileDropdown(!profileDropdown)}
+                className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                <div className="w-8 h-8 bg-gradient-to-r from-red-600 to-black rounded-full flex items-center justify-center">
+                  <User className="w-5 h-5 text-white" />
+                </div>
+                <span className="text-gray-700 font-medium">{userEmail.split('@')[0]}</span>
+                <svg 
+                  className={`w-4 h-4 transition-transform ${profileDropdown ? 'rotate-180' : ''}`} 
+                  fill="none" 
+                  stroke="currentColor" 
+                  strokeWidth="2" 
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              
+              {profileDropdown && (
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-200 py-2">
+                  <Link
+                    to="/profile"
+                    className="flex items-center gap-3 px-4 py-2 text-gray-700 hover:bg-gray-50 transition-colors"
+                    onClick={() => setProfileDropdown(false)}
+                  >
+                    <User className="w-4 h-4" />
+                    Profile
+                  </Link>
+                  <Link
+                    to="/orders"
+                    className="flex items-center gap-3 px-4 py-2 text-gray-700 hover:bg-gray-50 transition-colors"
+                    onClick={() => setProfileDropdown(false)}
+                  >
+                    <Settings className="w-4 h-4" />
+                    Orders
+                  </Link>
+                  <Link
+                    to="/notifications"
+                    className="flex items-center gap-3 px-4 py-2 text-gray-700 hover:bg-gray-50 transition-colors"
+                    onClick={() => setProfileDropdown(false)}
+                  >
+                    <Bell className="w-4 h-4" />
+                    Notifications
+                  </Link>
+                  <hr className="my-2" />
+                  <button
+                    onClick={handleLogout}
+                    className="flex items-center gap-3 px-4 py-2 text-red-600 hover:bg-red-50 transition-colors w-full text-left"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    Sign Out
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            // Sign up/Sign in buttons for non-authenticated users
+            <div className="flex items-center gap-3">
+              <Link
+                to="/auth"
+                className="text-gray-700 hover:text-ajira-accent font-medium transition-colors"
+              >
+                Sign In
+              </Link>
+              <Link
+                to="/auth"
+                className="bg-gradient-to-r from-red-600 to-black text-white px-4 py-2 rounded-lg hover:shadow-lg transition-all duration-200 font-semibold"
+              >
+                Sign Up
+              </Link>
+            </div>
+          )}
         </div>
         
         {/* Mobile menu button */}
@@ -340,13 +461,75 @@ const Navbar = () => {
               </div>
             ))}
             
-            <Link
-              to="/auth"
-              className="block mx-4 mb-4 bg-gradient-to-r from-red-600 to-black text-white px-4 py-3 rounded-lg text-center font-semibold"
-              onClick={() => setMenuOpen(false)}
-            >
-              Join / Sign In
-            </Link>
+            {isLoggedIn ? (
+              // Mobile profile section for authenticated users
+              <div className="mx-4 mb-4">
+                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg mb-3">
+                  <div className="w-10 h-10 bg-gradient-to-r from-red-600 to-black rounded-full flex items-center justify-center">
+                    <User className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <div className="font-semibold text-gray-800">{userEmail.split('@')[0]}</div>
+                    <div className="text-sm text-gray-600">{userEmail}</div>
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <Link
+                    to="/profile"
+                    className="flex items-center gap-3 px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    <User className="w-4 h-4" />
+                    Profile
+                  </Link>
+                  <Link
+                    to="/orders"
+                    className="flex items-center gap-3 px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    <Settings className="w-4 h-4" />
+                    Orders
+                  </Link>
+                  <Link
+                    to="/notifications"
+                    className="flex items-center gap-3 px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    <Bell className="w-4 h-4" />
+                    Notifications
+                  </Link>
+                  <button
+                    onClick={() => {
+                      handleLogout();
+                      setMenuOpen(false);
+                    }}
+                    className="flex items-center gap-3 px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors w-full text-left"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    Sign Out
+                  </button>
+                </div>
+              </div>
+            ) : (
+              // Mobile sign up/sign in buttons for non-authenticated users
+              <div className="mx-4 mb-4 space-y-2">
+                <Link
+                  to="/auth"
+                  className="block bg-white border border-gray-300 text-gray-700 px-4 py-3 rounded-lg text-center font-semibold hover:bg-gray-50 transition-colors"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  Sign In
+                </Link>
+                <Link
+                  to="/auth"
+                  className="block bg-gradient-to-r from-red-600 to-black text-white px-4 py-3 rounded-lg text-center font-semibold"
+                  onClick={() => setMenuOpen(false)}
+                >
+                  Sign Up
+                </Link>
+              </div>
+            )}
           </div>
         </div>
       )}

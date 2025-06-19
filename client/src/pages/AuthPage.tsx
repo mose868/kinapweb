@@ -109,11 +109,13 @@ const AuthPage = () => {
 
       const data = response.data
       
-      // Store token if provided, otherwise redirect to login
-      if (data.token) {
-    localStorage.setItem('token', data.token)
-      }
-    navigate(from)
+      // Save email to localStorage for future use
+      localStorage.setItem('userEmail', formData.email)
+      
+      // Switch to sign in mode after successful registration
+      setIsSignUp(false)
+      setInfo('Registration successful! Please sign in with your credentials.')
+      setError('')
     } catch (error: any) {
       if (error.response?.data?.message) {
         throw new Error(error.response.data.message)
@@ -135,7 +137,12 @@ const AuthPage = () => {
     })
 
       const data = response.data
-    localStorage.setItem('token', data.token)
+      
+      // Save both token and email to localStorage
+      localStorage.setItem('token', data.token)
+      localStorage.setItem('userEmail', formData.email)
+      
+      // Navigate to profile page
       navigate('/profile')
     } catch (error: any) {
       if (error.response?.data?.message) {
