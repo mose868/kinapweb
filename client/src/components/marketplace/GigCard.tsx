@@ -3,8 +3,6 @@ import { Star, Clock, RefreshCw, Heart, Eye } from 'lucide-react'
 import type { Gig } from '../../types/marketplace'
 import { useState } from 'react'
 import { useAuth } from '../../hooks/useAuth'
-import { doc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore'
-import { db } from '../../config/firebase'
 import { motion } from 'framer-motion'
 
 interface GigCardProps {
@@ -22,22 +20,18 @@ const GigCard = ({ gig, onSave, saved }: GigCardProps) => {
   const formattedPrice = basicPackage ? `KES ${basicPackage.price.toLocaleString()}` : 'Price not available'
 
   const handleSave = async (e: React.MouseEvent) => {
-    e.preventDefault() // Prevent navigation
-    if (!user) return
-    
-    setIsSaving(true)
+    e.preventDefault();
+    if (!user) return;
+    setIsSaving(true);
     try {
-      const savedGigsRef = doc(db, 'users', user.uid)
-      await updateDoc(savedGigsRef, {
-        savedGigs: saved ? arrayRemove(gig.id) : arrayUnion(gig.id)
-      })
-      onSave?.(gig.id)
+      // Placeholder: just call onSave and toggle saved state
+      onSave?.(gig.id);
     } catch (error) {
-      console.error('Error saving gig:', error)
+      console.error('Error saving gig:', error);
     } finally {
-      setIsSaving(false)
+      setIsSaving(false);
     }
-  }
+  };
 
   return (
     <Link 

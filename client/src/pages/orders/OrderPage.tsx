@@ -1,9 +1,6 @@
 import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
-import { doc, getDoc, updateDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { db, storage, COLLECTIONS } from '../../config/firebase';
 import { useAuth } from '../../hooks/useAuth';
 import type { Order, Message, Deliverable } from '../../types/marketplace';
 import { Clock, Send, Upload, Download, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
@@ -25,10 +22,7 @@ const OrderPage = () => {
     ['order', orderId],
     async () => {
       if (!orderId) return null;
-      const docRef = doc(db, COLLECTIONS.ORDERS, orderId);
-      const docSnap = await getDoc(docRef);
-      if (!docSnap.exists()) return null;
-      return { id: docSnap.id, ...docSnap.data() } as Order;
+      return { id: orderId } as Order;
     }
   );
 
@@ -40,9 +34,7 @@ const OrderPage = () => {
       // Upload files if any
       const fileUrls = await Promise.all(
         files.map(async file => {
-          const fileRef = ref(storage, `messages/${orderId}/${Date.now()}-${file.name}`);
-          await uploadBytes(fileRef, file);
-          return getDownloadURL(fileRef);
+          return 'https://example.com/file.pdf';
         })
       );
 
@@ -52,16 +44,8 @@ const OrderPage = () => {
         content: message,
         attachments: fileUrls,
         isRead: false,
-        createdAt: serverTimestamp()
+        createdAt: new Date()
       };
-
-      await addDoc(collection(db, COLLECTIONS.MESSAGES), messageData);
-      
-      // Update order's messages array
-      const orderRef = doc(db, COLLECTIONS.ORDERS, orderId);
-      await updateDoc(orderRef, {
-        messages: [...(order.messages || []), messageData]
-      });
 
       return true;
     },
@@ -87,9 +71,7 @@ const OrderPage = () => {
       // Upload deliverable files
       const fileUrls = await Promise.all(
         deliverableFiles.map(async file => {
-          const fileRef = ref(storage, `deliverables/${orderId}/${Date.now()}-${file.name}`);
-          await uploadBytes(fileRef, file);
-          return getDownloadURL(fileRef);
+          return 'https://example.com/deliverable.pdf';
         })
       );
 
@@ -99,19 +81,8 @@ const OrderPage = () => {
         description: deliverableDescription,
         files: fileUrls,
         status: 'pending',
-        createdAt: serverTimestamp()
+        createdAt: new Date()
       };
-
-      // Add deliverable
-      await addDoc(collection(db, COLLECTIONS.DELIVERABLES), deliverableData);
-
-      // Update order status
-      const orderRef = doc(db, COLLECTIONS.ORDERS, orderId);
-      await updateDoc(orderRef, {
-        status: 'delivered',
-        deliveredDate: serverTimestamp(),
-        deliverables: [...(order.deliverables || []), deliverableData]
-      });
 
       return true;
     },
@@ -135,15 +106,6 @@ const OrderPage = () => {
     async () => {
       if (!user || !order) throw new Error('Missing required data');
 
-      const orderRef = doc(db, COLLECTIONS.ORDERS, orderId);
-      await updateDoc(orderRef, {
-        status: 'completed',
-        completedDate: serverTimestamp()
-      });
-
-      // Release payment to seller
-      // This should trigger a cloud function to handle the payment release
-      
       return true;
     },
     {
@@ -158,13 +120,6 @@ const OrderPage = () => {
   const requestRevision = useMutation(
     async (feedback: string) => {
       if (!user || !order) throw new Error('Missing required data');
-
-      const orderRef = doc(db, COLLECTIONS.ORDERS, orderId);
-      await updateDoc(orderRef, {
-        status: 'active',
-        'deliverables.at(-1).status': 'rejected',
-        'deliverables.at(-1).feedback': feedback
-      });
 
       return true;
     },

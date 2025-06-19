@@ -15,7 +15,7 @@ import ProtectedRoute from './components/auth/ProtectedRoute';
 
 // Import organized pages
 import CommunityPage from './pages/community/CommunityPage';
-import MazungumzoHub from './pages/community/MazungumzoHub';
+
 import TestimonialsPage from './pages/community/TestimonialsPage';
 import AmbassadorPage from './pages/community/AmbassadorPage';
 import ShowcasePage from './pages/community/ShowcasePage';
@@ -67,14 +67,7 @@ export const routes: RouteConfig[] = [
       </Layout>
     )
   },
-  {
-    path: '/mazungumzo',
-    element: (
-      <Layout>
-        <MazungumzoHub />
-      </Layout>
-    )
-  },
+
   {
     path: '/videos',
     element: (

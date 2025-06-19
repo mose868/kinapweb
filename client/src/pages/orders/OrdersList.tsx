@@ -1,8 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from 'react-query';
-import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
-import { db, COLLECTIONS } from '../../config/firebase';
 import { useAuth } from '../../hooks/useAuth';
 import type { Order } from '../../types/marketplace';
 import { Clock, Search, Filter } from 'lucide-react';
@@ -22,20 +20,8 @@ const OrdersList = () => {
     ['orders', user?.uid, roleFilter, statusFilter],
     async () => {
       if (!user) return [];
-
-      const ordersRef = collection(db, COLLECTIONS.ORDERS);
-      const constraints = [
-        where(roleFilter === 'buyer' ? 'buyerId' : 'sellerId', '==', user.uid),
-        orderBy('createdAt', 'desc')
-      ];
-
-      if (statusFilter !== 'all') {
-        constraints.push(where('status', '==', statusFilter));
-      }
-
-      const q = query(ordersRef, ...constraints);
-      const snapshot = await getDocs(q);
-      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Order));
+      // Placeholder: return empty array or mock data
+      return [];
     },
     {
       enabled: !!user

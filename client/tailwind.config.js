@@ -24,9 +24,9 @@ export default {
           900: '#0f172a',
         },
         'ajira': {
-          'primary': '#000000',    // Black
-          'accent': '#BB0000',     // Red
-          'success': '#006600',    // Green
+          'primary': '#000000',    // Kenyan Black
+          'accent': '#CE1126',     // Kenyan Red
+          'success': '#006B3F',    // Kenyan Green
           'light': '#FFFFFF',      // White
           'blue': '#15325C',       // Deep Blue
           'gray': {
@@ -40,6 +40,13 @@ export default {
             800: '#2D3748',
             900: '#1A202C'
           }
+        },
+        // Kenyan Flag Colors
+        'kenya': {
+          'black': '#000000',
+          'red': '#CE1126',
+          'green': '#006B3F',
+          'white': '#FFFFFF'
         }
       },
       fontFamily: {

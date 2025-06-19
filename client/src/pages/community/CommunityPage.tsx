@@ -353,7 +353,7 @@ const CommunityPage = () => {
         <div className="p-4 border-b border-gray-200">
           <div className="flex items-center justify-between mb-4">
             {!sidebarCollapsed && (
-              <h1 className="text-xl font-bold text-red-600">Mazungumzo Hub</h1>
+              <h1 className="text-xl font-bold text-kenya-red">Mazungumzo Hub</h1>
             )}
             <button
               onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
@@ -384,7 +384,7 @@ const CommunityPage = () => {
               key={group.id}
               onClick={() => setSelectedGroup(group.id)}
               className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors ${
-                selectedGroup === group.id ? 'bg-red-50 border-r-2 border-r-red-500' : ''
+                selectedGroup === group.id ? 'bg-kenya-green bg-opacity-10 border-r-2 border-r-kenya-green' : ''
               }`}
             >
               <div className="flex items-center gap-3">
@@ -409,7 +409,7 @@ const CommunityPage = () => {
                     <div className="flex items-center justify-between mt-1">
                       <span className="text-xs text-gray-500">{group.members} members</span>
                       {group.unreadCount > 0 && (
-                        <span className="bg-red-500 text-white text-xs rounded-full px-2 py-1 min-w-[20px] text-center">
+                        <span className="bg-kenya-red text-white text-xs rounded-full px-2 py-1 min-w-[20px] text-center">
                           {group.unreadCount}
                         </span>
                       )}
@@ -479,7 +479,7 @@ const CommunityPage = () => {
                     <div
                       className={`rounded-lg px-4 py-2 ${
                         message.isOwn
-                          ? 'bg-red-500 text-white'
+                          ? 'bg-kenya-red text-white'
                           : 'bg-gray-100 text-gray-900'
                       }`}
                     >
@@ -525,7 +525,7 @@ const CommunityPage = () => {
                 <button
                   onClick={handleSendMessage}
                   disabled={!newMessage.trim()}
-                  className="p-2 bg-red-500 text-white rounded-full hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="p-2 bg-kenya-red text-white rounded-full hover:bg-kenya-green disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Send className="w-5 h-5" />
                 </button>
