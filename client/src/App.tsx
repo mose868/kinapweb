@@ -4,7 +4,7 @@ import { Toaster } from 'react-hot-toast';
 import { Helmet } from 'react-helmet-async';
 import { AuthProvider } from './contexts/AuthContext';
 import { NotificationProvider } from './contexts/NotificationContext';
-import ErrorBoundary from './components/ErrorBoundary';
+import ErrorBoundary from './components/common/ErrorBoundary';
 import Chatbot from './components/chatbot/Chatbot';
 import { routes } from './routes';
 import type { RouteConfig } from './routes';
