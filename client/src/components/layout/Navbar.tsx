@@ -378,12 +378,12 @@ const Navbar = () => {
               )}
             </div>
           ) : (
-            <Link
-              to="/auth"
-              className="bg-gradient-to-r from-red-600 to-black text-white px-4 py-2 rounded-lg hover:shadow-lg transition-all duration-200 font-semibold"
-            >
-              Join / Sign In
-            </Link>
+          <Link
+            to="/auth"
+            className="bg-gradient-to-r from-red-600 to-black text-white px-4 py-2 rounded-lg hover:shadow-lg transition-all duration-200 font-semibold"
+          >
+            Join / Sign In
+          </Link>
           )}
         </div>
         
@@ -531,13 +531,13 @@ const Navbar = () => {
                 </div>
               </div>
             ) : (
-              <Link
-                to="/auth"
-                className="block mx-4 mb-4 bg-gradient-to-r from-red-600 to-black text-white px-4 py-3 rounded-lg text-center font-semibold"
-                onClick={() => setMenuOpen(false)}
-              >
-                Join / Sign In
-              </Link>
+            <Link
+              to="/auth"
+              className="block mx-4 mb-4 bg-gradient-to-r from-red-600 to-black text-white px-4 py-3 rounded-lg text-center font-semibold"
+              onClick={() => setMenuOpen(false)}
+            >
+              Join / Sign In
+            </Link>
             )}
           </div>
         </div>

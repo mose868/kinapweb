@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
-import { collection, getDocs } from 'firebase/firestore'
-import { db } from '../config/firebase'
 import { Users, Award, DollarSign, Briefcase, Star, Loader2 } from 'lucide-react'
+import { api } from '../../config/api'
 
 interface Metrics {
   totalMembers: number
@@ -26,47 +25,10 @@ const ImpactMetrics = () => {
   useEffect(() => {
     const fetchMetrics = async () => {
       try {
-        // Fetch real-time metrics from Firebase
-        const usersSnapshot = await getDocs(collection(db, 'users'))
-        const projectsSnapshot = await getDocs(collection(db, 'projects'))
-        
-        // If we have real data, use it; otherwise, keep the default 2025 projections
-        if (usersSnapshot.size > 0) {
-          const totalMembers = usersSnapshot.size
-          const completedProjects = projectsSnapshot.docs.filter(
-            doc => doc.data().status === 'completed'
-          )
-          const projectsCompleted = completedProjects.length
-
-          const totalEarnings = completedProjects.reduce(
-            (sum, project) => sum + (project.data().payment || 0),
-            0
-          )
-
-          const activeFreelancers = usersSnapshot.docs.filter(
-            doc => doc.data().role === 'freelancer' && doc.data().isActive
-          ).length
-
-          const allProjects = projectsSnapshot.size
-          const successRate = allProjects > 0
-            ? (completedProjects.length / allProjects) * 100
-            : 94.5
-
-          const ratings = completedProjects
-            .map(project => project.data().rating || 0)
-            .filter(rating => rating > 0)
-          const averageRating = ratings.length > 0
-            ? ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length
-            : 4.8
-
-          setMetrics({
-            totalMembers,
-            projectsCompleted,
-            totalEarnings,
-            activeFreelancers,
-            successRate,
-            averageRating
-          })
+        // Fetch metrics from backend API
+        const response = await api.get('/metrics')
+        if (response.data) {
+          setMetrics(response.data)
         }
         setLoading(false)
       } catch (error) {
@@ -148,7 +110,7 @@ const ImpactMetrics = () => {
           <div className="flex items-center">
             <Users className="w-6 h-6 text-ajira-accent mr-3" />
             <span className="text-2xl font-bold text-ajira-primary">
-              {metrics.activeFreelancers}
+              {metrics.activeFreelancers.toLocaleString()}
             </span>
           </div>
           <p className="text-sm text-gray-600 mt-2">
@@ -199,12 +161,12 @@ const ImpactMetrics = () => {
             </ul>
           </div>
           <div>
-            <h4 className="font-medium text-ajira-primary mb-2">Growth Metrics</h4>
+            <h4 className="font-medium text-ajira-primary mb-2">Emerging Opportunities</h4>
             <ul className="space-y-2 text-gray-600">
-              <li>• 150% YoY Platform Growth</li>
-              <li>• 85% Remote Work Adoption</li>
-              <li>• 90% Digital Skills Training</li>
-              <li>• 95% Client Satisfaction</li>
+              <li>• Remote Work Solutions</li>
+              <li>• Digital Healthcare</li>
+              <li>• EdTech Platforms</li>
+              <li>• Sustainable Tech</li>
             </ul>
           </div>
         </div>
