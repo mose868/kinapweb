@@ -1,14 +1,18 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
-import { Search, X } from 'lucide-react';
+import { Search, X, User, LogOut, Settings, Bell } from 'lucide-react';
+import { useAuth } from '../../hooks/useAuth';
 
 const Navbar = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [dropdown, setDropdown] = useState<string | null>(null);
+  const [userDropdown, setUserDropdown] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearchResults, setShowSearchResults] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
+  const userDropdownRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+  const { user, signOut } = useAuth();
 
   // All searchable pages and content
   const searchableContent = [
@@ -62,6 +66,9 @@ const Navbar = () => {
     const handleClickOutside = (event: MouseEvent) => {
       if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
         setShowSearchResults(false);
+      }
+      if (userDropdownRef.current && !userDropdownRef.current.contains(event.target as Node)) {
+        setUserDropdown(false);
       }
     };
 
@@ -152,6 +159,16 @@ const Navbar = () => {
       ],
     },
   ];
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      setUserDropdown(false);
+      navigate('/');
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  };
 
   return (
     <nav className="bg-white shadow sticky top-0 z-50">
@@ -266,12 +283,97 @@ const Navbar = () => {
             </div>
           ))}
           
-          <Link
-            to="/auth"
-            className="bg-gradient-to-r from-red-600 to-black text-white px-4 py-2 rounded-lg hover:shadow-lg transition-all duration-200 font-semibold"
-          >
-            Join / Sign In
-          </Link>
+          {/* User Profile Section or Sign In Button */}
+          {user ? (
+            <div className="relative" ref={userDropdownRef}>
+              <button
+                onClick={() => setUserDropdown(!userDropdown)}
+                className="flex items-center gap-2 p-2 rounded-full hover:bg-gray-100 transition-colors"
+              >
+{user.photoURL ? (
+                  <img 
+                    src={user.photoURL} 
+                    alt={user.displayName || 'User'} 
+                    className="w-8 h-8 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="w-8 h-8 bg-gradient-to-r from-red-600 to-black rounded-full flex items-center justify-center text-white text-sm font-semibold">
+                    {user.displayName ? user.displayName.charAt(0).toUpperCase() : user.email?.charAt(0).toUpperCase() || 'U'}
+                  </div>
+                )}
+                <span className="hidden sm:block text-sm font-medium text-gray-700">
+                  {user.displayName || user.email?.split('@')[0]}
+                </span>
+                <svg 
+                  className={`w-4 h-4 transition-transform ${userDropdown ? 'rotate-180' : ''}`} 
+                  fill="none" 
+                  stroke="currentColor" 
+                  strokeWidth="2" 
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              
+              {/* User Dropdown Menu */}
+              {userDropdown && (
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl py-2 border border-gray-100 z-50">
+                  <div className="px-4 py-2 border-b border-gray-100">
+                    <p className="text-sm font-medium text-gray-900">
+                      {user.displayName || 'User'}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {user.email}
+                    </p>
+                  </div>
+                  
+                  <Link
+                    to="/profile"
+                    className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                    onClick={() => setUserDropdown(false)}
+                  >
+                    <User className="w-4 h-4" />
+                    Profile
+                  </Link>
+                  
+                  <Link
+                    to="/notifications"
+                    className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                    onClick={() => setUserDropdown(false)}
+                  >
+                    <Bell className="w-4 h-4" />
+                    Notifications
+                  </Link>
+                  
+                  <Link
+                    to="/orders"
+                    className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                    onClick={() => setUserDropdown(false)}
+                  >
+                    <Settings className="w-4 h-4" />
+                    Orders
+                  </Link>
+                  
+                  <div className="border-t border-gray-100 mt-2 pt-2">
+                    <button
+                      onClick={handleSignOut}
+                      className="flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors w-full text-left"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      Sign Out
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <Link
+              to="/auth"
+              className="bg-gradient-to-r from-red-600 to-black text-white px-4 py-2 rounded-lg hover:shadow-lg transition-all duration-200 font-semibold"
+            >
+              Join / Sign In
+            </Link>
+          )}
         </div>
         
         {/* Mobile menu button */}
@@ -340,13 +442,80 @@ const Navbar = () => {
               </div>
             ))}
             
-            <Link
-              to="/auth"
-              className="block mx-4 mb-4 bg-gradient-to-r from-red-600 to-black text-white px-4 py-3 rounded-lg text-center font-semibold"
-              onClick={() => setMenuOpen(false)}
-            >
-              Join / Sign In
-            </Link>
+            {/* Mobile User Section */}
+            {user ? (
+              <div className="mb-4 p-4 bg-gray-50 rounded-lg">
+                <div className="flex items-center gap-3 mb-3">
+                  {user.photoURL ? (
+                    <img 
+                      src={user.photoURL} 
+                      alt={user.displayName || 'User'} 
+                      className="w-10 h-10 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-10 h-10 bg-gradient-to-r from-red-600 to-black rounded-full flex items-center justify-center text-white font-semibold">
+                      {user.displayName ? user.displayName.charAt(0).toUpperCase() : user.email?.charAt(0).toUpperCase() || 'U'}
+                    </div>
+                  )}
+                  <div>
+                    <p className="font-medium text-gray-900">
+                      {user.displayName || 'User'}
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      {user.email}
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <Link
+                    to="/profile"
+                    className="flex items-center gap-3 px-3 py-2 text-sm text-gray-700 hover:bg-white rounded transition-colors"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    <User className="w-4 h-4" />
+                    Profile
+                  </Link>
+                  
+                  <Link
+                    to="/notifications"
+                    className="flex items-center gap-3 px-3 py-2 text-sm text-gray-700 hover:bg-white rounded transition-colors"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    <Bell className="w-4 h-4" />
+                    Notifications
+                  </Link>
+                  
+                  <Link
+                    to="/orders"
+                    className="flex items-center gap-3 px-3 py-2 text-sm text-gray-700 hover:bg-white rounded transition-colors"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    <Settings className="w-4 h-4" />
+                    Orders
+                  </Link>
+                  
+                  <button
+                    onClick={() => {
+                      handleSignOut();
+                      setMenuOpen(false);
+                    }}
+                    className="flex items-center gap-3 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded transition-colors w-full text-left"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    Sign Out
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <Link
+                to="/auth"
+                className="block mx-4 mb-4 bg-gradient-to-r from-red-600 to-black text-white px-4 py-3 rounded-lg text-center font-semibold"
+                onClick={() => setMenuOpen(false)}
+              >
+                Join / Sign In
+              </Link>
+            )}
           </div>
         </div>
       )}
