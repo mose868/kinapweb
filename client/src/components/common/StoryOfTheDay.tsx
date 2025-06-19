@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { collection, query, where, getDocs, orderBy, limit, addDoc, serverTimestamp } from 'firebase/firestore'
-import { db } from '../config/firebase'
+import { db } from '../../config/firebase'
 import { ArrowRight, Star } from 'lucide-react'
 
 interface Story {
