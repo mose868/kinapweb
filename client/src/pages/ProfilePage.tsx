@@ -1,17 +1,15 @@
-import { useState, useEffect } from 'react'
-import { useMutation, useQuery } from 'react-query'
-import { doc, updateDoc, getDocs, query, collection, where, orderBy } from 'firebase/firestore'
+import { useState } from 'react'
+import { useMutation } from 'react-query'
+import { doc, updateDoc } from 'firebase/firestore'
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { db, storage, COLLECTIONS, STORAGE_PATHS } from '../config/firebase'
 import { useAuth } from '../hooks/useAuth'
 import { 
   Camera, 
-  Star, 
   Package, 
-  MessageSquare, 
   Edit2, 
   Loader2, 
-  CheckCircle2, 
+  CheckCircle2,
   AlertCircle,
   User,
   MapPin,
@@ -22,7 +20,6 @@ import {
   TrendingUp,
   Briefcase,
   BookOpen,
-  Calendar,
   Phone,
   Mail
 } from 'lucide-react'
