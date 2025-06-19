@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
 import { useQuery } from 'react-query';
-import { collection, getDocs, query, orderBy } from 'firebase/firestore';
-import { db } from '../../config/firebase';
 import GigCard from '../../components/marketplace/GigCard';
 import LoadingState from '../../components/common/LoadingState'
 import type { Gig } from '../../types/marketplace';

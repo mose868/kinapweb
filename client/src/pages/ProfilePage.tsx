@@ -1,8 +1,5 @@
 import { useState } from 'react'
 import { useMutation } from 'react-query'
-import { doc, updateDoc } from 'firebase/firestore'
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
-import { db, storage, COLLECTIONS, STORAGE_PATHS } from '../config/firebase'
 import { useAuth } from '../hooks/useAuth'
 import { 
   Camera, 
@@ -138,18 +135,12 @@ const ProfilePage = () => {
   // Handle profile image upload
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!user || !e.target.files?.[0]) return
-
     try {
       const file = e.target.files[0]
-      const imageRef = ref(storage, `${STORAGE_PATHS.PROFILE_IMAGES}/${user.uid}`)
-      await uploadBytes(imageRef, file)
-      const photoURL = await getDownloadURL(imageRef)
-
+      // Simulate upload and set local URL
+      const photoURL = URL.createObjectURL(file)
       setFormData(prev => ({ ...prev, photoURL }))
-
-      await updateDoc(doc(db, COLLECTIONS.USERS, user.uid), {
-        photoURL
-      })
+      // No backend update
     } catch (error) {
       console.error('Error uploading profile image:', error)
     }
@@ -158,13 +149,8 @@ const ProfilePage = () => {
   // Update profile mutation
   const updateProfileMutation = useMutation(async () => {
     if (!user) return
-
-    const updateData = {
-      ...formData,
-      lastActive: new Date().toISOString()
-    }
-
-    await updateDoc(doc(db, COLLECTIONS.USERS, user.uid), updateData)
+    // Only update local state
+    setFormData(prev => ({ ...prev, lastActive: new Date().toISOString() }))
     setIsEditing(false)
   })
 

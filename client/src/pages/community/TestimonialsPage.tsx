@@ -1,6 +1,4 @@
 import React, { useState, useEffect } from 'react'
-import { collection, addDoc, getDocs, query, orderBy, serverTimestamp, where } from 'firebase/firestore'
-import { db } from '../../config/firebase'
 import { useAuth } from '../../hooks/useAuth'
 import { Star, Quote, Filter, Search } from 'lucide-react'
 import LoadingState from '../../components/common/LoadingState'

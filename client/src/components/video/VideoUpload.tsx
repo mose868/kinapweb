@@ -1,7 +1,5 @@
 import { useState } from 'react'
 import { useMutation } from 'react-query'
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore'
-import { db, COLLECTIONS } from '../../config/firebase'
 import { useAuth } from '../../hooks/useAuth'
 import { Loader2, Youtube } from 'lucide-react'
 
@@ -53,20 +51,20 @@ const VideoUpload = ({ onSuccess }: VideoUploadProps) => {
     if (!videoId) throw new Error('Invalid YouTube URL')
 
     // Create video document
-    await addDoc(collection(db, COLLECTIONS.VIDEOS), {
-      userId: user.uid,
-      title: formData.title,
-      description: formData.description,
-      category: formData.category,
-      type: 'youtube',
-      youtubeId: videoId,
-      youtubeUrl: formData.youtubeUrl,
-      thumbnailUrl: getYoutubeThumbnail(videoId),
-      createdAt: serverTimestamp(),
-      views: 0,
-      likes: 0,
-      comments: 0
-    })
+    // await addDoc(collection(db, COLLECTIONS.VIDEOS), {
+    //   userId: user.uid,
+    //   title: formData.title,
+    //   description: formData.description,
+    //   category: formData.category,
+    //   type: 'youtube',
+    //   youtubeId: videoId,
+    //   youtubeUrl: formData.youtubeUrl,
+    //   thumbnailUrl: getYoutubeThumbnail(videoId),
+    //   createdAt: serverTimestamp(),
+    //   views: 0,
+    //   likes: 0,
+    //   comments: 0
+    // })
 
     // Reset form
     setFormData({

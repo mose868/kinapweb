@@ -1,9 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMutation } from 'react-query'
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore'
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
-import { db, storage, COLLECTIONS } from '../../config/firebase'
 import { useAuth } from '../../hooks/useAuth'
 import type { Gig, GigPackage } from '../../types/marketplace'
 import { Upload, X, Plus, AlertCircle } from 'lucide-react'
@@ -226,9 +223,8 @@ const CreateGigPage = () => {
   }
 
   const uploadFile = async (file: File, path: string) => {
-    const fileRef = ref(storage, `${path}/${Date.now()}-${file.name}`)
-    await uploadBytes(fileRef, file)
-    return getDownloadURL(fileRef)
+    // Placeholder for the removed uploadFile function
+    return URL.createObjectURL(file)
   }
 
   const createGig = useMutation(async () => {
@@ -280,13 +276,14 @@ const CreateGigPage = () => {
           reviews: 0,
           completionRate: 100
         },
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
+        createdAt: new Date(),
+        updatedAt: new Date()
       }
 
-      const docRef = await addDoc(collection(db, COLLECTIONS.GIGS), gigData)
+      // Placeholder for the removed addDoc function
+      const gigId = 'placeholder-gig-id'
       setUploadProgress(100)
-      return docRef.id
+      return gigId
     } catch (error) {
       console.error('Error creating gig:', error)
       throw error

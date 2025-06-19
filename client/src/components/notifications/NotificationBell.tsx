@@ -1,8 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from 'react-query';
-import { collection, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
-import { db, COLLECTIONS } from '../../config/firebase';
 import { useAuth } from '../../hooks/useAuth';
 import { Bell, MessageSquare, Package, Star, DollarSign, AlertCircle } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';

@@ -1,5 +1,3 @@
-import { Timestamp, FieldValue } from 'firebase/firestore';
-
 export type UserRole = 'buyer' | 'seller' | 'admin'
 
 export interface UserProfile {
@@ -86,8 +84,8 @@ export interface Gig {
   completedOrders?: number;
   views?: number;
   saves?: number;
-  createdAt: Timestamp | FieldValue;
-  updatedAt: Timestamp | FieldValue;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Order {
@@ -106,14 +104,14 @@ export interface Order {
   requirements?: string;
   status: 'active' | 'delivered' | 'completed' | 'cancelled';
   paymentStatus: 'pending' | 'paid' | 'refunded';
-  deliveryDate: Timestamp;
-  deliveredDate?: Timestamp;
-  completedDate?: Timestamp;
-  cancelledDate?: Timestamp;
+  deliveryDate: string;
+  deliveredDate?: string;
+  completedDate?: string;
+  cancelledDate?: string;
   messages?: Message[];
   deliverables?: Deliverable[];
-  createdAt: Timestamp;
-  updatedAt: Timestamp;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Message {
@@ -123,7 +121,7 @@ export interface Message {
   content: string;
   attachments?: string[];
   isRead: boolean;
-  createdAt: Timestamp;
+  createdAt: string;
 }
 
 export interface Deliverable {
@@ -134,7 +132,7 @@ export interface Deliverable {
   files: string[];
   status: 'pending' | 'accepted' | 'rejected';
   feedback?: string;
-  createdAt: Timestamp;
+  createdAt: string;
 }
 
 export interface Review {
@@ -147,7 +145,7 @@ export interface Review {
   rating: number;
   comment: string;
   response?: string;
-  createdAt: Timestamp | FieldValue;
+  createdAt: string;
 }
 
 export interface Dispute {
@@ -159,8 +157,8 @@ export interface Dispute {
   evidence?: string[];
   status: 'open' | 'resolved' | 'closed';
   resolution?: string;
-  createdAt: Timestamp;
-  resolvedAt?: Timestamp;
+  createdAt: string;
+  resolvedAt?: string;
 }
 
 export interface Category {
@@ -184,7 +182,7 @@ export interface SavedGig {
   id: string;
   userId: string;
   gigId: string;
-  createdAt: Timestamp;
+  createdAt: string;
 }
 
 export interface GigView {
@@ -193,7 +191,7 @@ export interface GigView {
   userId?: string;
   ip: string;
   userAgent: string;
-  createdAt: Timestamp;
+  createdAt: string;
 }
 
 export interface Notification {
@@ -204,7 +202,7 @@ export interface Notification {
   message: string;
   link?: string;
   isRead: boolean;
-  createdAt: Timestamp;
+  createdAt: string;
 }
 
 export interface Transaction {
@@ -217,8 +215,8 @@ export interface Transaction {
   type: 'payment' | 'refund' | 'withdrawal';
   status: 'pending' | 'completed' | 'failed';
   paymentMethod: string;
-  createdAt: Timestamp;
-  completedAt?: Timestamp;
+  createdAt: string;
+  completedAt?: string;
 }
 
 export interface User {
@@ -233,7 +231,7 @@ export interface User {
   rating?: number;
   reviews?: number;
   completedOrders?: number;
-  memberSince: Timestamp;
+  memberSince: string;
 }
 
 export interface Package {
@@ -258,8 +256,8 @@ export interface Report {
   reason: string;
   description: string;
   status: 'pending' | 'resolved' | 'rejected';
-  createdAt: Timestamp;
-  resolvedAt?: Timestamp;
+  createdAt: string;
+  resolvedAt?: string;
 }
 
 export interface Statistics {
@@ -302,12 +300,12 @@ export interface PaymentDetails {
   };
   status: PaymentStatus;
   escrowDetails: {
-    releaseDate?: Timestamp;
+    releaseDate?: string;
     releaseTrigger: 'auto' | 'manual' | 'dispute';
     holdPeriod: number; // in days
   };
-  createdAt: Timestamp;
-  updatedAt: Timestamp;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface EscrowTransaction {
@@ -316,12 +314,12 @@ export interface EscrowTransaction {
   orderId: string;
   amount: number;
   status: 'held' | 'released' | 'refunded' | 'disputed';
-  holdStartDate: Timestamp;
-  releaseDate?: Timestamp;
+  holdStartDate: string;
+  releaseDate?: string;
   releasedTo: string; // userId of recipient
   disputeId?: string;
-  createdAt: Timestamp;
-  updatedAt: Timestamp;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export type PaymentMethodType = 'card' | 'bank' | 'mpesa';
@@ -339,7 +337,7 @@ export interface PaymentMethod {
     accountNumber?: string;
     phoneNumber?: string;
   };
-  createdAt: Timestamp;
+  createdAt: string;
 }
 
 export interface PaymentAnalytics {
@@ -363,8 +361,8 @@ export interface PaymentAnalytics {
       ordersCount: number;
     }>;
   };
-  createdAt: Timestamp;
-  updatedAt: Timestamp;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface WithdrawalRequest {
@@ -374,12 +372,12 @@ export interface WithdrawalRequest {
   paymentMethod: PaymentMethod;
   status: 'pending' | 'processing' | 'completed' | 'failed';
   processingTime?: number; // in hours
-  estimatedArrival?: Timestamp;
+  estimatedArrival?: string;
   transactionFee: number;
   netAmount: number;
   reason?: string; // In case of failure
-  createdAt: Timestamp;
-  updatedAt: Timestamp;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface AutomaticPayoutSettings {
@@ -389,10 +387,10 @@ export interface AutomaticPayoutSettings {
   threshold: number; // Minimum amount for automatic payout
   frequency: 'daily' | 'weekly' | 'monthly';
   preferredPaymentMethod: string; // Reference to PaymentMethod
-  lastPayout?: Timestamp;
-  nextScheduledPayout?: Timestamp;
-  createdAt: Timestamp;
-  updatedAt: Timestamp;
+  lastPayout?: string;
+  nextScheduledPayout?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface MilestonePayment {
@@ -401,11 +399,11 @@ export interface MilestonePayment {
   name: string;
   description: string;
   amount: number;
-  dueDate: Timestamp;
+  dueDate: string;
   status: 'pending' | 'funded' | 'released' | 'disputed';
   completionRequirements: string[];
   deliverables?: string[];
   escrowTransactionId?: string;
-  createdAt: Timestamp;
-  updatedAt: Timestamp;
+  createdAt: string;
+  updatedAt: string;
 } 
