@@ -171,9 +171,9 @@ const Navbar = () => {
   };
 
   return (
-    <nav className="bg-white shadow sticky top-0 z-50">
+    <nav className="bg-black shadow sticky top-0 z-50">
       <div className="max-w-7xl mx-auto flex items-center justify-between py-3 px-4">
-        <Link to="/" className="text-2xl font-bold text-ajira-primary flex items-center gap-2">
+        <Link to="/" className="text-2xl font-bold text-white flex items-center gap-2">
           <span className="bg-gradient-to-r from-red-600 to-black bg-clip-text text-transparent">
             Ajira Digital
           </span>
@@ -220,8 +220,8 @@ const Navbar = () => {
             to="/" 
             className={({ isActive }) => 
               isActive 
-                ? 'text-ajira-accent font-semibold border-b-2 border-ajira-accent pb-1' 
-                : 'text-gray-700 hover:text-ajira-accent transition-colors'
+                ? 'text-red-500 font-semibold border-b-2 border-red-500 pb-1' 
+                : 'text-white hover:text-red-500 transition-colors'
             }
           >
             Home
@@ -231,8 +231,8 @@ const Navbar = () => {
             to="/videos" 
             className={({ isActive }) => 
               isActive 
-                ? 'text-ajira-accent font-semibold border-b-2 border-ajira-accent pb-1' 
-                : 'text-gray-700 hover:text-ajira-accent transition-colors'
+                ? 'text-red-500 font-semibold border-b-2 border-red-500 pb-1' 
+                : 'text-white hover:text-red-500 transition-colors'
             }
           >
             Videos
@@ -242,8 +242,8 @@ const Navbar = () => {
             to="/mazungumzo" 
             className={({ isActive }) => 
               isActive 
-                ? 'text-ajira-accent font-semibold border-b-2 border-ajira-accent pb-1' 
-                : 'text-gray-700 hover:text-ajira-accent transition-colors'
+                ? 'text-red-500 font-semibold border-b-2 border-red-500 pb-1' 
+                : 'text-white hover:text-red-500 transition-colors'
             }
           >
             Mazungumzo Hub
@@ -252,7 +252,7 @@ const Navbar = () => {
           {dropdowns.map((dd) => (
             <div key={dd.label} className="relative group">
               <button
-                className="text-gray-700 hover:text-ajira-accent font-semibold px-2 py-1 focus:outline-none transition-colors flex items-center gap-1"
+                className="text-white hover:text-red-500 font-semibold px-2 py-1 focus:outline-none transition-colors flex items-center gap-1"
                 onMouseEnter={() => setDropdown(dd.label)}
                 onMouseLeave={() => setDropdown(null)}
                 onClick={() => setDropdown(dropdown === dd.label ? null : dd.label)}
@@ -282,8 +282,8 @@ const Navbar = () => {
                     key={item.to}
                     to={item.to}
                     className={({ isActive }) =>
-                                      'block px-4 py-3 text-gray-700 hover:bg-gradient-to-r hover:from-red-50 hover:to-gray-50 hover:text-ajira-accent transition-all ' +
-                (isActive ? 'font-semibold text-ajira-accent bg-gradient-to-r from-red-50 to-gray-50' : '')
+                                      'block px-4 py-3 text-gray-700 hover:bg-gradient-to-r hover:from-red-50 hover:to-gray-50 hover:text-red-500 transition-all ' +
+                (isActive ? 'font-semibold text-red-500 bg-gradient-to-r from-red-50 to-gray-50' : '')
                     }
                     onClick={() => setDropdown(null)}
                   >
@@ -404,7 +404,7 @@ const Navbar = () => {
       
       {/* Mobile menu */}
       {menuOpen && (
-        <div className="md:hidden bg-white shadow-lg border-t border-gray-100">
+        <div className="md:hidden bg-black shadow-lg border-t border-gray-100">
           <div className="px-4 py-2">
             {/* Removed duplicate mobile search bar for clarity */}
             
@@ -412,8 +412,8 @@ const Navbar = () => {
               to="/" 
               className={({ isActive }) => 
                 isActive 
-                  ? 'block py-3 text-ajira-accent font-semibold border-l-4 border-ajira-accent pl-4' 
-                  : 'block py-3 text-gray-700 hover:text-ajira-accent pl-4'
+                  ? 'block py-3 text-red-500 font-semibold border-l-4 border-red-500 pl-4' 
+                  : 'block py-3 text-white hover:text-red-500 pl-4'
               } 
               onClick={() => setMenuOpen(false)}
             >
@@ -424,8 +424,8 @@ const Navbar = () => {
               to="/videos" 
               className={({ isActive }) => 
                 isActive 
-                  ? 'block py-3 text-ajira-accent font-semibold border-l-4 border-ajira-accent pl-4' 
-                  : 'block py-3 text-gray-700 hover:text-ajira-accent pl-4'
+                  ? 'block py-3 text-red-500 font-semibold border-l-4 border-red-500 pl-4' 
+                  : 'block py-3 text-white hover:text-red-500 pl-4'
               } 
               onClick={() => setMenuOpen(false)}
             >
@@ -436,8 +436,8 @@ const Navbar = () => {
               to="/mazungumzo" 
               className={({ isActive }) => 
                 isActive 
-                  ? 'block py-3 text-ajira-accent font-semibold border-l-4 border-ajira-accent pl-4' 
-                  : 'block py-3 text-gray-700 hover:text-ajira-accent pl-4'
+                  ? 'block py-3 text-red-500 font-semibold border-l-4 border-red-500 pl-4' 
+                  : 'block py-3 text-white hover:text-red-500 pl-4'
               } 
               onClick={() => setMenuOpen(false)}
             >
@@ -454,8 +454,8 @@ const Navbar = () => {
                     key={item.to}
                     to={item.to}
                     className={({ isActive }) =>
-                                        'block px-6 py-2 text-gray-700 hover:bg-gradient-to-r hover:from-red-50 hover:to-gray-50 hover:text-ajira-accent transition-all ' +
-                  (isActive ? 'font-semibold text-ajira-accent bg-gradient-to-r from-red-50 to-gray-50 border-l-4 border-ajira-accent' : '')
+                                        'block px-6 py-2 text-gray-700 hover:bg-gradient-to-r hover:from-red-50 hover:to-gray-50 hover:text-red-500 transition-all ' +
+                  (isActive ? 'font-semibold text-red-500 bg-gradient-to-r from-red-50 to-gray-50 border-l-4 border-red-500' : '')
                     }
                     onClick={() => setMenuOpen(false)}
                   >
