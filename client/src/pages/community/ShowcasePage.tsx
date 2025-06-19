@@ -1,10 +1,10 @@
 import React, { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import { collection, getDocs, addDoc, query, where, doc, setDoc } from 'firebase/firestore';
-import { db, storage } from '../config/firebase';
-import { useAuth } from '../hooks/useAuth';
+import { db, storage } from '../../config/firebase';
+import { useAuth } from '../../hooks/useAuth';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import LoadingState from '../components/common/LoadingState'
+import LoadingState from '../../components/common/LoadingState'
 
 const PROFILES_COLLECTION = 'showcase_profiles';
 const CONNECTIONS_COLLECTION = 'showcase_connections';
