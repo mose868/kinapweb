@@ -238,6 +238,17 @@ const Navbar = () => {
             Videos
           </NavLink>
           
+          <NavLink 
+            to="/mazungumzo" 
+            className={({ isActive }) => 
+              isActive 
+                ? 'text-ajira-accent font-semibold border-b-2 border-ajira-accent pb-1' 
+                : 'text-gray-700 hover:text-ajira-accent transition-colors'
+            }
+          >
+            Mazungumzo Hub
+          </NavLink>
+          
           {dropdowns.map((dd) => (
             <div key={dd.label} className="relative group">
               <button
@@ -419,6 +430,18 @@ const Navbar = () => {
               onClick={() => setMenuOpen(false)}
             >
               Videos
+            </NavLink>
+            
+            <NavLink 
+              to="/mazungumzo" 
+              className={({ isActive }) => 
+                isActive 
+                  ? 'block py-3 text-ajira-accent font-semibold border-l-4 border-ajira-accent pl-4' 
+                  : 'block py-3 text-gray-700 hover:text-ajira-accent pl-4'
+              } 
+              onClick={() => setMenuOpen(false)}
+            >
+              Mazungumzo Hub
             </NavLink>
             
             {dropdowns.map((dd) => (
