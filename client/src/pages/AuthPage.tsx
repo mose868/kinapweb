@@ -178,13 +178,13 @@ const AuthPage = () => {
         <h2 className="mt-6 text-center text-3xl font-bold text-ajira-primary">
           {isSignUp ? 'Join Ajira Digital KiNaP Club' : 'Welcome back to Ajira Digital'}
         </h2>
-        <p className="mt-2 text-center text-sm text-gray-600">
+        <p className="mt-2 text-center text-sm text-ajira-text-muted">
           {isSignUp ? 'Start your digital transformation journey' : 'Continue your digital journey'}{' '}
           <br />
           {isSignUp ? 'Already a member?' : "New to Ajira Digital?"}{' '}
           <button
             onClick={() => { setIsSignUp(!isSignUp); setError(''); setInfo(''); setShowResend(false) }}
-            className="font-medium text-ajira-accent hover:text-ajira-accent/80"
+            className="font-medium text-ajira-accent hover:text-ajira-orange-600"
           >
             {isSignUp ? 'Sign in here' : 'Join the club'}
           </button>
@@ -227,12 +227,12 @@ const AuthPage = () => {
                 </div>
               </div>
               <div className="flex items-center justify-between">
-                <button
-                  type="submit"
-                  className="w-full flex justify-center py-2 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-ajira-accent hover:bg-ajira-accent/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ajira-accent"
-                >
-                  Send Reset Link
-                </button>
+                                  <button
+                    type="submit"
+                    className="w-full flex justify-center py-2 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-ajira-accent hover:bg-ajira-orange-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ajira-accent"
+                  >
+                    Send Reset Link
+                  </button>
               </div>
               <button
                 type="button"
@@ -464,7 +464,7 @@ const AuthPage = () => {
                 <button
                   type="submit"
                   disabled={signUpMutation.isLoading || signInMutation.isLoading}
-                  className="w-full flex justify-center py-2 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-ajira-accent hover:bg-ajira-accent/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ajira-accent disabled:opacity-50"
+                  className="w-full flex justify-center py-2 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-ajira-accent hover:bg-ajira-orange-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ajira-accent disabled:opacity-50"
                 >
                   {(signUpMutation.isLoading || signInMutation.isLoading) ? (
                     <>
