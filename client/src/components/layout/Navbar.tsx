@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
-import { Search, X, User, LogOut, Settings, Bell, Menu, ChevronDown } from 'lucide-react';
+import { Search, X, User, LogOut, Settings, Bell, Menu, ChevronDown, Info, Users, BookOpen, Briefcase, Globe, Star, Award, MessageCircle, UserCheck, HelpCircle, ChevronRight } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 
 const Navbar = () => {
@@ -53,46 +53,50 @@ const Navbar = () => {
     { title: 'Contact', description: 'Get in touch with us', url: '/contact', category: 'Support' }
   ];
 
-  // Dropdown menu structure (removed duplicate mazungumzo)
+  // Professional dropdown menu structure
   const dropdownMenus = [
     {
       id: 'about',
       label: 'About',
+      icon: Info,
       items: [
-        { label: 'About Us', to: '/about' },
-        { label: 'Team', to: '/team' },
-        { label: 'Updates', to: '/updates' },
-        { label: 'FAQ', to: '/faq' },
-        { label: 'Contact', to: '/contact' }
+        { label: 'About KiNaP', to: '/about', icon: Info, description: 'Learn about our mission' },
+        { label: 'Our Team', to: '/team', icon: Users, description: 'Meet our dedicated team' },
+        { label: 'Latest Updates', to: '/updates', icon: Star, description: 'News and announcements' },
+        { label: 'FAQ', to: '/faq', icon: HelpCircle, description: 'Common questions' },
+        { label: 'Contact Us', to: '/contact', icon: MessageCircle, description: 'Get in touch' }
+      ]
+    },
+    {
+      id: 'programs',
+      label: 'Programs',
+      icon: BookOpen,
+      items: [
+        { label: 'Digital Training', to: '/training', icon: BookOpen, description: 'Skill development courses' },
+        { label: 'Mentorship', to: '/mentorship', icon: UserCheck, description: 'Connect with mentors' },
+        { label: 'Events & Workshops', to: '/events', icon: Award, description: 'Live learning sessions' },
+        { label: 'Videos & Resources', to: '/videos', icon: Globe, description: 'Educational content' }
       ]
     },
     {
       id: 'community',
       label: 'Community',
+      icon: Users,
       items: [
-        { label: 'Community Hub', to: '/community' },
-        { label: 'Testimonials', to: '/testimonials' },
-        { label: 'Showcase', to: '/showcase' },
-        { label: 'Ambassador Program', to: '/ambassador' }
-      ]
-    },
-    {
-      id: 'learning',
-      label: 'Learning',
-      items: [
-        { label: 'Training', to: '/training' },
-        { label: 'Mentorship', to: '/mentorship' },
-        { label: 'Events', to: '/events' },
-        { label: 'Blog', to: '/blog' }
+        { label: 'Community Hub', to: '/community', icon: Users, description: 'Join discussions' },
+        { label: 'Success Stories', to: '/testimonials', icon: Star, description: 'Member achievements' },
+        { label: 'Project Showcase', to: '/showcase', icon: Award, description: 'Featured work' },
+        { label: 'Ambassador Program', to: '/ambassador', icon: UserCheck, description: 'Become a leader' }
       ]
     },
     {
       id: 'services',
       label: 'Services',
+      icon: Briefcase,
       items: [
-        { label: 'Marketplace', to: '/marketplace' },
-        { label: 'Become Seller', to: '/become-seller' },
-        { label: 'Media Upload', to: '/media-upload' }
+        { label: 'Marketplace', to: '/marketplace', icon: Briefcase, description: 'Digital services hub' },
+        { label: 'Become a Seller', to: '/become-seller', icon: UserCheck, description: 'Offer your skills' },
+        { label: 'Content Creation', to: '/media-upload', icon: MessageCircle, description: 'Share your work' }
       ]
     }
   ];
@@ -121,7 +125,7 @@ const Navbar = () => {
     }
   }, [searchQuery]);
 
-  // Click outside handlers
+  // Enhanced click outside handlers with better mobile support
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
@@ -132,9 +136,36 @@ const Navbar = () => {
       }
     };
 
+    const handleEscapeKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setShowSearchResults(false);
+        setUserDropdownOpen(false);
+        setActiveDropdown(null);
+        setMobileMenuOpen(false);
+      }
+    };
+
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleEscapeKey);
+    
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscapeKey);
+    };
   }, []);
+
+  // Enhanced mobile menu handling
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [mobileMenuOpen]);
 
   const handleSearchSelect = () => {
     setSearchQuery('');
@@ -169,448 +200,373 @@ const Navbar = () => {
   };
 
   return (
-    <nav className="bg-gradient-to-r from-kenya-black via-kenya-red to-kenya-green shadow-lg sticky top-0 z-50">
+    <nav className="bg-white shadow-lg border-b border-gray-200 sticky top-0 z-50 backdrop-blur-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          {/* Logo */}
-          <div className="flex-shrink-0">
-            <Link to="/" className="flex items-center space-x-3" onClick={closeAllDropdowns}>
+          {/* Logo with Professional KiNaP Branding */}
+          <div className="flex-shrink-0 flex items-center">
+            <Link to="/" className="flex items-center group">
               <img 
-                src="/images/ajira-logo-white.png" 
+                src="/logo.jpeg" 
                 alt="KiNaP Ajira Club Logo" 
-                className="h-10 w-auto"
-                onError={(e) => {
-                  e.currentTarget.style.display = 'none';
-                }}
+                className="h-10 w-auto drop-shadow-md rounded-md"
+                onError={(e) => { e.currentTarget.style.display = 'none'; }}
               />
-              <div className="flex flex-col">
-                <span className="text-lg font-bold text-white">
+              <div className="ml-3 flex flex-col">
+                <span className="text-lg font-bold text-gray-900 group-hover:text-kenya-red transition-colors leading-tight">
                   KiNaP Ajira Club
                 </span>
-                <span className="text-xs text-gray-300 font-medium -mt-1">
+                <span className="text-xs text-kenya-green leading-tight font-medium">
                   Digital Skills Hub
                 </span>
               </div>
             </Link>
           </div>
-
-          {/* Desktop Navigation */}
-          <div className="hidden lg:flex items-center space-x-8">
-            <NavLink
-              to="/"
-              className={({ isActive }) =>
-                `px-3 py-2 text-sm font-medium transition-colors duration-200 ${
-                  isActive
-                    ? 'text-kenya-green border-b-2 border-kenya-green'
-                    : 'text-white hover:text-kenya-green'
-                }`
-              }
-            >
-              Home
-            </NavLink>
-
-            <NavLink
-              to="/videos"
-              className={({ isActive }) =>
-                `px-3 py-2 text-sm font-medium transition-colors duration-200 ${
-                  isActive
-                    ? 'text-kenya-green border-b-2 border-kenya-green'
-                    : 'text-white hover:text-kenya-green'
-                }`
-              }
-            >
-              Videos
-            </NavLink>
-
-            {/* Dropdown Menus */}
+          
+          {/* Navigation Links with Professional Styling */}
+          <div className="hidden lg:flex items-center space-x-1">
             {dropdownMenus.map((menu) => (
               <div key={menu.id} className="relative">
                 <button
-                  className="flex items-center px-3 py-2 text-sm font-medium text-white hover:text-kenya-green transition-colors duration-200"
                   onClick={() => handleDropdownToggle(menu.id)}
-                  onMouseEnter={() => setActiveDropdown(menu.id)}
+                  className={`flex items-center px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
+                    activeDropdown === menu.id
+                      ? 'text-kenya-red bg-kenya-green/10 shadow-sm'
+                      : 'text-gray-700 hover:text-kenya-red hover:bg-gray-50'
+                  }`}
                 >
+                  <menu.icon className="w-4 h-4 mr-2" />
                   {menu.label}
-                  <ChevronDown
-                    className={`ml-1 h-4 w-4 transition-transform duration-200 ${
-                      activeDropdown === menu.id ? 'rotate-180' : ''
-                    }`}
-                  />
+                  <ChevronDown className={`w-3 h-3 ml-1 transition-transform ${activeDropdown === menu.id ? 'rotate-180' : ''}`} />
                 </button>
-
-                {/* Dropdown Menu */}
                 {activeDropdown === menu.id && (
-                  <div
-                    className="absolute left-0 mt-2 w-56 bg-white rounded-md shadow-xl py-2 z-50 border border-gray-100"
-                    onMouseLeave={() => setActiveDropdown(null)}
-                  >
-                    {menu.items.map((item) => (
-                      <NavLink
-                        key={item.to}
+                  <div className="absolute left-0 mt-2 w-64 bg-white rounded-lg shadow-xl border border-gray-200 py-2 z-50 animate-in slide-in-from-top-2 duration-200">
+                    {menu.items.map((item, index) => (
+                      <Link
+                        key={index}
                         to={item.to}
-                        className={({ isActive }) =>
-                          `block px-4 py-3 text-sm text-gray-700 hover:bg-kenya-green hover:text-white transition-colors duration-200 ${
-                            isActive ? 'bg-kenya-green text-white font-medium' : ''
-                          }`
-                        }
+                        className="flex items-start px-4 py-3 text-sm text-gray-700 hover:bg-kenya-green/5 hover:text-kenya-black transition-colors"
                         onClick={closeAllDropdowns}
                       >
-                        {item.label}
-                      </NavLink>
+                        <item.icon className="w-4 h-4 mt-0.5 mr-3 text-kenya-green flex-shrink-0" />
+                        <div className="flex-1">
+                          <div className="font-medium text-gray-900">{item.label}</div>
+                          <div className="text-xs text-gray-500 mt-0.5">{item.description}</div>
+                        </div>
+                      </Link>
                     ))}
                   </div>
                 )}
               </div>
             ))}
           </div>
-
-          {/* Right side: Search and User */}
-          <div className="flex items-center space-x-4">
-            {/* Search Bar */}
-            <div className="hidden md:block relative" ref={searchRef}>
+          
+          {/* Professional Search Bar */}
+          <div className="hidden md:flex items-center mx-6 flex-1 max-w-md">
+            <div ref={searchRef} className="relative w-full">
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Search className="h-4 w-4 text-gray-400" />
-                </div>
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <input
                   type="text"
-                  placeholder="Search..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-64 pl-10 pr-10 py-2 bg-kenya-black bg-opacity-50 border border-gray-600 rounded-lg text-white placeholder-gray-300 focus:ring-2 focus:ring-kenya-green focus:border-transparent outline-none transition-all"
+                  placeholder="Search programs, services..."
+                  className="w-full pl-10 pr-10 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-kenya-red/20 focus:border-kenya-red transition-all duration-200"
                 />
                 {searchQuery && (
                   <button
                     onClick={clearSearch}
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 hover:text-kenya-red transition-colors"
                   >
-                    <X className="h-4 w-4 text-gray-300 hover:text-white" />
+                    <X className="h-4 w-4" />
                   </button>
                 )}
               </div>
-
-              {/* Search Results */}
-              {showSearchResults && searchQuery.trim() !== '' && (
-                <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-xl border border-gray-200 max-h-96 overflow-y-auto z-50">
-                  {Object.keys(groupedSearchResults).length > 0 ? (
-                    Object.entries(groupedSearchResults).map(([category, items]) => (
-                      <div key={category} className="p-2">
-                        <div className="px-3 py-2 text-xs font-semibold text-kenya-red uppercase tracking-wider">
-                          {category}
-                        </div>
-                        {items.map((item) => (
-                          <Link
-                            key={item.url}
-                            to={item.url}
-                            className="block px-3 py-2 text-sm text-gray-700 hover:bg-kenya-green hover:text-white rounded-md transition-colors"
-                            onClick={handleSearchSelect}
-                          >
-                            <div className="font-medium">{item.title}</div>
-                            <div className="text-gray-500 text-xs hover:text-gray-200">{item.description}</div>
-                          </Link>
-                        ))}
+              
+              {/* Enhanced Search Results */}
+              {showSearchResults && filteredSearchResults.length > 0 && (
+                <div className="absolute top-full mt-2 w-full bg-white rounded-lg shadow-xl border border-gray-200 py-2 z-50 max-h-80 overflow-y-auto">
+                  {Object.entries(groupedSearchResults).map(([category, items]) => (
+                    <div key={category} className="mb-2 last:mb-0">
+                      <div className="px-4 py-2 text-xs font-semibold text-kenya-red uppercase tracking-wide border-b border-gray-100">
+                        {category}
                       </div>
-                    ))
-                  ) : (
-                    <div className="p-4 text-center text-gray-500">
-                      <Search className="h-8 w-8 mx-auto mb-2 text-gray-300" />
-                      <div className="text-sm">No results found for "{searchQuery}"</div>
+                      {items.map((item, index) => (
+                        <Link
+                          key={index}
+                          to={item.url}
+                          onClick={handleSearchSelect}
+                          className="flex items-center px-4 py-3 hover:bg-gray-50 transition-colors group"
+                        >
+                          <div className="flex-1">
+                            <div className="text-sm font-medium text-gray-900 group-hover:text-kenya-red">
+                              {item.title}
+                            </div>
+                            <div className="text-xs text-gray-500 mt-0.5">
+                              {item.description}
+                            </div>
+                          </div>
+                          <ChevronRight className="w-4 h-4 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </Link>
+                      ))}
                     </div>
-                  )}
+                  ))}
                 </div>
               )}
             </div>
-
-            {/* User Profile or Sign In */}
+          </div>
+          
+          {/* Enhanced User Section with Separate Auth Buttons */}
+          <div className="flex items-center space-x-4">
             {user ? (
-              <div className="relative" ref={userDropdownRef}>
-                <button
-                  onClick={() => setUserDropdownOpen(!userDropdownOpen)}
-                  className="flex items-center space-x-2 p-2 rounded-full hover:bg-kenya-black hover:bg-opacity-30 transition-colors"
-                >
-                  {user.photoURL ? (
-                    <img
-                      src={user.photoURL}
-                      alt={user.displayName || 'User'}
-                      className="w-8 h-8 rounded-full object-cover border-2 border-kenya-green"
-                    />
-                  ) : (
-                    <div className="w-8 h-8 bg-gradient-to-r from-kenya-red to-kenya-green rounded-full flex items-center justify-center text-white text-sm font-medium">
-                      {user.displayName ? user.displayName.charAt(0).toUpperCase() : user.email?.charAt(0).toUpperCase() || 'U'}
+              <div className="flex items-center space-x-3">
+                {/* Notifications */}
+                <Link to="/notifications" className="relative p-2 text-gray-600 hover:text-kenya-red hover:bg-gray-50 rounded-lg transition-colors">
+                  <Bell className="h-5 w-5" />
+                  <div className="absolute -top-1 -right-1 h-4 w-4 bg-kenya-red rounded-full flex items-center justify-center">
+                    <span className="text-white text-xs font-bold">3</span>
+                  </div>
+                </Link>
+                
+                {/* User Dropdown */}
+                <div ref={userDropdownRef} className="relative">
+                  <button
+                    onClick={() => setUserDropdownOpen(!userDropdownOpen)}
+                    className="flex items-center space-x-2 p-2 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                  >
+                    <div className="w-8 h-8 bg-gradient-to-br from-kenya-red to-kenya-green rounded-full flex items-center justify-center">
+                      <User className="h-4 w-4 text-white" />
+                    </div>
+                    <div className="hidden sm:block text-left">
+                      <div className="text-sm font-medium text-gray-900">{user.displayName || user.email}</div>
+                      <UserVerificationBadge user={user} />
+                    </div>
+                    <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${userDropdownOpen ? 'rotate-180' : ''}`} />
+                  </button>
+                  
+                  {userDropdownOpen && (
+                    <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-xl border border-gray-200 py-2 z-50">
+                      <div className="px-4 py-3 border-b border-gray-100">
+                        <div className="text-sm font-medium text-gray-900">{user.displayName || user.email}</div>
+                        <div className="text-xs text-gray-500 mt-1">{user.email}</div>
+                        <div className="mt-2">
+                          <UserVerificationBadge user={user} />
+                        </div>
+                      </div>
+                      <Link to="/profile" className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                        <User className="h-4 w-4 mr-3 text-kenya-green" />
+                        Profile
+                      </Link>
+                      <Link to="/orders" className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                        <Settings className="h-4 w-4 mr-3 text-kenya-green" />
+                        Orders
+                      </Link>
+                      <div className="border-t border-gray-100 mt-2 pt-2">
+                        <button onClick={handleSignOut} className="flex items-center w-full px-4 py-2 text-sm text-kenya-red hover:bg-kenya-red/5 transition-colors">
+                          <LogOut className="h-4 w-4 mr-3" />
+                          Sign Out
+                        </button>
+                      </div>
                     </div>
                   )}
-                  <span className="hidden sm:block text-sm font-medium text-white max-w-32 truncate">
-                    {user.displayName || user.email?.split('@')[0]}
-                  </span>
-                  <ChevronDown
-                    className={`h-4 w-4 text-white transition-transform duration-200 ${
-                      userDropdownOpen ? 'rotate-180' : ''
-                    }`}
-                  />
-                </button>
-
-                {/* User Dropdown */}
-                {userDropdownOpen && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-xl py-2 border border-gray-100 z-50">
-                    <div className="px-4 py-2 border-b border-gray-100">
-                      <p className="text-sm font-medium text-gray-900 truncate">
-                        {user.displayName || 'User'}
-                      </p>
-                      <p className="text-xs text-gray-500 truncate">
-                        {user.email}
-                      </p>
-                    </div>
-
-                    <Link
-                      to="/profile"
-                      className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-kenya-green hover:text-white transition-colors"
-                      onClick={closeAllDropdowns}
-                    >
-                      <User className="w-4 h-4 mr-3" />
-                      Profile
-                    </Link>
-
-                    <Link
-                      to="/notifications"
-                      className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-kenya-green hover:text-white transition-colors"
-                      onClick={closeAllDropdowns}
-                    >
-                      <Bell className="w-4 h-4 mr-3" />
-                      Notifications
-                    </Link>
-
-                    <Link
-                      to="/orders"
-                      className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-kenya-green hover:text-white transition-colors"
-                      onClick={closeAllDropdowns}
-                    >
-                      <Settings className="w-4 h-4 mr-3" />
-                      Orders
-                    </Link>
-
-                    <div className="border-t border-gray-100 mt-2 pt-2">
-                      <button
-                        onClick={handleSignOut}
-                        className="flex items-center w-full px-4 py-2 text-sm text-kenya-red hover:bg-kenya-red hover:text-white transition-colors"
-                      >
-                        <LogOut className="w-4 h-4 mr-3" />
-                        Sign Out
-                      </button>
-                    </div>
-                  </div>
-                )}
+                </div>
               </div>
             ) : (
-              <Link
-                to="/auth"
-                className="bg-gradient-to-r from-kenya-red to-kenya-green text-white px-4 py-2 rounded-lg hover:from-kenya-green hover:to-kenya-red transition-all duration-200 font-medium text-sm"
-                onClick={closeAllDropdowns}
-              >
-                Join / Sign In
-              </Link>
+              <div className="flex items-center space-x-3">
+                {/* Sign In Button */}
+                <Link
+                  to="/auth"
+                  className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-kenya-red border border-gray-300 rounded-lg hover:border-kenya-red transition-all duration-200"
+                >
+                  Sign In
+                </Link>
+                
+                {/* Register Button - Primary CTA */}
+                <Link
+                  to="/auth?mode=register"
+                  className="bg-gradient-to-r from-kenya-red to-kenya-green hover:from-kenya-green hover:to-kenya-red text-white px-6 py-2 rounded-lg text-sm font-medium shadow-md hover:shadow-lg transition-all duration-200 hover:scale-105"
+                >
+                  Join Now
+                </Link>
+              </div>
             )}
-
-            {/* Mobile menu button */}
+          </div>
+          
+          {/* Mobile Menu Button */}
+          <div className="lg:hidden ml-4">
             <button
-              className="lg:hidden p-2 rounded-md text-white hover:bg-kenya-black hover:bg-opacity-30 transition-colors"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="p-2 rounded-lg text-gray-600 hover:text-kenya-red hover:bg-gray-50 transition-colors"
             >
-              <Menu className="w-6 h-6" />
+              <Menu className="h-6 w-6" />
             </button>
           </div>
         </div>
       </div>
-
-      {/* Mobile Menu */}
+      {/* Enhanced Mobile Menu with better animations */}
       {mobileMenuOpen && (
-        <div className="lg:hidden bg-gradient-to-b from-kenya-black to-kenya-red border-t border-kenya-green">
-          <div className="px-4 py-3 space-y-3">
+        <div className="md:hidden border-t border-kenya-green/10 bg-white shadow-xl animate-in slide-in-from-top duration-300">
+          <div className="px-4 pt-4 pb-6 space-y-4">
             {/* Mobile Search */}
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Search className="h-4 w-4 text-gray-400" />
-              </div>
+            <div ref={searchRef} className="relative mb-4">
               <input
                 type="text"
-                placeholder="Search..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-10 py-2 bg-kenya-black bg-opacity-50 border border-gray-600 rounded-lg text-white placeholder-gray-300 focus:ring-2 focus:ring-kenya-green focus:border-transparent outline-none"
+                placeholder="Search KiNaP Ajira..."
+                className="w-full pl-4 pr-10 py-3 bg-gray-50 border-2 border-kenya-green/30 rounded-lg text-kenya-black placeholder-kenya-green focus:outline-none focus:ring-2 focus:ring-kenya-red/40 focus:border-kenya-red transition-all duration-200 shadow-lg"
               />
               {searchQuery && (
                 <button
                   onClick={clearSearch}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-kenya-green hover:text-kenya-red transition-colors"
                 >
-                  <X className="h-4 w-4 text-gray-400" />
+                  <X className="h-4 w-4" />
                 </button>
+              )}
+            </div>
+            
+            {/* Mobile Navigation Links */}
+            <div className="space-y-3">
+              {dropdownMenus.map((menu) => (
+                <div key={menu.id} className="space-y-1">
+                  <button
+                    onClick={() => handleDropdownToggle(menu.id)}
+                    className={`flex items-center justify-between w-full px-4 py-3 rounded-lg text-lg font-semibold transition-all duration-200 ${
+                      activeDropdown === menu.id
+                        ? 'text-kenya-red bg-kenya-green/10 border-kenya-green'
+                        : 'text-kenya-black hover:text-kenya-red hover:bg-kenya-green/10 hover:border-kenya-green/30'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <menu.icon className="w-5 h-5" />
+                      {menu.label}
+                    </div>
+                    <ChevronDown className={`w-4 h-4 transition-transform ${activeDropdown === menu.id ? 'rotate-180' : ''}`} />
+                  </button>
+                  {activeDropdown === menu.id && (
+                    <div className="ml-4 space-y-1 animate-in slide-in-from-top duration-200">
+                      {menu.items.map((item, index) => (
+                        <Link
+                          key={index}
+                          to={item.to}
+                          className="flex items-center gap-3 px-6 py-3 text-base text-kenya-black hover:bg-kenya-green/10 hover:text-kenya-red rounded-lg transition-colors mx-2"
+                          onClick={closeAllDropdowns}
+                        >
+                          <item.icon className="w-4 h-4 text-kenya-green" />
+                          <div>
+                            <div className="font-medium">{item.label}</div>
+                            <div className="text-xs text-gray-600">{item.description}</div>
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+            
+            {/* Mobile User Section */}
+            <div className="border-t border-kenya-green/10 pt-4 mt-4">
+              {user ? (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3 px-4 py-2">
+                    <div className="w-10 h-10 bg-gradient-to-br from-kenya-red to-kenya-green rounded-full flex items-center justify-center shadow-lg">
+                      <User className="h-5 w-5 text-white" />
+                    </div>
+                    <div>
+                      <div className="font-semibold text-kenya-black">{user.displayName || user.email}</div>
+                      <div className="text-sm text-gray-600">{user.email}</div>
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <Link to="/profile" className="flex items-center gap-3 px-4 py-2 text-kenya-black hover:bg-kenya-green/10 rounded-lg transition-colors" onClick={closeAllDropdowns}>
+                      <User className="h-4 w-4 text-kenya-green" />
+                      Profile
+                    </Link>
+                    <Link to="/orders" className="flex items-center gap-3 px-4 py-2 text-kenya-black hover:bg-kenya-green/10 rounded-lg transition-colors" onClick={closeAllDropdowns}>
+                      <Settings className="h-4 w-4 text-kenya-green" />
+                      Orders
+                    </Link>
+                    <Link to="/notifications" className="flex items-center gap-3 px-4 py-2 text-kenya-black hover:bg-kenya-green/10 rounded-lg transition-colors" onClick={closeAllDropdowns}>
+                      <Bell className="h-4 w-4 text-kenya-green" />
+                      Notifications
+                    </Link>
+                    <button 
+                      onClick={handleSignOut} 
+                      className="flex items-center gap-3 w-full px-4 py-2 text-kenya-red hover:bg-kenya-red/10 rounded-lg transition-colors"
+                    >
+                      <LogOut className="h-4 w-4" />
+                      Sign Out
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <Link
+                    to="/auth"
+                    className="flex items-center justify-center gap-2 w-full px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:text-kenya-red hover:border-kenya-red transition-all duration-200"
+                    onClick={closeAllDropdowns}
+                  >
+                    <User className="w-5 h-5" />
+                    Sign In
+                  </Link>
+                  <Link
+                    to="/auth?mode=register"
+                    className="flex items-center justify-center gap-2 w-full bg-gradient-to-r from-kenya-red to-kenya-green hover:from-kenya-green hover:to-kenya-red text-white px-6 py-3 rounded-lg font-medium shadow-md hover:shadow-lg transition-all duration-200"
+                    onClick={closeAllDropdowns}
+                  >
+                    <Star className="w-5 h-5" />
+                    Join Now
+                  </Link>
+                </div>
               )}
             </div>
 
             {/* Mobile Search Results */}
-            {showSearchResults && searchQuery.trim() !== '' && (
-              <div className="bg-kenya-black bg-opacity-50 rounded-lg max-h-64 overflow-y-auto">
-                {Object.keys(groupedSearchResults).length > 0 ? (
-                  Object.entries(groupedSearchResults).map(([category, items]) => (
-                    <div key={category} className="p-2">
-                      <div className="px-3 py-2 text-xs font-semibold text-kenya-green uppercase tracking-wider">
+            {showSearchResults && filteredSearchResults.length > 0 && (
+              <div className="border-t border-kenya-green/10 pt-4 mt-4">
+                <div className="text-sm font-semibold text-kenya-red mb-3">Search Results</div>
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {Object.entries(groupedSearchResults).map(([category, items]) => (
+                    <div key={category}>
+                      <div className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">
                         {category}
                       </div>
-                      {items.map((item) => (
+                      {items.map((item, index) => (
                         <Link
-                          key={item.url}
+                          key={index}
                           to={item.url}
-                          className="block px-3 py-2 text-sm text-white hover:bg-kenya-green rounded-md transition-colors"
                           onClick={handleSearchSelect}
+                          className="block px-3 py-2 hover:bg-kenya-green/10 rounded-lg transition-colors"
                         >
-                          <div className="font-medium">{item.title}</div>
-                          <div className="text-gray-300 text-xs">{item.description}</div>
+                          <div className="font-medium text-kenya-black">{item.title}</div>
+                          <div className="text-xs text-gray-600">{item.description}</div>
                         </Link>
                       ))}
                     </div>
-                  ))
-                ) : (
-                  <div className="p-4 text-center text-gray-300">
-                    <Search className="h-8 w-8 mx-auto mb-2 text-gray-500" />
-                    <div className="text-sm">No results found</div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Mobile Navigation Links */}
-            <div className="space-y-1">
-              <NavLink
-                to="/"
-                className={({ isActive }) =>
-                  `block px-3 py-2 text-sm font-medium transition-colors ${
-                    isActive
-                      ? 'text-kenya-green bg-kenya-black bg-opacity-30 border-l-4 border-kenya-green'
-                      : 'text-white hover:text-kenya-green hover:bg-kenya-black hover:bg-opacity-30'
-                  }`
-                }
-                onClick={closeAllDropdowns}
-              >
-                Home
-              </NavLink>
-
-              <NavLink
-                to="/videos"
-                className={({ isActive }) =>
-                  `block px-3 py-2 text-sm font-medium transition-colors ${
-                    isActive
-                      ? 'text-kenya-green bg-kenya-black bg-opacity-30 border-l-4 border-kenya-green'
-                      : 'text-white hover:text-kenya-green hover:bg-kenya-black hover:bg-opacity-30'
-                  }`
-                }
-                onClick={closeAllDropdowns}
-              >
-                Videos
-              </NavLink>
-
-              {/* Mobile Dropdown Sections */}
-              {dropdownMenus.map((menu) => (
-                <div key={menu.id} className="space-y-1">
-                  <div className="px-3 py-2 text-sm font-semibold text-kenya-green uppercase tracking-wider">
-                    {menu.label}
-                  </div>
-                  {menu.items.map((item) => (
-                    <NavLink
-                      key={item.to}
-                      to={item.to}
-                      className={({ isActive }) =>
-                        `block px-6 py-2 text-sm transition-colors ${
-                          isActive
-                            ? 'text-kenya-green bg-kenya-black bg-opacity-30 border-l-4 border-kenya-green'
-                            : 'text-gray-300 hover:text-kenya-green hover:bg-kenya-black hover:bg-opacity-30'
-                        }`
-                      }
-                      onClick={closeAllDropdowns}
-                    >
-                      {item.label}
-                    </NavLink>
                   ))}
                 </div>
-              ))}
-            </div>
-
-            {/* Mobile User Section */}
-            {user ? (
-              <div className="border-t border-kenya-green pt-4 mt-4">
-                <div className="flex items-center px-3 py-2 space-x-3">
-                  {user.photoURL ? (
-                    <img
-                      src={user.photoURL}
-                      alt={user.displayName || 'User'}
-                      className="w-10 h-10 rounded-full object-cover border-2 border-kenya-green"
-                    />
-                  ) : (
-                    <div className="w-10 h-10 bg-gradient-to-r from-kenya-red to-kenya-green rounded-full flex items-center justify-center text-white font-medium">
-                      {user.displayName ? user.displayName.charAt(0).toUpperCase() : user.email?.charAt(0).toUpperCase() || 'U'}
-                    </div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-white truncate">
-                      {user.displayName || 'User'}
-                    </p>
-                    <p className="text-xs text-gray-300 truncate">
-                      {user.email}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="space-y-1 mt-3">
-                  <Link
-                    to="/profile"
-                    className="flex items-center px-6 py-2 text-sm text-gray-300 hover:text-kenya-green hover:bg-kenya-black hover:bg-opacity-30 transition-colors"
-                    onClick={closeAllDropdowns}
-                  >
-                    <User className="w-4 h-4 mr-3" />
-                    Profile
-                  </Link>
-
-                  <Link
-                    to="/notifications"
-                    className="flex items-center px-6 py-2 text-sm text-gray-300 hover:text-kenya-green hover:bg-kenya-black hover:bg-opacity-30 transition-colors"
-                    onClick={closeAllDropdowns}
-                  >
-                    <Bell className="w-4 h-4 mr-3" />
-                    Notifications
-                  </Link>
-
-                  <Link
-                    to="/orders"
-                    className="flex items-center px-6 py-2 text-sm text-gray-300 hover:text-kenya-green hover:bg-kenya-black hover:bg-opacity-30 transition-colors"
-                    onClick={closeAllDropdowns}
-                  >
-                    <Settings className="w-4 h-4 mr-3" />
-                    Orders
-                  </Link>
-
-                  <button
-                    onClick={handleSignOut}
-                    className="flex items-center w-full px-6 py-2 text-sm text-kenya-red hover:bg-kenya-red hover:text-white transition-colors"
-                  >
-                    <LogOut className="w-4 h-4 mr-3" />
-                    Sign Out
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="border-t border-kenya-green pt-4 mt-4">
-                <Link
-                  to="/auth"
-                  className="block mx-3 bg-gradient-to-r from-kenya-red to-kenya-green text-white px-4 py-3 rounded-lg text-center font-medium hover:from-kenya-green hover:to-kenya-red transition-all"
-                  onClick={closeAllDropdowns}
-                >
-                  Join / Sign In
-                </Link>
               </div>
             )}
           </div>
         </div>
       )}
     </nav>
+  );
+};
+
+// User Verification Badge Component
+const UserVerificationBadge = ({ user }: { user: any }) => {
+  if (!user) return null;
+  
+  return (
+    <div className="flex items-center gap-1">
+      <div className="w-4 h-4 bg-kenya-accent rounded-full flex items-center justify-center">
+        <div className="w-2 h-2 bg-white rounded-full"></div>
+      </div>
+      <span className="text-xs text-kenya-text-muted">Verified Member</span>
+    </div>
   );
 };
 

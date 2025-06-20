@@ -23,80 +23,93 @@ export default {
           700: '#334155',
           900: '#0f172a',
         },
-        // Official Ajira Digital Brand Colors
-        'ajira': {
-          'primary': '#1B4F72',     // Ajira Deep Blue (Primary)
-          'secondary': '#2E8B57',   // Ajira Green (Secondary)
-          'accent': '#FF6B35',      // Ajira Orange (Accent)
-          'dark': '#0F2C3D',       // Ajira Dark Blue
-          'light': '#E8F4F8',      // Ajira Light Blue
-          'success': '#28A745',     // Success Green
-          'warning': '#FFC107',     // Warning Yellow
-          'danger': '#DC3545',      // Danger Red
-          'info': '#17A2B8',       // Info Cyan
-          'white': '#FFFFFF',       // Pure White
-          'text': {
-            'primary': '#1B4F72',   // Primary text color
-            'secondary': '#495057', // Secondary text color
-            'muted': '#6C757D',     // Muted text color
-            'light': '#ADB5BD',     // Light text color
-          },
-          'blue': {
-            50: '#E3F2FD',
-            100: '#BBDEFB',
-            200: '#90CAF9',
-            300: '#64B5F6',
-            400: '#42A5F5',
-            500: '#1B4F72',    // Primary blue
-            600: '#1565C0',
-            700: '#0D47A1',
-            800: '#0F2C3D',    // Dark blue
-            900: '#0A1929',
-          },
-          'green': {
-            50: '#E8F5E8',
-            100: '#C8E6C9',
-            200: '#A5D6A7',
-            300: '#81C784',
-            400: '#66BB6A',
-            500: '#2E8B57',    // Primary green
-            600: '#43A047',
-            700: '#388E3C',
-            800: '#2E7D32',
-            900: '#1B5E20',
-          },
-          'orange': {
-            50: '#FFF3E0',
-            100: '#FFE0B2',
-            200: '#FFCC80',
-            300: '#FFB74D',
-            400: '#FFA726',
-            500: '#FF6B35',    // Primary orange
-            600: '#FB8C00',
-            700: '#F57C00',
-            800: '#EF6C00',
-            900: '#E65100',
-          },
-          'gray': {
-            50: '#FAFAFA',
-            100: '#F5F5F5',
-            200: '#EEEEEE',
-            300: '#E0E0E0',
-            400: '#BDBDBD',
-            500: '#9E9E9E',
-            600: '#757575',
-            700: '#616161',
-            800: '#424242',
-            900: '#212121'
-          }
+        // Official Ajira Digital Brand Colors with Full Palette
+        'ajira-primary': '#1B4F72',
+        'ajira-secondary': '#2E8B57',
+        'ajira-accent': '#FF6B35',
+        'ajira-gold': '#FFD600',
+        'ajira-black': '#222',
+        'ajira-white': '#fff',
+        'ajira-light': '#F8FAFC',
+        'ajira-dark': '#0F172A',
+        
+        // Extended Ajira Blue Palette
+        'ajira-blue': {
+          50: '#EBF8FF',
+          100: '#BEE3F8',
+          200: '#90CDF4',
+          300: '#63B3ED',
+          400: '#4299E1',
+          500: '#3182CE',
+          600: '#2B77CB',
+          700: '#2C5282',
+          800: '#2A4365',
+          900: '#1A365D',
         },
+        
+        // Extended Ajira Green Palette
+        'ajira-green': {
+          50: '#F0FDF4',
+          100: '#DCFCE7',
+          200: '#BBF7D0',
+          300: '#86EFAC',
+          400: '#4ADE80',
+          500: '#22C55E',
+          600: '#16A34A',
+          700: '#15803D',
+          800: '#166534',
+          900: '#14532D',
+        },
+        
+        // Extended Ajira Orange/Accent Palette
+        'ajira-orange': {
+          50: '#FFF7ED',
+          100: '#FFEDD5',
+          200: '#FED7AA',
+          300: '#FDBA74',
+          400: '#FB923C',
+          500: '#F97316',
+          600: '#EA580C',
+          700: '#C2410C',
+          800: '#9A3412',
+          900: '#7C2D12',
+        },
+        
+        // Text Colors
+        'ajira-text': {
+          primary: '#1B4F72',
+          secondary: '#444',
+          muted: '#888',
+          light: '#9CA3AF',
+        },
+        
+        // Additional Colors
+        'ajira-info': '#3B82F6',
+        'ajira-success': '#22C55E',
+        'ajira-warning': '#F59E0B',
+        'ajira-error': '#EF4444',
+        
         // Kenyan Flag Colors (for patriotic elements)
         'kenya': {
           'black': '#000000',
           'red': '#CE1126',
           'green': '#006B3F',
           'white': '#FFFFFF'
-        }
+        },
+        
+        // Kenyan Flag inspired color system
+        'kenya-black': '#000000',
+        'kenya-red': '#CE1126',
+        'kenya-green': '#006B3F', 
+        'kenya-white': '#FFFFFF',
+        
+        // Extended Kenyan theme colors
+        'kenya-primary': '#000000',
+        'kenya-accent': '#CE1126',
+        'kenya-text': {
+          primary: '#000000',
+          muted: '#666666',
+        },
       },
       fontFamily: {
         'sans': ['Inter', 'Poppins', 'system-ui', '-apple-system', 'sans-serif'],
@@ -121,17 +134,27 @@ export default {
         },
       },
       backgroundImage: {
-        'gradient-ajira': 'linear-gradient(135deg, #1B4F72 0%, #2E8B57 50%, #FF6B35 100%)',
-        'gradient-ajira-blue': 'linear-gradient(135deg, #1B4F72 0%, #0F2C3D 100%)',
-        'gradient-ajira-green': 'linear-gradient(135deg, #2E8B57 0%, #1B5E20 100%)',
-        'gradient-ajira-orange': 'linear-gradient(135deg, #FF6B35 0%, #E65100 100%)',
+        'gradient-ajira': 'linear-gradient(135deg, #1B4F72 0%, #2E8B57 60%, #FF6B35 100%)',
+        'gradient-ajira-blue': 'linear-gradient(135deg, #1B4F72 0%, #2B77CB 100%)',
+        'gradient-ajira-green': 'linear-gradient(135deg, #2E8B57 0%, #15803D 100%)',
+        'gradient-ajira-orange': 'linear-gradient(135deg, #FF6B35 0%, #C2410C 100%)',
         'hero-pattern': 'linear-gradient(135deg, rgba(27, 79, 114, 0.9) 0%, rgba(46, 139, 87, 0.8) 50%, rgba(255, 107, 53, 0.7) 100%)',
       },
       boxShadow: {
         'ajira': '0 4px 6px -1px rgba(27, 79, 114, 0.1), 0 2px 4px -1px rgba(27, 79, 114, 0.06)',
         'ajira-lg': '0 10px 15px -3px rgba(27, 79, 114, 0.1), 0 4px 6px -2px rgba(27, 79, 114, 0.05)',
         'ajira-xl': '0 20px 25px -5px rgba(27, 79, 114, 0.1), 0 10px 10px -5px rgba(27, 79, 114, 0.04)',
-      }
+      },
+      container: {
+        center: true,
+        padding: {
+          DEFAULT: '1rem',
+          sm: '2rem',
+          lg: '4rem',
+          xl: '5rem',
+          '2xl': '6rem',
+        },
+      },
     },
   },
   plugins: [],

@@ -6,126 +6,125 @@ import ImpactMetrics from '../components/common/ImpactMetrics'
 
 const Home = () => {
   return (
-    <div className="min-h-screen">
-      {/* Enhanced Hero Section with Ajira Colors */}
-      <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
-        {/* Video Background */}
-        <div className="absolute inset-0 z-0">
-          {/* Enhanced Gradient Background with Ajira colors */}
-          <div className="absolute inset-0 bg-gradient-ajira"></div>
-          
-          {/* Video Element */}
+    <div className="min-h-screen bg-ajira-white">
+      {/* Gaming-style Hero Section with Enhanced Background Video */}
+      <section className="relative min-h-[80vh] flex items-center justify-center overflow-hidden">
+        {/* Enhanced Background Video */}
+        <div className="absolute inset-0 w-full h-full">
           <video
             autoPlay
             muted
             loop
             playsInline
-            className="w-full h-full object-cover opacity-60"
-            poster="https://images.unsplash.com/photo-1451187580459-43490279c0fa?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80"
+            className="absolute inset-0 w-full h-full object-cover opacity-40"
+            poster="/images/hero-poster.jpg"
             onError={(e) => {
+              // If video fails, show a beautiful gradient background
               e.currentTarget.style.display = 'none';
+              const parent = e.currentTarget.parentElement;
+              if (parent) {
+                parent.style.background = 'linear-gradient(135deg, #000000 0%, #CE1126 35%, #006B3F 70%, #000000 100%)';
+              }
+            }}
+            onLoadedData={() => {
+              console.log('Background video loaded successfully');
             }}
           >
-            <source src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4" type="video/mp4" />
-            <source src="https://sample-videos.com/zip/10/mp4/SampleVideo_1280x720_1mb.mp4" type="video/mp4" />
+            <source src="/videos/digital-transformation.mp4" type="video/mp4" />
+            <source src="/videos/kinap-promo.webm" type="video/webm" />
+            <source src="/videos/ajira-background.mov" type="video/quicktime" />
+            Your browser does not support the video tag.
           </video>
           
-          {/* Enhanced Overlay */}
-          <div className="absolute inset-0 bg-gradient-to-r from-ajira-primary/90 via-ajira-secondary/80 to-ajira-primary/90"></div>
+          {/* Professional Video Overlay */}
+          <div className="absolute inset-0 bg-gradient-to-br from-kenya-black/90 via-kenya-green/80 to-kenya-red/85"></div>
           
-          {/* Enhanced Animated Particles with Ajira colors */}
-          <div className="absolute inset-0">
-            <div className="absolute top-1/4 left-1/4 w-3 h-3 bg-ajira-accent rounded-full animate-pulse-glow"></div>
-            <div className="absolute top-1/3 right-1/3 w-2 h-2 bg-ajira-green-300 rounded-full animate-ping"></div>
-            <div className="absolute bottom-1/4 left-1/3 w-4 h-4 bg-ajira-orange-300 rounded-full animate-bounce-slow"></div>
-            <div className="absolute top-1/2 right-1/4 w-3 h-3 bg-ajira-blue-300 rounded-full animate-pulse"></div>
-            <div className="absolute top-3/4 left-1/2 w-2 h-2 bg-ajira-orange-200 rounded-full animate-ping"></div>
-            <div className="absolute bottom-1/3 right-1/3 w-3 h-3 bg-ajira-green-200 rounded-full animate-bounce"></div>
-          </div>
-          
-          {/* Enhanced Floating shapes with Ajira colors */}
-          <div className="absolute inset-0 overflow-hidden">
-            <div className="absolute top-1/4 left-1/6 w-20 h-20 border-2 border-ajira-accent/30 rounded-xl rotate-45 animate-spin-slow"></div>
-            <div className="absolute bottom-1/4 right-1/6 w-16 h-16 border-2 border-ajira-secondary/30 rounded-full rotate-12 animate-bounce-slow"></div>
-            <div className="absolute top-1/2 right-1/4 w-12 h-12 border-2 border-ajira-blue-300/30 rounded-lg rotate-45 animate-pulse"></div>
-          </div>
-        </div>
-
-        {/* Enhanced Hero Content */}
-        <div className="relative z-10 container-custom text-center px-4">
-          <div className="max-w-5xl mx-auto">
-            {/* Enhanced Logo Animation */}
-            <div className="mb-8 animate-fade-in">
-              <div className="inline-flex items-center justify-center w-28 h-28 bg-gradient-to-r from-ajira-accent to-ajira-orange-600 rounded-3xl mb-6 shadow-ajira-xl transform hover:scale-110 transition-transform duration-300 animate-pulse-glow">
-                <Sparkles className="w-12 h-12 text-white" />
-              </div>
-            </div>
-
-            {/* Enhanced Main Heading */}
-            <h1 className="text-6xl md:text-8xl lg:text-9xl font-bold text-white mb-6 leading-tight animate-slide-up">
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-ajira-orange-200 via-ajira-green-200 to-ajira-blue-200">
-                Ajira Digital
-              </span>
-            </h1>
+          {/* Dynamic Particles Overlay */}
+          <div className="absolute inset-0 opacity-20 pointer-events-none">
+            {/* Enhanced floating particles */}
+            <div className="absolute top-20 left-20 w-8 h-8 bg-kenya-red rounded-full animate-bounce-slow opacity-70"></div>
+            <div className="absolute top-40 right-32 w-6 h-6 bg-kenya-white rounded-full animate-float opacity-60"></div>
+            <div className="absolute bottom-40 left-1/4 w-7 h-7 bg-kenya-green rounded-full animate-pulse opacity-80"></div>
+            <div className="absolute top-60 left-1/3 w-5 h-5 bg-kenya-red rounded-full animate-bounce opacity-50"></div>
+            <div className="absolute bottom-60 right-1/4 w-6 h-6 bg-kenya-white rounded-full animate-float opacity-40"></div>
             
-            <h2 className="text-3xl md:text-4xl lg:text-5xl font-semibold text-ajira-blue-200 mb-8 animate-slide-up animation-delay-200">
-              KiNaP Digital Skills Hub
-            </h2>
-
-            {/* Enhanced Subtitle */}
-            <p className="text-xl md:text-2xl text-white/90 mb-12 max-w-4xl mx-auto leading-relaxed animate-slide-up animation-delay-400">
-              Empowering the next generation of digital professionals through cutting-edge training, 
-              innovative opportunities, and transformative technology solutions in Kenya.
-            </p>
-
-            {/* Enhanced CTA Buttons */}
-            <div className="flex flex-col sm:flex-row gap-6 justify-center mb-16 animate-slide-up animation-delay-600">
-              <Link
-                to="/auth"
-                className="group bg-gradient-to-r from-ajira-accent to-ajira-orange-600 text-white px-10 py-5 rounded-2xl text-xl font-bold hover:shadow-ajira-xl transform hover:scale-105 transition-all duration-300 flex items-center justify-center gap-3 animate-pulse-glow"
-              >
-                <Play className="w-6 h-6 group-hover:scale-110 transition-transform" />
-                Start Your Journey
-              </Link>
-              
-              <a
-                href="https://ajiradigital.go.ke/register"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group bg-white/15 backdrop-blur-sm text-white border-2 border-white/40 px-10 py-5 rounded-2xl text-xl font-bold hover:bg-white/25 transform hover:scale-105 transition-all duration-300 flex items-center justify-center gap-3"
-              >
-                Official Portal
-                <ArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
-              </a>
-            </div>
-
-            {/* Enhanced Quick Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 animate-slide-up animation-delay-800">
-              <div className="text-center bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
-                <div className="text-4xl md:text-5xl font-bold text-ajira-orange-200 mb-2">1000+</div>
-                <div className="text-white/80 text-lg">Students Trained</div>
-              </div>
-              <div className="text-center bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
-                <div className="text-4xl md:text-5xl font-bold text-ajira-green-200 mb-2">150+</div>
-                <div className="text-white/80 text-lg">Success Stories</div>
-              </div>
-              <div className="text-center bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
-                <div className="text-4xl md:text-5xl font-bold text-ajira-blue-200 mb-2">50+</div>
-                <div className="text-white/80 text-lg">Skills Programs</div>
-              </div>
-              <div className="text-center bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
-                <div className="text-4xl md:text-5xl font-bold text-ajira-orange-200 mb-2">100%</div>
-                <div className="text-white/80 text-lg">Digital Focus</div>
+            {/* Professional grid pattern */}
+            <div className="absolute inset-0 opacity-15">
+              <div className="grid grid-cols-16 grid-rows-10 h-full w-full gap-2">
+                {Array.from({ length: 160 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className={`border border-kenya-green/30 rounded-sm ${
+                      Math.random() > 0.85 ? 'bg-kenya-red/20 animate-pulse' : ''
+                    }`}
+                    style={{
+                      animationDelay: `${Math.random() * 4}s`,
+                      animationDuration: `${3 + Math.random() * 3}s`
+                    }}
+                  ></div>
+                ))}
               </div>
             </div>
+            
+            {/* Geometric design elements */}
+            <div className="absolute top-10 left-10 w-32 h-32 border-2 border-kenya-red/60 rounded-full animate-spin-slow"></div>
+            <div className="absolute top-32 right-20 w-20 h-20 border-2 border-kenya-white/50 rounded-lg rotate-45 animate-pulse"></div>
+            <div className="absolute bottom-20 left-1/4 w-16 h-16 bg-kenya-green/40 rounded-full animate-bounce-slow"></div>
+            <div className="absolute bottom-32 right-1/3 w-28 h-28 border-2 border-kenya-green/60 rounded-full animate-pulse"></div>
+            
+            {/* Professional tech lines */}
+            <div className="absolute top-0 left-1/4 w-px h-full bg-gradient-to-b from-transparent via-kenya-red/30 to-transparent"></div>
+            <div className="absolute top-0 right-1/3 w-px h-full bg-gradient-to-b from-transparent via-kenya-green/30 to-transparent"></div>
           </div>
         </div>
-
-        {/* Enhanced Scroll Indicator */}
-        <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-10">
-          <div className="animate-bounce">
-            <div className="w-8 h-12 border-2 border-ajira-orange-200/60 rounded-full flex justify-center">
-              <div className="w-2 h-4 bg-ajira-orange-200/80 rounded-full mt-3 animate-pulse"></div>
+        
+        <div className="relative z-10 w-full max-w-5xl mx-auto text-center px-4 py-20">
+          <div className="mb-8 flex justify-center">
+            <img src="/logo.jpeg" alt="KiNaP Ajira Club Logo" className="h-20 w-auto drop-shadow-lg rounded-lg" />
+          </div>
+          <h1 className="text-5xl md:text-7xl font-extrabold text-white mb-6 leading-tight drop-shadow-lg">
+            Empowering Kenya's Digital Generation
+          </h1>
+          <h2 className="text-2xl md:text-3xl font-semibold text-kenya-white mb-8 drop-shadow-md">
+            KiNaP Ajira Digital Club - <span className="text-kenya-green">Innovation & Excellence</span>
+          </h2>
+          <p className="text-lg md:text-xl text-white/90 mb-12 max-w-3xl mx-auto leading-relaxed drop-shadow-md">
+            Unlock your potential with world-class digital skills training, real opportunities, and a vibrant community. Join the movement that's transforming Kenya's future through technology.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-6 justify-center mb-12">
+            <Link
+              to="/auth"
+              className="bg-gradient-to-r from-kenya-red to-kenya-green hover:from-kenya-green hover:to-kenya-red text-white text-lg font-bold px-10 py-4 rounded-xl shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 border-2 border-kenya-white"
+            >
+              Get Started
+            </Link>
+            <a
+              href="https://ajiradigital.go.ke/register"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="bg-kenya-black hover:bg-kenya-white text-white hover:text-kenya-black text-lg font-bold px-10 py-4 rounded-xl shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 border-2 border-kenya-white"
+            >
+              Official Portal
+            </a>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mt-8">
+            <div className="text-center">
+              <div className="text-3xl md:text-4xl font-bold text-kenya-red drop-shadow-lg">1000+</div>
+              <div className="text-white/80">Students Trained</div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl md:text-4xl font-bold text-kenya-green drop-shadow-lg">150+</div>
+              <div className="text-white/80">Success Stories</div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl md:text-4xl font-bold text-kenya-white drop-shadow-lg">50+</div>
+              <div className="text-white/80">Skills Programs</div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl md:text-4xl font-bold text-white drop-shadow-lg">100%</div>
+              <div className="text-white/80">
+                Digital Excellence
+              </div>
             </div>
           </div>
         </div>

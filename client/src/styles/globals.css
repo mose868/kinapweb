@@ -5,41 +5,19 @@
 /* Enhanced Ajira Digital Custom Styles */
 :root {
   /* Official Ajira Digital Colors */
-  --ajira-primary: #1B4F72;
-  --ajira-secondary: #2E8B57;
+  --ajira-primary: #1A332B;
+  --ajira-green: #6FCF97;
   --ajira-accent: #FF6B35;
-  --ajira-success: #27AE60;
-  --ajira-warning: #F39C12;
-  --ajira-danger: #E74C3C;
-  --ajira-info: #3498DB;
+  --ajira-gold: #FFD600;
+  --ajira-black: #222;
+  --ajira-white: #fff;
   --ajira-light: #F8FAFC;
   --ajira-dark: #0F172A;
   
-  /* Extended Palette */
-  --ajira-blue-50: #EFF6FF;
-  --ajira-blue-100: #DBEAFE;
-  --ajira-blue-200: #BFDBFE;
-  --ajira-blue-300: #93C5FD;
-  --ajira-blue-600: #2563EB;
-  --ajira-blue-800: #1E40AF;
-  
-  --ajira-green-50: #F0FDF4;
-  --ajira-green-100: #DCFCE7;
-  --ajira-green-200: #BBF7D0;
-  --ajira-green-300: #86EFAC;
-  --ajira-green-600: #16A34A;
-  --ajira-green-700: #15803D;
-  
-  --ajira-orange-100: #FFEDD5;
-  --ajira-orange-200: #FED7AA;
-  --ajira-orange-300: #FDBA74;
-  --ajira-orange-600: #EA580C;
-  --ajira-orange-700: #C2410C;
-  
   /* Text Colors */
-  --ajira-text-primary: #1F2937;
-  --ajira-text-secondary: #4B5563;
-  --ajira-text-muted: #6B7280;
+  --ajira-text-primary: #1A332B;
+  --ajira-text-secondary: #444;
+  --ajira-text-muted: #888;
   --ajira-text-light: #9CA3AF;
   
   /* Border Colors */
@@ -50,28 +28,28 @@
 
 /* Custom Gradients */
 .bg-gradient-ajira {
-  background: linear-gradient(135deg, var(--ajira-primary) 0%, var(--ajira-secondary) 50%, var(--ajira-accent) 100%);
+  background: linear-gradient(135deg, var(--ajira-primary) 0%, var(--ajira-green) 60%, var(--ajira-accent) 100%);
 }
 
-.bg-gradient-ajira-blue {
-  background: linear-gradient(135deg, var(--ajira-primary) 0%, var(--ajira-blue-600) 100%);
+.bg-gradient-ajira-accent {
+  background: linear-gradient(90deg, var(--ajira-accent), var(--ajira-gold));
 }
 
-.bg-gradient-ajira-orange {
-  background: linear-gradient(135deg, var(--ajira-accent) 0%, var(--ajira-orange-600) 100%);
+.bg-gradient-ajira-green {
+  background: linear-gradient(90deg, var(--ajira-primary), var(--ajira-green));
 }
 
 /* Custom Shadows */
 .shadow-ajira {
-  box-shadow: 0 4px 6px -1px rgba(27, 79, 114, 0.1), 0 2px 4px -1px rgba(27, 79, 114, 0.06);
+  box-shadow: 0 4px 16px 0 rgba(26,51,43,0.08), 0 1.5px 4px 0 rgba(255,107,53,0.08);
 }
 
 .shadow-ajira-lg {
-  box-shadow: 0 10px 15px -3px rgba(27, 79, 114, 0.1), 0 4px 6px -2px rgba(27, 79, 114, 0.05);
+  box-shadow: 0 10px 24px 0 rgba(26,51,43,0.10), 0 2px 8px 0 rgba(255,214,0,0.08);
 }
 
 .shadow-ajira-xl {
-  box-shadow: 0 20px 25px -5px rgba(27, 79, 114, 0.1), 0 10px 10px -5px rgba(27, 79, 114, 0.04);
+  box-shadow: 0 20px 40px 0 rgba(26,51,43,0.12), 0 4px 16px 0 rgba(255,107,53,0.10);
 }
 
 /* Custom Animations */
@@ -121,15 +99,15 @@
 
 /* Enhanced Button Styles */
 .btn-ajira-primary {
-  @apply bg-gradient-to-r from-ajira-primary to-ajira-blue-600 text-white font-semibold py-3 px-6 rounded-xl shadow-ajira-lg hover:shadow-ajira-xl transition-all duration-200 hover:scale-105;
+  @apply bg-gradient-to-r from-ajira-primary to-ajira-green text-white font-semibold py-3 px-6 rounded-xl shadow-ajira-lg hover:shadow-ajira-xl transition-all duration-200 hover:scale-105;
 }
 
 .btn-ajira-secondary {
-  @apply bg-gradient-to-r from-ajira-secondary to-ajira-green-600 text-white font-semibold py-3 px-6 rounded-xl shadow-ajira-lg hover:shadow-ajira-xl transition-all duration-200 hover:scale-105;
+  @apply bg-gradient-to-r from-ajira-green to-ajira-accent text-white font-semibold py-3 px-6 rounded-xl shadow-ajira-lg hover:shadow-ajira-xl transition-all duration-200 hover:scale-105;
 }
 
 .btn-ajira-accent {
-  @apply bg-gradient-to-r from-ajira-accent to-ajira-orange-600 text-white font-semibold py-3 px-6 rounded-xl shadow-ajira-lg hover:shadow-ajira-xl transition-all duration-200 hover:scale-105;
+  @apply bg-gradient-to-r from-ajira-accent to-ajira-gold text-white font-semibold py-3 px-6 rounded-xl shadow-ajira-lg hover:shadow-ajira-xl transition-all duration-200 hover:scale-105;
 }
 
 /* Enhanced Card Styles */
@@ -147,7 +125,7 @@
 }
 
 .input-ajira-search {
-  @apply input-ajira pl-12 bg-white/20 backdrop-blur-sm border-white/30 text-white placeholder-ajira-blue-200;
+  @apply input-ajira pl-12 bg-white/20 backdrop-blur-sm border-white/30 text-white placeholder-ajira-green;
 }
 
 /* Custom Scrollbar */
@@ -162,13 +140,13 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: linear-gradient(135deg, var(--ajira-primary), var(--ajira-secondary));
+  background: linear-gradient(135deg, var(--ajira-primary), var(--ajira-green));
   border-radius: 4px;
   border: 2px solid var(--ajira-gray-100);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(135deg, var(--ajira-secondary), var(--ajira-accent));
+  background: linear-gradient(135deg, var(--ajira-green), var(--ajira-accent));
 }
 
 /* Line Clamp Utilities */
@@ -231,7 +209,7 @@
 
 /* Custom Badge Styles */
 .badge-verified {
-  @apply inline-flex items-center bg-ajira-secondary/10 text-ajira-secondary px-3 py-1 rounded-full text-sm font-medium;
+  @apply inline-flex items-center bg-ajira-green/10 text-ajira-green px-3 py-1 rounded-full text-sm font-medium;
 }
 
 .badge-pro {
@@ -239,7 +217,7 @@
 }
 
 .badge-top-rated {
-  @apply inline-flex items-center bg-ajira-warning/10 text-ajira-warning px-3 py-1 rounded-full text-sm font-medium;
+  @apply inline-flex items-center bg-ajira-gold/10 text-ajira-gold px-3 py-1 rounded-full text-sm font-medium;
 }
 
 .badge-featured {
@@ -418,45 +396,63 @@
   animation: glow 2s ease-in-out infinite;
 }
 
-/* Video background styles */
+/* Video background styles - Enhanced for gaming aesthetic */
 .video-overlay {
   background: linear-gradient(
     135deg,
-    rgba(30, 64, 175, 0.9) 0%,
-    rgba(147, 51, 234, 0.8) 50%,
-    rgba(30, 64, 175, 0.9) 100%
+    rgba(26, 51, 43, 0.9) 0%,
+    rgba(111, 207, 151, 0.8) 30%,
+    rgba(255, 107, 53, 0.8) 70%,
+    rgba(26, 51, 43, 0.9) 100%
   );
 }
 
-/* Particle effects */
-.particle {
+/* Gaming-style video container */
+.gaming-video-bg {
+  position: relative;
+  overflow: hidden;
+}
+
+.gaming-video-bg::before {
+  content: '';
   position: absolute;
-  border-radius: 50%;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    45deg,
+    rgba(26, 51, 43, 0.1) 0%,
+    transparent 25%,
+    transparent 75%,
+    rgba(255, 107, 53, 0.1) 100%
+  );
+  z-index: 1;
   pointer-events: none;
 }
 
-.particle-1 {
-  width: 4px;
-  height: 4px;
-  background: rgba(59, 130, 246, 0.6);
-  animation: float 4s ease-in-out infinite;
+/* Enhanced video responsiveness */
+.video-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
 }
 
-.particle-2 {
-  width: 6px;
-  height: 6px;
-  background: rgba(147, 51, 234, 0.6);
-  animation: float 5s ease-in-out infinite reverse;
+.video-container video {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  min-width: 100%;
+  min-height: 100%;
+  width: auto;
+  height: auto;
+  transform: translate(-50%, -50%);
+  object-fit: cover;
+  filter: brightness(0.8) contrast(1.1) saturate(1.2);
 }
 
-.particle-3 {
-  width: 3px;
-  height: 3px;
-  background: rgba(34, 211, 238, 0.6);
-  animation: float 3s ease-in-out infinite;
-}
-
-/* Gaming-style effects */
+/* Gaming border animation - Enhanced */
 .gaming-border {
   position: relative;
   overflow: hidden;
@@ -472,14 +468,64 @@
   background: linear-gradient(
     90deg,
     transparent,
-    rgba(59, 130, 246, 0.4),
+    rgba(255, 107, 53, 0.6),
+    rgba(111, 207, 151, 0.4),
     transparent
   );
-  transition: left 0.5s;
+  transition: left 0.8s ease-in-out;
+  z-index: 1;
 }
 
 .gaming-border:hover::before {
   left: 100%;
+}
+
+/* Particle effects - Enhanced for gaming feel */
+.particle {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.particle-1 {
+  width: 4px;
+  height: 4px;
+  background: rgba(255, 107, 53, 0.7);
+  animation: float 4s ease-in-out infinite;
+  box-shadow: 0 0 10px rgba(255, 107, 53, 0.5);
+}
+
+.particle-2 {
+  width: 6px;
+  height: 6px;
+  background: rgba(111, 207, 151, 0.7);
+  animation: float 5s ease-in-out infinite reverse;
+  box-shadow: 0 0 12px rgba(111, 207, 151, 0.5);
+}
+
+.particle-3 {
+  width: 3px;
+  height: 3px;
+  background: rgba(255, 214, 0, 0.8);
+  animation: float 3s ease-in-out infinite;
+  box-shadow: 0 0 8px rgba(255, 214, 0, 0.6);
+}
+
+/* Gaming glow effects */
+.gaming-glow {
+  box-shadow: 
+    0 0 20px rgba(255, 107, 53, 0.3),
+    0 0 40px rgba(26, 51, 43, 0.2),
+    inset 0 0 20px rgba(111, 207, 151, 0.1);
+}
+
+/* Gaming text effects */
+.gaming-text-glow {
+  text-shadow: 
+    0 0 10px rgba(255, 107, 53, 0.8),
+    0 0 20px rgba(255, 107, 53, 0.6),
+    0 0 30px rgba(255, 107, 53, 0.4);
 }
 
 /* Responsive video */
@@ -487,4 +533,58 @@
   .video-container video {
     object-position: center;
   }
+}
+
+/* Kenyan Flag Color Classes */
+.kenya-flag-stripe {
+  background: linear-gradient(to bottom, 
+    #000000 0%, #000000 33.33%, 
+    #CE1126 33.33%, #CE1126 66.66%, 
+    #006B3F 66.66%, #006B3F 100%);
+}
+
+/* Gaming-style animations with Kenyan colors */
+@keyframes kenyan-glow {
+  0%, 100% { box-shadow: 0 0 5px #CE1126, 0 0 10px #CE1126, 0 0 15px #CE1126; }
+  50% { box-shadow: 0 0 10px #006B3F, 0 0 20px #006B3F, 0 0 30px #006B3F; }
+}
+
+@keyframes kenyan-pulse {
+  0%, 100% { background-color: #CE1126; }
+  50% { background-color: #006B3F; }
+}
+
+.kenyan-glow {
+  animation: kenyan-glow 2s infinite;
+}
+
+.kenyan-pulse {
+  animation: kenyan-pulse 2s infinite;
+}
+
+/* Enhanced navigation hover effects */
+.nav-kenyan-hover {
+  transition: all 0.3s ease;
+}
+
+.nav-kenyan-hover:hover {
+  background: linear-gradient(45deg, #CE1126, #006B3F);
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(206, 17, 38, 0.3);
+}
+
+/* Patriotic button styles */
+.btn-kenyan {
+  background: linear-gradient(45deg, #000000, #CE1126, #006B3F);
+  background-size: 300% 300%;
+  animation: kenyan-gradient 3s ease infinite;
+  color: white;
+  font-weight: bold;
+}
+
+@keyframes kenyan-gradient {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
 } 

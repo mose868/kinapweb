@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Star, Heart, Award, Eye, ShoppingCart, Clock, User, Shield, CheckCircle, Verified, Crown, Zap, Badge } from 'lucide-react';
+import { Star, Heart, Award, Eye, ShoppingCart, Clock, User, Shield, CheckCircle, Verified, Crown, Zap, Badge, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { Gig } from '../../types/marketplace';
 
