@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useMutation } from 'react-query'
 import axios from 'axios'
@@ -29,6 +29,7 @@ interface FormData {
 }
 
 const AuthPage = () => {
+  // ALL HOOKS FIRST - NEVER CHANGE THE ORDER OF HOOKS
   const { user, loading: authLoading } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
@@ -58,35 +59,18 @@ const AuthPage = () => {
   const [resetEmail, setResetEmail] = useState('')
   const [showResend, setShowResend] = useState(false)
 
-  // If user is already logged in, redirect to the intended page
-  if (user) {
-    navigate(from)
-    return null
-  }
-
-  if (authLoading) {
-    return <LoadingState message="Loading authentication" description="Please wait while we check your login status" fullScreen />
-  }
-
-  // Helper: detect temp mail
+  // Helper function to detect temp mail - MUST BE BEFORE useMutation
   const isTempMail = (email: string) => {
     const domain = email.split('@')[1]?.toLowerCase() || ''
     return TEMP_MAIL_DOMAINS.some(temp => domain.includes(temp))
   }
 
-  // Handle form input changes
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target
-    setFormData(prev => ({ ...prev, [name]: value }))
-  }
-
-  // Sign up mutation
+  // Sign up mutation - ALWAYS CALLED IN SAME ORDER
   const signUpMutation = useMutation(async () => {
     if (isTempMail(formData.email)) {
       throw new Error('Temporary/disposable email addresses are not allowed.')
     }
     
-    // Prepare data for student registration API
     const studentData = {
       fullname: formData.displayName,
       idNo: formData.idNumber,
@@ -108,11 +92,10 @@ const AuthPage = () => {
 
       const data = response.data
       
-      // Store token if provided, otherwise redirect to login
       if (data.token) {
-    localStorage.setItem('token', data.token)
+        localStorage.setItem('token', data.token)
       }
-    navigate(from)
+      navigate(from)
     } catch (error: any) {
       if (error.response?.data?.message) {
         throw new Error(error.response.data.message)
@@ -121,20 +104,20 @@ const AuthPage = () => {
     }
   })
 
-  // Sign in mutation
+  // Sign in mutation - ALWAYS CALLED IN SAME ORDER
   const signInMutation = useMutation(async () => {
     try {
       const response = await axios.post('https://71bc-197-136-138-2.ngrok-free.app/api/students/login-student', {
-      email: formData.email,
-      password: formData.password,
+        email: formData.email,
+        password: formData.password,
       }, {
         headers: {
           'Content-Type': 'application/json',
         }
-    })
+      })
 
       const data = response.data
-    localStorage.setItem('token', data.token)
+      localStorage.setItem('token', data.token)
       navigate('/profile')
     } catch (error: any) {
       if (error.response?.data?.message) {
@@ -143,6 +126,36 @@ const AuthPage = () => {
       throw new Error('Login failed')
     }
   })
+
+  // useEffect hooks - ALWAYS CALLED IN SAME ORDER
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search)
+    const isRegisterMode = searchParams.get('mode') === 'register'
+    if (isRegisterMode) {
+      setIsSignUp(true)
+    }
+  }, [location.search])
+
+  useEffect(() => {
+    if (user) {
+      navigate(from)
+    }
+  }, [user, navigate, from])
+
+  // EARLY RETURNS ONLY AFTER ALL HOOKS
+  if (authLoading) {
+    return <LoadingState message="Loading authentication" description="Please wait while we check your login status" fullScreen />
+  }
+
+  if (user) {
+    return null
+  }
+
+  // Event handlers
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target
+    setFormData(prev => ({ ...prev, [name]: value }))
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -162,7 +175,6 @@ const AuthPage = () => {
     }
   }
 
-  // Password reset & email verification flows are not implemented in this backend demo
   const handlePasswordReset = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setError('Password reset functionality is not available yet.');
@@ -173,18 +185,21 @@ const AuthPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-br from-kenya-white via-gray-50 to-kenya-green/10 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <h2 className="mt-6 text-center text-3xl font-bold text-ajira-primary">
-          {isSignUp ? 'Join Ajira Digital KiNaP Club' : 'Welcome back to Ajira Digital'}
+        <div className="flex justify-center mb-6">
+          <img src="/logo.jpeg" alt="KiNaP Ajira Club" className="h-16 w-auto drop-shadow-lg rounded-lg" />
+        </div>
+        <h2 className="mt-6 text-center text-3xl font-bold text-kenya-black">
+          {isSignUp ? 'Join KiNaP Ajira Digital Club' : 'Welcome back to KiNaP Ajira'}
         </h2>
-        <p className="mt-2 text-center text-sm text-ajira-text-muted">
+        <p className="mt-2 text-center text-sm text-gray-600">
           {isSignUp ? 'Start your digital transformation journey' : 'Continue your digital journey'}{' '}
           <br />
           {isSignUp ? 'Already a member?' : "New to Ajira Digital?"}{' '}
           <button
             onClick={() => { setIsSignUp(!isSignUp); setError(''); setInfo(''); setShowResend(false) }}
-            className="font-medium text-ajira-accent hover:text-ajira-orange-600"
+            className="font-medium text-kenya-red hover:text-kenya-green transition-colors"
           >
             {isSignUp ? 'Sign in here' : 'Join the club'}
           </button>
@@ -192,7 +207,7 @@ const AuthPage = () => {
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
+        <div className="bg-white py-8 px-4 shadow-xl border border-kenya-green/20 sm:rounded-xl sm:px-10">
           {/* Error/Info Messages */}
           {error && (
             <div className="mb-4 bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg flex items-start">
@@ -227,12 +242,12 @@ const AuthPage = () => {
                 </div>
               </div>
               <div className="flex items-center justify-between">
-                                  <button
-                    type="submit"
-                    className="w-full flex justify-center py-2 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-ajira-accent hover:bg-ajira-orange-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ajira-accent"
-                  >
-                    Send Reset Link
-                  </button>
+                <button
+                  type="submit"
+                  className="w-full flex justify-center py-2 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-ajira-accent hover:bg-ajira-orange-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ajira-accent"
+                >
+                  Send Reset Link
+                </button>
               </div>
               <button
                 type="button"
@@ -464,7 +479,7 @@ const AuthPage = () => {
                 <button
                   type="submit"
                   disabled={signUpMutation.isLoading || signInMutation.isLoading}
-                  className="w-full flex justify-center py-2 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-ajira-accent hover:bg-ajira-orange-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ajira-accent disabled:opacity-50"
+                  className="w-full flex justify-center py-2 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-gradient-to-r from-kenya-red to-kenya-green hover:from-kenya-green hover:to-kenya-red focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-kenya-red disabled:opacity-50 transition-all duration-300"
                 >
                   {(signUpMutation.isLoading || signInMutation.isLoading) ? (
                     <>
