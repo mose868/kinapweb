@@ -1,18 +1,67 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
-import { Search, X, User, LogOut, Settings, Bell, Menu, ChevronDown, Info, Users, BookOpen, Briefcase, Globe, Star, Award, MessageCircle, UserCheck, HelpCircle, ChevronRight } from 'lucide-react';
+import { Search, X, User, LogOut, Settings, Bell, Menu, ChevronDown, Info, Users, BookOpen, Briefcase, Globe, Star, Award, MessageCircle, UserCheck, HelpCircle, ChevronRight, Camera } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 
 const Navbar = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+  const [notificationDropdownOpen, setNotificationDropdownOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearchResults, setShowSearchResults] = useState(false);
+  const [notifications, setNotifications] = useState([
+    { id: 1, title: 'New message from Sarah', message: 'Hey! I loved your portfolio work. Can we discuss a project?', time: '2 min ago', type: 'message', unread: true },
+    { id: 2, title: 'Order completed', message: 'Your graphic design project has been delivered successfully.', time: '1 hour ago', type: 'order', unread: true },
+    { id: 3, title: 'New review received', message: 'Michael gave you a 5-star review for web development.', time: '3 hours ago', type: 'review', unread: false },
+    { id: 4, title: 'Payment received', message: 'KSh 15,000 has been credited to your account.', time: '1 day ago', type: 'payment', unread: true },
+    { id: 5, title: 'Profile verification', message: 'Your KiNaP student verification is complete!', time: '2 days ago', type: 'system', unread: false }
+  ]);
   const searchRef = useRef<HTMLDivElement>(null);
   const userDropdownRef = useRef<HTMLDivElement>(null);
+  const notificationRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
+
+  // Calculate unread notifications count
+  const unreadCount = notifications.filter(n => n.unread).length;
+
+  // Mark notification as read
+  const markAsRead = (notificationId: number) => {
+    setNotifications(prev => 
+      prev.map(n => n.id === notificationId ? { ...n, unread: false } : n)
+    );
+  };
+
+  // Mark all notifications as read
+  const markAllAsRead = () => {
+    setNotifications(prev => prev.map(n => ({ ...n, unread: false })));
+  };
+
+  // Get notification icon based on type
+  const getNotificationIcon = (type: string) => {
+    switch (type) {
+      case 'message': return '💬';
+      case 'order': return '📦';
+      case 'review': return '⭐';
+      case 'payment': return '💰';
+      case 'system': return '🔔';
+      default: return '📢';
+    }
+  };
+
+  // Get user initials for avatar fallback
+  const getUserInitials = (user: any) => {
+    if (!user) return 'U';
+    const name = user.displayName || user.email || 'User';
+    return name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
+  };
+
+  // Get user avatar
+  const getUserAvatar = (user: any) => {
+    if (user?.photoURL) return user.photoURL;
+    return null;
+  };
 
   // Searchable content organized by categories
   const searchableContent = [
@@ -134,12 +183,16 @@ const Navbar = () => {
       if (userDropdownRef.current && !userDropdownRef.current.contains(event.target as Node)) {
         setUserDropdownOpen(false);
       }
+      if (notificationRef.current && !notificationRef.current.contains(event.target as Node)) {
+        setNotificationDropdownOpen(false);
+      }
     };
 
     const handleEscapeKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         setShowSearchResults(false);
         setUserDropdownOpen(false);
+        setNotificationDropdownOpen(false);
         setActiveDropdown(null);
         setMobileMenuOpen(false);
       }
@@ -182,6 +235,7 @@ const Navbar = () => {
     try {
       await signOut();
       setUserDropdownOpen(false);
+      setNotificationDropdownOpen(false);
       setMobileMenuOpen(false);
       navigate('/');
     } catch (error) {
@@ -196,6 +250,7 @@ const Navbar = () => {
   const closeAllDropdowns = () => {
     setActiveDropdown(null);
     setUserDropdownOpen(false);
+    setNotificationDropdownOpen(false);
     setMobileMenuOpen(false);
   };
 
@@ -320,52 +375,204 @@ const Navbar = () => {
           <div className="flex items-center space-x-4">
             {user ? (
               <div className="flex items-center space-x-3">
-                {/* Notifications */}
-                <Link to="/notifications" className="relative p-2 text-gray-600 hover:text-kenya-red hover:bg-gray-50 rounded-lg transition-colors">
-                  <Bell className="h-5 w-5" />
-                  <div className="absolute -top-1 -right-1 h-4 w-4 bg-kenya-red rounded-full flex items-center justify-center">
-                    <span className="text-white text-xs font-bold">3</span>
-                  </div>
-                </Link>
+                {/* Enhanced Notifications with Dropdown */}
+                <div ref={notificationRef} className="relative">
+                  <button
+                    onClick={() => setNotificationDropdownOpen(!notificationDropdownOpen)}
+                    className="relative p-2 text-gray-600 hover:text-kenya-red hover:bg-gray-50 rounded-lg transition-colors group"
+                  >
+                    <Bell className="h-5 w-5 group-hover:animate-pulse" />
+                    {unreadCount > 0 && (
+                      <div className="absolute -top-1 -right-1 h-5 w-5 bg-gradient-to-r from-kenya-red to-kenya-green rounded-full flex items-center justify-center shadow-lg animate-pulse">
+                        <span className="text-white text-xs font-bold">
+                          {unreadCount > 9 ? '9+' : unreadCount}
+                        </span>
+                      </div>
+                    )}
+                  </button>
+
+                  {/* Notification Dropdown */}
+                  {notificationDropdownOpen && (
+                    <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden z-50 max-h-96">
+                      {/* Header */}
+                      <div className="px-4 py-3 bg-gradient-to-r from-kenya-green/10 to-kenya-red/10 border-b border-gray-100">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                            <Bell className="h-4 w-4" />
+                            Notifications
+                          </h3>
+                          {unreadCount > 0 && (
+                            <button
+                              onClick={markAllAsRead}
+                              className="text-xs text-kenya-red hover:text-kenya-green transition-colors font-medium"
+                            >
+                              Mark all read
+                            </button>
+                          )}
+                        </div>
+                        {unreadCount > 0 && (
+                          <p className="text-xs text-gray-600 mt-1">
+                            {unreadCount} new notification{unreadCount > 1 ? 's' : ''}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Notifications List */}
+                      <div className="max-h-64 overflow-y-auto">
+                        {notifications.slice(0, 5).map((notification) => (
+                          <div
+                            key={notification.id}
+                            onClick={() => markAsRead(notification.id)}
+                            className={`p-3 hover:bg-gray-50 transition-colors cursor-pointer border-l-4 ${
+                              notification.unread 
+                                ? 'bg-blue-50/50 border-l-kenya-red' 
+                                : 'border-l-transparent'
+                            }`}
+                          >
+                            <div className="flex items-start gap-3">
+                              <span className="text-lg flex-shrink-0 mt-0.5">
+                                {getNotificationIcon(notification.type)}
+                              </span>
+                              <div className="flex-1 min-w-0">
+                                <p className={`text-sm truncate ${
+                                  notification.unread ? 'font-semibold text-gray-900' : 'text-gray-700'
+                                }`}>
+                                  {notification.title}
+                                </p>
+                                <p className="text-xs text-gray-600 line-clamp-2 mt-1">
+                                  {notification.message}
+                                </p>
+                                <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                                  <span className="w-1 h-1 bg-gray-400 rounded-full"></span>
+                                  {notification.time}
+                                </p>
+                              </div>
+                              {notification.unread && (
+                                <div className="w-2 h-2 bg-kenya-red rounded-full flex-shrink-0 mt-2"></div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Footer */}
+                      <div className="px-4 py-3 bg-gray-50 text-center border-t border-gray-100">
+                        <Link
+                          to="/notifications"
+                          onClick={() => setNotificationDropdownOpen(false)}
+                          className="text-sm font-medium text-kenya-red hover:text-kenya-green transition-colors"
+                        >
+                          View all notifications
+                        </Link>
+                      </div>
+                    </div>
+                  )}
+                </div>
                 
-                {/* User Dropdown */}
+                {/* Enhanced User Profile Dropdown */}
                 <div ref={userDropdownRef} className="relative">
                   <button
                     onClick={() => setUserDropdownOpen(!userDropdownOpen)}
-                    className="flex items-center space-x-2 p-2 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                    className="flex items-center space-x-2 p-2 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors group"
                   >
-                    <div className="w-8 h-8 bg-gradient-to-br from-kenya-red to-kenya-green rounded-full flex items-center justify-center">
-                      <User className="h-4 w-4 text-white" />
+                    {/* Profile Picture */}
+                    <div className="relative">
+                      {getUserAvatar(user) ? (
+                        <img
+                          src={getUserAvatar(user)}
+                          alt={user.displayName || user.email}
+                          className="w-9 h-9 rounded-full object-cover border-2 border-gray-200 group-hover:border-kenya-red transition-colors shadow-sm"
+                        />
+                      ) : (
+                        <div className="w-9 h-9 bg-gradient-to-br from-kenya-red via-kenya-green to-kenya-red rounded-full flex items-center justify-center shadow-sm border-2 border-gray-200 group-hover:border-kenya-green transition-colors">
+                          <span className="text-white text-sm font-bold">
+                            {getUserInitials(user)}
+                          </span>
+                        </div>
+                      )}
+                      {/* Online Status Indicator */}
+                      <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-white shadow-sm animate-pulse"></div>
                     </div>
+                    
                     <div className="hidden sm:block text-left">
-                      <div className="text-sm font-medium text-gray-900">{user.displayName || user.email}</div>
+                      <div className="text-sm font-medium text-gray-900 truncate max-w-32">
+                        {user.displayName || user.email?.split('@')[0] || 'User'}
+                      </div>
                       <UserVerificationBadge user={user} />
                     </div>
                     <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${userDropdownOpen ? 'rotate-180' : ''}`} />
                   </button>
                   
                   {userDropdownOpen && (
-                    <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-xl border border-gray-200 py-2 z-50">
-                      <div className="px-4 py-3 border-b border-gray-100">
-                        <div className="text-sm font-medium text-gray-900">{user.displayName || user.email}</div>
-                        <div className="text-xs text-gray-500 mt-1">{user.email}</div>
-                        <div className="mt-2">
-                          <UserVerificationBadge user={user} />
+                    <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-2xl border border-gray-200 py-2 z-50 overflow-hidden">
+                      {/* User Info Header */}
+                      <div className="px-4 py-3 bg-gradient-to-r from-kenya-green/10 to-kenya-red/10 border-b border-gray-100">
+                        <div className="flex items-center gap-3">
+                          {getUserAvatar(user) ? (
+                            <img
+                              src={getUserAvatar(user)}
+                              alt={user.displayName || user.email}
+                              className="w-12 h-12 rounded-full object-cover border-2 border-white shadow-lg"
+                            />
+                          ) : (
+                            <div className="w-12 h-12 bg-gradient-to-br from-kenya-red via-kenya-green to-kenya-red rounded-full flex items-center justify-center shadow-lg border-2 border-white">
+                              <span className="text-white text-lg font-bold">
+                                {getUserInitials(user)}
+                              </span>
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-semibold text-gray-900 truncate">
+                              {user.displayName || user.email?.split('@')[0] || 'User'}
+                            </div>
+                            <div className="text-xs text-gray-600 truncate">{user.email}</div>
+                            <div className="mt-1">
+                              <UserVerificationBadge user={user} />
+                            </div>
+                          </div>
                         </div>
                       </div>
-                      <Link to="/profile" className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                        <User className="h-4 w-4 mr-3 text-kenya-green" />
-                        Profile
-                      </Link>
-                      <Link to="/orders" className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                        <Settings className="h-4 w-4 mr-3 text-kenya-green" />
-                        Orders
-                      </Link>
-                      <div className="border-t border-gray-100 mt-2 pt-2">
-                        <button onClick={handleSignOut} className="flex items-center w-full px-4 py-2 text-sm text-kenya-red hover:bg-kenya-red/5 transition-colors">
-                          <LogOut className="h-4 w-4 mr-3" />
-                          Sign Out
-                        </button>
+                      
+                      {/* Menu Items */}
+                      <div className="py-2">
+                        <Link 
+                          to="/profile" 
+                          className="flex items-center px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors group"
+                          onClick={() => setUserDropdownOpen(false)}
+                        >
+                          <User className="h-4 w-4 mr-3 text-kenya-green group-hover:text-kenya-red transition-colors" />
+                          My Profile
+                        </Link>
+                        <Link 
+                          to="/orders" 
+                          className="flex items-center px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors group"
+                          onClick={() => setUserDropdownOpen(false)}
+                        >
+                          <Settings className="h-4 w-4 mr-3 text-kenya-green group-hover:text-kenya-red transition-colors" />
+                          My Orders
+                        </Link>
+                        <Link 
+                          to="/notifications" 
+                          className="flex items-center px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors group"
+                          onClick={() => setUserDropdownOpen(false)}
+                        >
+                          <Bell className="h-4 w-4 mr-3 text-kenya-green group-hover:text-kenya-red transition-colors" />
+                          Notifications
+                          {unreadCount > 0 && (
+                            <span className="ml-auto bg-kenya-red text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                              {unreadCount > 9 ? '9+' : unreadCount}
+                            </span>
+                          )}
+                        </Link>
+                        <div className="border-t border-gray-100 mt-2 pt-2">
+                          <button 
+                            onClick={handleSignOut} 
+                            className="flex items-center w-full px-4 py-2.5 text-sm text-kenya-red hover:bg-kenya-red/5 transition-colors group"
+                          >
+                            <LogOut className="h-4 w-4 mr-3 group-hover:animate-pulse" />
+                            Sign Out
+                          </button>
+                        </div>
                       </div>
                     </div>
                   )}
@@ -466,37 +673,59 @@ const Navbar = () => {
               ))}
             </div>
             
-            {/* Mobile User Section */}
+            {/* Enhanced Mobile User Section */}
             <div className="border-t border-kenya-green/10 pt-4 mt-4">
               {user ? (
                 <div className="space-y-3">
-                  <div className="flex items-center gap-3 px-4 py-2">
-                    <div className="w-10 h-10 bg-gradient-to-br from-kenya-red to-kenya-green rounded-full flex items-center justify-center shadow-lg">
-                      <User className="h-5 w-5 text-white" />
+                  <div className="flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-kenya-green/10 to-kenya-red/10 rounded-lg">
+                    {getUserAvatar(user) ? (
+                      <img
+                        src={getUserAvatar(user)}
+                        alt={user.displayName || user.email}
+                        className="w-12 h-12 rounded-full object-cover border-2 border-white shadow-lg"
+                      />
+                    ) : (
+                      <div className="w-12 h-12 bg-gradient-to-br from-kenya-red via-kenya-green to-kenya-red rounded-full flex items-center justify-center shadow-lg border-2 border-white">
+                        <span className="text-white text-lg font-bold">
+                          {getUserInitials(user)}
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex-1">
+                      <div className="font-semibold text-kenya-black">
+                        {user.displayName || user.email?.split('@')[0] || 'User'}
+                      </div>
+                      <div className="text-sm text-gray-600 truncate">{user.email}</div>
+                      <div className="mt-1">
+                        <UserVerificationBadge user={user} />
+                      </div>
                     </div>
-                    <div>
-                      <div className="font-semibold text-kenya-black">{user.displayName || user.email}</div>
-                      <div className="text-sm text-gray-600">{user.email}</div>
-                    </div>
+                    {/* Online Status */}
+                    <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
                   </div>
                   <div className="space-y-1">
-                    <Link to="/profile" className="flex items-center gap-3 px-4 py-2 text-kenya-black hover:bg-kenya-green/10 rounded-lg transition-colors" onClick={closeAllDropdowns}>
-                      <User className="h-4 w-4 text-kenya-green" />
-                      Profile
+                    <Link to="/profile" className="flex items-center gap-3 px-4 py-3 text-kenya-black hover:bg-kenya-green/10 rounded-lg transition-colors group" onClick={closeAllDropdowns}>
+                      <User className="h-4 w-4 text-kenya-green group-hover:text-kenya-red transition-colors" />
+                      My Profile
                     </Link>
-                    <Link to="/orders" className="flex items-center gap-3 px-4 py-2 text-kenya-black hover:bg-kenya-green/10 rounded-lg transition-colors" onClick={closeAllDropdowns}>
-                      <Settings className="h-4 w-4 text-kenya-green" />
-                      Orders
+                    <Link to="/orders" className="flex items-center gap-3 px-4 py-3 text-kenya-black hover:bg-kenya-green/10 rounded-lg transition-colors group" onClick={closeAllDropdowns}>
+                      <Settings className="h-4 w-4 text-kenya-green group-hover:text-kenya-red transition-colors" />
+                      My Orders
                     </Link>
-                    <Link to="/notifications" className="flex items-center gap-3 px-4 py-2 text-kenya-black hover:bg-kenya-green/10 rounded-lg transition-colors" onClick={closeAllDropdowns}>
-                      <Bell className="h-4 w-4 text-kenya-green" />
+                    <Link to="/notifications" className="flex items-center gap-3 px-4 py-3 text-kenya-black hover:bg-kenya-green/10 rounded-lg transition-colors group" onClick={closeAllDropdowns}>
+                      <Bell className="h-4 w-4 text-kenya-green group-hover:text-kenya-red transition-colors" />
                       Notifications
+                      {unreadCount > 0 && (
+                        <span className="ml-auto bg-kenya-red text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                          {unreadCount > 9 ? '9+' : unreadCount}
+                        </span>
+                      )}
                     </Link>
                     <button 
                       onClick={handleSignOut} 
-                      className="flex items-center gap-3 w-full px-4 py-2 text-kenya-red hover:bg-kenya-red/10 rounded-lg transition-colors"
+                      className="flex items-center gap-3 w-full px-4 py-3 text-kenya-red hover:bg-kenya-red/10 rounded-lg transition-colors group"
                     >
-                      <LogOut className="h-4 w-4" />
+                      <LogOut className="h-4 w-4 group-hover:animate-pulse" />
                       Sign Out
                     </button>
                   </div>

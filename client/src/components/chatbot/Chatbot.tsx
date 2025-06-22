@@ -236,21 +236,41 @@ const Chatbot = () => {
   const handleAgentEscalation = () => {
     addMessage({
       id: Date.now().toString(),
-      content: "I'll connect you with a human agent for personalized assistance.",
+      content: "I'm connecting you with our live agent Sarah Wanjiku, Digital Skills Advisor. She specializes in career guidance and digital skills development. Please hold for just a moment! 👩‍💼",
       sender: 'bot',
       timestamp: new Date(),
       type: 'text'
     })
 
+    // Simulate agent joining
     setTimeout(() => {
       addMessage({
-        id: Date.now().toString(),
-        content: "Please choose how you'd like to contact our support team:",
+        id: (Date.now() + 1).toString(),
+        content: "Hi there! 👋 I'm Sarah from the KiNaP Digital Skills team. I saw you were chatting with our AI assistant. I'm here to provide personalized guidance on digital skills, career planning, and opportunities. How can I help you today?",
         sender: 'bot',
         timestamp: new Date(),
-        type: 'contact'
+        type: 'text'
       })
-    }, 1000)
+      
+      // Add quick response options for agent conversation
+      setTimeout(() => {
+        addMessage({
+          id: (Date.now() + 2).toString(),
+          content: "I can help you with:",
+          sender: 'bot',
+          timestamp: new Date(),
+          type: 'options',
+          options: [
+            'Career guidance and planning',
+            'Digital skills development',
+            'Freelancing opportunities',
+            'KiNaP program enrollment',
+            'Technical support',
+            'Other questions'
+          ]
+        })
+      }, 1500)
+    }, 2000)
   }
 
   const handleUserMessage = (message: string) => {
