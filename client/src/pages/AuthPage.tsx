@@ -139,7 +139,7 @@ const AuthPage = () => {
       const data = response.data
       
       // Save both token and email to localStorage
-      localStorage.setItem('token', data.token)
+    localStorage.setItem('token', data.token)
       localStorage.setItem('userEmail', formData.email)
       
       // Navigate to profile page

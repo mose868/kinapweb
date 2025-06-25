@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { collection, getDocs } from 'firebase/firestore'
-import { db } from '../config/firebase'
+import { db } from '../../config/firebase'
 import { Users, Award, DollarSign, Briefcase, Star, Loader2 } from 'lucide-react'
 
 interface Metrics {

@@ -1,11 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
-<<<<<<< HEAD
-import { Search, X, User, LogOut, Bell, Settings } from 'lucide-react';
-=======
 import { Search, X, User, LogOut, Settings, Bell } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
->>>>>>> dd25fd4ae581ae831578a3336b8c01d7a79d4ea9
 
 const Navbar = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -47,14 +43,28 @@ const Navbar = () => {
     };
   }, []);
 
-  // Custom logout function
-  const handleSignOut = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('userEmail');
-    setIsLoggedIn(false);
-    setUserEmail('');
-    setProfileDropdown(false);
-    navigate('/');
+  // Custom logout function - handles both Firebase and localStorage
+  const handleSignOut = async () => {
+    try {
+      // Clear localStorage
+      localStorage.removeItem('token');
+      localStorage.removeItem('userEmail');
+      setIsLoggedIn(false);
+      setUserEmail('');
+      setProfileDropdown(false);
+      setUserDropdown(false);
+      
+      // Sign out from Firebase if user exists
+      if (user) {
+        await signOut();
+      }
+      
+      navigate('/');
+    } catch (error) {
+      console.error('Error signing out:', error);
+      // Still navigate even if Firebase signout fails
+      navigate('/');
+    }
   };
 
   // All searchable pages and content
@@ -110,14 +120,12 @@ const Navbar = () => {
       if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
         setShowSearchResults(false);
       }
-<<<<<<< HEAD
+      if (userDropdownRef.current && !userDropdownRef.current.contains(event.target as Node)) {
+        setUserDropdown(false);
+      }
       // Close profile dropdown when clicking outside
       if (!(event.target as Element).closest('.profile-dropdown')) {
         setProfileDropdown(false);
-=======
-      if (userDropdownRef.current && !userDropdownRef.current.contains(event.target as Node)) {
-        setUserDropdown(false);
->>>>>>> dd25fd4ae581ae831578a3336b8c01d7a79d4ea9
       }
     };
 
@@ -213,16 +221,6 @@ const Navbar = () => {
     },
   ];
 
-  const handleSignOut = async () => {
-    try {
-      await signOut();
-      setUserDropdown(false);
-      navigate('/');
-    } catch (error) {
-      console.error('Error signing out:', error);
-    }
-  };
-
   return (
     <nav className="bg-white shadow sticky top-0 z-50">
       <div className="max-w-7xl mx-auto flex items-center justify-between py-3 px-4">
@@ -291,11 +289,6 @@ const Navbar = () => {
             Videos
           </NavLink>
           
-<<<<<<< HEAD
-          {dropdowns
-            .filter(dd => !(dd.label === 'Account' && isLoggedIn)) // Hide Account dropdown when logged in
-            .map((dd) => (
-=======
           <NavLink 
             to="/mazungumzo" 
             className={({ isActive }) => 
@@ -307,8 +300,9 @@ const Navbar = () => {
             Mazungumzo Hub
           </NavLink>
           
-          {dropdowns.map((dd) => (
->>>>>>> dd25fd4ae581ae831578a3336b8c01d7a79d4ea9
+          {dropdowns
+            .filter(dd => !(dd.label === 'Account' && (user || isLoggedIn))) // Hide Account dropdown when logged in
+            .map((dd) => (
             <div key={dd.label} className="relative group">
               <button
                 className="text-gray-700 hover:text-ajira-accent font-semibold px-2 py-1 focus:outline-none transition-colors flex items-center gap-1"
@@ -355,29 +349,17 @@ const Navbar = () => {
             </div>
           ))}
           
-<<<<<<< HEAD
-          {isLoggedIn ? (
-            // Profile dropdown for authenticated users
-            <div className="relative profile-dropdown">
+          {/* User Profile Section or Sign In Button */}
+          {(user || isLoggedIn) ? (
+            <div className="relative profile-dropdown" ref={userDropdownRef}>
               <button
-                onClick={() => setProfileDropdown(!profileDropdown)}
+                onClick={() => {
+                  setUserDropdown(!userDropdown);
+                  setProfileDropdown(!profileDropdown);
+                }}
                 className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-100 transition-colors"
               >
-                <div className="w-8 h-8 bg-gradient-to-r from-red-600 to-black rounded-full flex items-center justify-center">
-                  <User className="w-5 h-5 text-white" />
-                </div>
-                <span className="text-gray-700 font-medium">{userEmail.split('@')[0]}</span>
-                <svg 
-                  className={`w-4 h-4 transition-transform ${profileDropdown ? 'rotate-180' : ''}`} 
-=======
-          {/* User Profile Section or Sign In Button */}
-          {user ? (
-            <div className="relative" ref={userDropdownRef}>
-              <button
-                onClick={() => setUserDropdown(!userDropdown)}
-                className="flex items-center gap-2 p-2 rounded-full hover:bg-gray-100 transition-colors"
-              >
-{user.photoURL ? (
+                {user?.photoURL ? (
                   <img 
                     src={user.photoURL} 
                     alt={user.displayName || 'User'} 
@@ -385,15 +367,14 @@ const Navbar = () => {
                   />
                 ) : (
                   <div className="w-8 h-8 bg-gradient-to-r from-red-600 to-black rounded-full flex items-center justify-center text-white text-sm font-semibold">
-                    {user.displayName ? user.displayName.charAt(0).toUpperCase() : user.email?.charAt(0).toUpperCase() || 'U'}
+                    {user?.displayName ? user.displayName.charAt(0).toUpperCase() : user?.email?.charAt(0).toUpperCase() || userEmail?.charAt(0).toUpperCase() || 'U'}
                   </div>
                 )}
                 <span className="hidden sm:block text-sm font-medium text-gray-700">
-                  {user.displayName || user.email?.split('@')[0]}
+                  {user?.displayName || user?.email?.split('@')[0] || userEmail.split('@')[0]}
                 </span>
                 <svg 
-                  className={`w-4 h-4 transition-transform ${userDropdown ? 'rotate-180' : ''}`} 
->>>>>>> dd25fd4ae581ae831578a3336b8c01d7a79d4ea9
+                  className={`w-4 h-4 transition-transform ${(userDropdown || profileDropdown) ? 'rotate-180' : ''}`}
                   fill="none" 
                   stroke="currentColor" 
                   strokeWidth="2" 
@@ -403,74 +384,49 @@ const Navbar = () => {
                 </svg>
               </button>
               
-<<<<<<< HEAD
-              {profileDropdown && (
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-gray-200 py-2">
-                  <Link
-                    to="/profile"
-                    className="flex items-center gap-3 px-4 py-2 text-gray-700 hover:bg-gray-50 transition-colors"
-                    onClick={() => setProfileDropdown(false)}
-=======
               {/* User Dropdown Menu */}
-              {userDropdown && (
+              {(userDropdown || profileDropdown) && (
                 <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl py-2 border border-gray-100 z-50">
                   <div className="px-4 py-2 border-b border-gray-100">
                     <p className="text-sm font-medium text-gray-900">
-                      {user.displayName || 'User'}
+                      {user?.displayName || userEmail.split('@')[0] || 'User'}
                     </p>
                     <p className="text-xs text-gray-500">
-                      {user.email}
+                      {user?.email || userEmail}
                     </p>
                   </div>
                   
                   <Link
                     to="/profile"
                     className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                    onClick={() => setUserDropdown(false)}
->>>>>>> dd25fd4ae581ae831578a3336b8c01d7a79d4ea9
+                    onClick={() => {
+                      setUserDropdown(false);
+                      setProfileDropdown(false);
+                    }}
                   >
                     <User className="w-4 h-4" />
                     Profile
                   </Link>
-<<<<<<< HEAD
-                  <Link
-                    to="/orders"
-                    className="flex items-center gap-3 px-4 py-2 text-gray-700 hover:bg-gray-50 transition-colors"
-                    onClick={() => setProfileDropdown(false)}
-                  >
-                    <Settings className="w-4 h-4" />
-                    Orders
-                  </Link>
-                  <Link
-                    to="/notifications"
-                    className="flex items-center gap-3 px-4 py-2 text-gray-700 hover:bg-gray-50 transition-colors"
-                    onClick={() => setProfileDropdown(false)}
-=======
                   
                   <Link
                     to="/notifications"
                     className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                    onClick={() => setUserDropdown(false)}
->>>>>>> dd25fd4ae581ae831578a3336b8c01d7a79d4ea9
+                    onClick={() => {
+                      setUserDropdown(false);
+                      setProfileDropdown(false);
+                    }}
                   >
                     <Bell className="w-4 h-4" />
                     Notifications
                   </Link>
-<<<<<<< HEAD
-                  <hr className="my-2" />
-                  <button
-                    onClick={handleLogout}
-                    className="flex items-center gap-3 px-4 py-2 text-red-600 hover:bg-red-50 transition-colors w-full text-left"
-                  >
-                    <LogOut className="w-4 h-4" />
-                    Sign Out
-                  </button>
-=======
                   
                   <Link
                     to="/orders"
                     className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                    onClick={() => setUserDropdown(false)}
+                    onClick={() => {
+                      setUserDropdown(false);
+                      setProfileDropdown(false);
+                    }}
                   >
                     <Settings className="w-4 h-4" />
                     Orders
@@ -478,19 +434,22 @@ const Navbar = () => {
                   
                   <div className="border-t border-gray-100 mt-2 pt-2">
                     <button
-                      onClick={handleSignOut}
+                      onClick={() => {
+                        handleSignOut();
+                        handleLogout();
+                        setUserDropdown(false);
+                        setProfileDropdown(false);
+                      }}
                       className="flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors w-full text-left"
                     >
                       <LogOut className="w-4 h-4" />
                       Sign Out
                     </button>
                   </div>
->>>>>>> dd25fd4ae581ae831578a3336b8c01d7a79d4ea9
                 </div>
               )}
             </div>
           ) : (
-<<<<<<< HEAD
             // Sign up/Sign in buttons for non-authenticated users
             <div className="flex items-center gap-3">
               <Link
@@ -503,17 +462,9 @@ const Navbar = () => {
                 to="/auth"
                 className="bg-gradient-to-r from-red-600 to-black text-white px-4 py-2 rounded-lg hover:shadow-lg transition-all duration-200 font-semibold"
               >
-                Sign Up
+                Join / Sign Up
               </Link>
             </div>
-=======
-          <Link
-            to="/auth"
-            className="bg-gradient-to-r from-red-600 to-black text-white px-4 py-2 rounded-lg hover:shadow-lg transition-all duration-200 font-semibold"
-          >
-            Join / Sign In
-          </Link>
->>>>>>> dd25fd4ae581ae831578a3336b8c01d7a79d4ea9
           )}
         </div>
         
@@ -599,23 +550,11 @@ const Navbar = () => {
               </div>
             ))}
             
-<<<<<<< HEAD
-            {isLoggedIn ? (
-              // Mobile profile section for authenticated users
-              <div className="mx-4 mb-4">
-                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg mb-3">
-                  <div className="w-10 h-10 bg-gradient-to-r from-red-600 to-black rounded-full flex items-center justify-center">
-                    <User className="w-6 h-6 text-white" />
-                  </div>
-                  <div>
-                    <div className="font-semibold text-gray-800">{userEmail.split('@')[0]}</div>
-                    <div className="text-sm text-gray-600">{userEmail}</div>
-=======
             {/* Mobile User Section */}
-            {user ? (
+            {(user || isLoggedIn) ? (
               <div className="mb-4 p-4 bg-gray-50 rounded-lg">
                 <div className="flex items-center gap-3 mb-3">
-                  {user.photoURL ? (
+                  {user?.photoURL ? (
                     <img 
                       src={user.photoURL} 
                       alt={user.displayName || 'User'} 
@@ -623,64 +562,37 @@ const Navbar = () => {
                     />
                   ) : (
                     <div className="w-10 h-10 bg-gradient-to-r from-red-600 to-black rounded-full flex items-center justify-center text-white font-semibold">
-                      {user.displayName ? user.displayName.charAt(0).toUpperCase() : user.email?.charAt(0).toUpperCase() || 'U'}
+                      {user?.displayName ? user.displayName.charAt(0).toUpperCase() : user?.email?.charAt(0).toUpperCase() || userEmail?.charAt(0).toUpperCase() || 'U'}
                     </div>
                   )}
                   <div>
                     <p className="font-medium text-gray-900">
-                      {user.displayName || 'User'}
+                      {user?.displayName || userEmail?.split('@')[0] || 'User'}
                     </p>
                     <p className="text-sm text-gray-500">
-                      {user.email}
+                      {user?.email || userEmail}
                     </p>
->>>>>>> dd25fd4ae581ae831578a3336b8c01d7a79d4ea9
                   </div>
                 </div>
                 
                 <div className="space-y-2">
                   <Link
                     to="/profile"
-<<<<<<< HEAD
-                    className="flex items-center gap-3 px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-=======
                     className="flex items-center gap-3 px-3 py-2 text-sm text-gray-700 hover:bg-white rounded transition-colors"
->>>>>>> dd25fd4ae581ae831578a3336b8c01d7a79d4ea9
                     onClick={() => setMenuOpen(false)}
                   >
                     <User className="w-4 h-4" />
                     Profile
                   </Link>
-<<<<<<< HEAD
-                  <Link
-                    to="/orders"
-                    className="flex items-center gap-3 px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-                    onClick={() => setMenuOpen(false)}
-                  >
-                    <Settings className="w-4 h-4" />
-                    Orders
-                  </Link>
-                  <Link
-                    to="/notifications"
-                    className="flex items-center gap-3 px-3 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-=======
                   
                   <Link
                     to="/notifications"
                     className="flex items-center gap-3 px-3 py-2 text-sm text-gray-700 hover:bg-white rounded transition-colors"
->>>>>>> dd25fd4ae581ae831578a3336b8c01d7a79d4ea9
                     onClick={() => setMenuOpen(false)}
                   >
                     <Bell className="w-4 h-4" />
                     Notifications
                   </Link>
-<<<<<<< HEAD
-                  <button
-                    onClick={() => {
-                      handleLogout();
-                      setMenuOpen(false);
-                    }}
-                    className="flex items-center gap-3 px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors w-full text-left"
-=======
                   
                   <Link
                     to="/orders"
@@ -694,10 +606,10 @@ const Navbar = () => {
                   <button
                     onClick={() => {
                       handleSignOut();
+                      handleLogout();
                       setMenuOpen(false);
                     }}
                     className="flex items-center gap-3 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded transition-colors w-full text-left"
->>>>>>> dd25fd4ae581ae831578a3336b8c01d7a79d4ea9
                   >
                     <LogOut className="w-4 h-4" />
                     Sign Out
@@ -705,7 +617,6 @@ const Navbar = () => {
                 </div>
               </div>
             ) : (
-<<<<<<< HEAD
               // Mobile sign up/sign in buttons for non-authenticated users
               <div className="mx-4 mb-4 space-y-2">
                 <Link
@@ -720,18 +631,9 @@ const Navbar = () => {
                   className="block bg-gradient-to-r from-red-600 to-black text-white px-4 py-3 rounded-lg text-center font-semibold"
                   onClick={() => setMenuOpen(false)}
                 >
-                  Sign Up
+                  Join / Sign Up
                 </Link>
               </div>
-=======
-            <Link
-              to="/auth"
-              className="block mx-4 mb-4 bg-gradient-to-r from-red-600 to-black text-white px-4 py-3 rounded-lg text-center font-semibold"
-              onClick={() => setMenuOpen(false)}
-            >
-              Join / Sign In
-            </Link>
->>>>>>> dd25fd4ae581ae831578a3336b8c01d7a79d4ea9
             )}
           </div>
         </div>
