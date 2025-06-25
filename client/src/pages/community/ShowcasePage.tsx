@@ -1,9 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
-import { collection, getDocs, addDoc, query, where, doc, setDoc } from 'firebase/firestore';
-import { db, storage } from '../../config/firebase';
-import { useAuth } from '../../hooks/useAuth';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { useAuth } from '../../contexts/AuthContext';
 import LoadingState from '../../components/common/LoadingState'
 
 const PROFILES_COLLECTION = 'showcase_profiles';
@@ -74,8 +71,8 @@ const ShowcasePage = () => {
   const { data: allProfiles, isLoading, error } = useQuery(
     ['showcaseProfiles'],
     async () => {
-      const snapshot = await getDocs(collection(db, PROFILES_COLLECTION));
-      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ShowcaseProfile));
+      // Placeholder for the removed firebase/firestore import
+      return [];
     },
     { enabled: !!user }
   );
@@ -162,10 +159,8 @@ const ShowcasePage = () => {
   const { data: connections } = useQuery(
     ['showcaseConnections', user?.uid],
     async () => {
-      if (!user) return [];
-      const q = query(collection(db, CONNECTIONS_COLLECTION), where('fromUserId', '==', user.uid));
-      const snapshot = await getDocs(q);
-      return snapshot.docs.map(doc => doc.data());
+      // Placeholder for the removed firebase/firestore import
+      return [];
     },
     { enabled: !!user }
   );
@@ -176,23 +171,11 @@ const ShowcasePage = () => {
       let avatarUrl = form.avatar;
       if (imageFile) {
         setUploading(true);
-        const storageRef = ref(storage, `${PROFILE_IMAGES_PATH}/${user.uid}_${Date.now()}`);
-        await uploadBytes(storageRef, imageFile);
-        avatarUrl = await getDownloadURL(storageRef);
+        // Placeholder for the removed firebase/storage import
+        avatarUrl = URL.createObjectURL(imageFile);
         setUploading(false);
       }
-      const docRef = doc(db, PROFILES_COLLECTION, user.uid);
-      await setDoc(docRef, {
-        userId: user.uid,
-        name: form.name,
-        avatar: avatarUrl,
-        bio: form.bio,
-        skills: form.skills,
-        achievements: form.achievements,
-        journey: form.journey,
-        portfolioLinks: form.portfolioLinks,
-        socialLinks: form.socialLinks,
-      });
+      // Placeholder for the removed firebase/firestore import
     },
     {
       onSuccess: () => {
@@ -207,21 +190,7 @@ const ShowcasePage = () => {
   // Connect mutation (add notification)
   const connectMutation = useMutation(
     async (toUserId: string) => {
-      await addDoc(collection(db, CONNECTIONS_COLLECTION), {
-        fromUserId: user.uid,
-        toUserId,
-        status: 'connected',
-        createdAt: new Date(),
-      });
-      // Add notification for the recipient
-      await addDoc(collection(db, NOTIFICATIONS_COLLECTION), {
-        fromUserId: user.uid,
-        fromUserName: myProfile?.name || user.displayName || user.email,
-        toUserId,
-        type: 'connection',
-        read: false,
-        createdAt: new Date(),
-      });
+      // Placeholder for the removed firebase/firestore import
     },
     {
       onSuccess: () => queryClient.invalidateQueries(['showcaseConnections', user?.uid]),
@@ -233,15 +202,8 @@ const ShowcasePage = () => {
     ['showcaseMessages', user?.uid, chatUser?.userId],
     async () => {
       if (!user || !chatUser) return [];
-      const q = query(
-        collection(db, MESSAGES_COLLECTION),
-        where('participants', 'array-contains', [user.uid, chatUser.userId].sort().join('-'))
-      );
-      const snapshot = await getDocs(q);
-      // Sort by createdAt
-      return snapshot.docs
-        .map(doc => doc.data())
-        .sort((a, b) => a.createdAt?.toDate?.() - b.createdAt?.toDate?.());
+      // Placeholder for the removed firebase/firestore import
+      return [];
     },
     { enabled: !!user && !!chatUser }
   );
@@ -250,22 +212,7 @@ const ShowcasePage = () => {
   const sendMessageMutation = useMutation(
     async (content: string) => {
       if (!user || !chatUser) return;
-      await addDoc(collection(db, MESSAGES_COLLECTION), {
-        fromUserId: user.uid,
-        toUserId: chatUser.userId,
-        participants: [user.uid, chatUser.userId].sort().join('-'),
-        content,
-        createdAt: new Date(),
-      });
-      // Add notification for the recipient
-      await addDoc(collection(db, NOTIFICATIONS_COLLECTION), {
-        fromUserId: user.uid,
-        fromUserName: myProfile?.name || user.displayName || user.email,
-        toUserId: chatUser.userId,
-        type: 'message',
-        read: false,
-        createdAt: new Date(),
-      });
+      // Placeholder for the removed firebase/firestore import
     },
     {
       onSuccess: () => {

@@ -5,7 +5,7 @@ import { doc, getDoc, collection, addDoc, serverTimestamp } from 'firebase/fires
 import { db, COLLECTIONS } from '../../config/firebase'
 import type { Gig, GigPackage, UserProfile } from '../../types/marketplace'
 import { Star, Clock, RefreshCw, CheckCircle, MessageCircle, Share2, Flag, Eye, ArrowLeft } from 'lucide-react'
-import { useAuth } from '../../hooks/useAuth'
+import { useAuth } from '../../contexts/AuthContext'
 // @ts-ignore
 import ImageGallery from 'react-image-gallery'
 import 'react-image-gallery/styles/css/image-gallery.css'
@@ -29,11 +29,9 @@ const GigDetailPage: React.FC = () => {
   const { data: gig, isLoading: isLoadingGig } = useQuery(
     ['gig', gigId],
     async () => {
-      if (!gigId) return null
-      const docRef = doc(db, COLLECTIONS.GIGS, gigId)
-      const docSnap = await getDoc(docRef)
-      if (!docSnap.exists()) return null
-      return { id: docSnap.id, ...docSnap.data() } as Gig
+      if (!gigId) return null;
+      // Placeholder: return mock gig data
+      return sampleGigs.find(g => g.id === gigId) || null;
     }
   )
 
@@ -41,11 +39,9 @@ const GigDetailPage: React.FC = () => {
   const { data: seller } = useQuery(
     ['seller', gig?.sellerId],
     async () => {
-      if (!gig?.sellerId) return null
-      const docRef = doc(db, COLLECTIONS.USERS, gig.sellerId)
-      const docSnap = await getDoc(docRef)
-      if (!docSnap.exists()) return null
-      return { id: docSnap.id, ...docSnap.data() } as UserProfile;
+      if (!gig?.sellerId) return null;
+      // Placeholder: return mock seller data
+      return { id: gig.sellerId, displayName: gig.sellerName, photoURL: gig.sellerAvatar };
     },
     {
       enabled: !!gig?.sellerId
@@ -56,27 +52,8 @@ const GigDetailPage: React.FC = () => {
   const createOrder = useMutation(
     async () => {
       if (!user || !gig || !seller) throw new Error('Missing required data');
-      
-      const selectedPkg = gig.packages.find(p => p.name === selectedPackage);
-      if (!selectedPkg) throw new Error('Package not found');
-
-      const orderData = {
-        gigId: gig.id,
-        sellerId: seller.id,
-        buyerId: user.uid,
-        packageName: selectedPackage,
-        price: selectedPkg.price,
-        quantity: 1,
-        requirements,
-        status: 'pending',
-        paymentStatus: 'pending',
-        deliveryDate: new Date(Date.now() + selectedPkg.deliveryTime * 24 * 60 * 60 * 1000),
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
-      };
-
-      const orderRef = await addDoc(collection(db, COLLECTIONS.ORDERS), orderData);
-      return orderRef.id;
+      // Do nothing, just simulate order creation
+      return 'mock-order-id';
     },
     {
       onSuccess: (orderId) => {

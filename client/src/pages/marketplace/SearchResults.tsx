@@ -1,8 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery } from 'react-query';
-import { collection, query, where, orderBy, limit, getDocs, QueryConstraint } from 'firebase/firestore';
-import { db, COLLECTIONS } from '../../config/firebase';
 // import { SearchBar } from '../../components/search';
 import GigCard from '../../components/marketplace/GigCard';
 import { SlidersHorizontal } from 'lucide-react';
@@ -42,46 +40,8 @@ const SearchResults = () => {
   const { data, isLoading } = useQuery(
     ['search-results', searchQuery, sortBy, filters],
     async () => {
-      const gigsRef = collection(db, COLLECTIONS.GIGS);
-      const constraints: QueryConstraint[] = [
-        where('title', '>=', searchQuery.toLowerCase()),
-        where('title', '<=', searchQuery.toLowerCase() + '\uf8ff'),
-      ];
-
-      // Apply filters
-      if (filters.rating) {
-        constraints.push(where('rating', '>=', filters.rating));
-      }
-      if (filters.category) {
-        constraints.push(where('category', '==', filters.category));
-        if (filters.subcategory) {
-          constraints.push(where('subcategory', '==', filters.subcategory));
-        }
-      }
-
-      // Apply sorting
-      switch (sortBy) {
-        case 'rating':
-          constraints.push(orderBy('rating', 'desc'));
-          break;
-        case 'price_low':
-          constraints.push(orderBy('packages.0.price', 'asc'));
-          break;
-        case 'price_high':
-          constraints.push(orderBy('packages.0.price', 'desc'));
-          break;
-        case 'newest':
-          constraints.push(orderBy('createdAt', 'desc'));
-          break;
-        default:
-          constraints.push(orderBy('title'));
-      }
-
-      constraints.push(limit(GIGS_PER_PAGE));
-
-      const q = query(gigsRef, ...constraints);
-      const snapshot = await getDocs(q);
-      const gigs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Gig));
+      // Placeholder for the removed firebase logic
+      const gigs = [];
       // Filter by price range and delivery time after fetching
       return gigs.filter(gig => {
         const lowestPrice = Math.min(...gig.packages.map(p => p.price));

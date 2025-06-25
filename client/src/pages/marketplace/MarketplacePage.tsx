@@ -1,288 +1,718 @@
-import React, { useState } from 'react';
-import { useQuery } from 'react-query';
-import { collection, getDocs, query, orderBy } from 'firebase/firestore';
-import { db } from '../../config/firebase';
+import React, { useState, useEffect } from 'react';
 import GigCard from '../../components/marketplace/GigCard';
 import LoadingState from '../../components/common/LoadingState'
-import type { Gig } from '../../types/marketplace';
-import type { Timestamp } from 'firebase/firestore';
+import sampleGigs from '../../data/sampleGigs';
+import { Award, Filter, Search, Star, ChevronDown, Grid, List, MapPin, Clock, Users, TrendingUp, Zap, Shield, Sparkles } from 'lucide-react';
+import { 
+  CategoryShowcase, 
+  TrustedBySection, 
+  TestimonialsSection, 
+  HowItWorksSection, 
+  PopularServicesSection 
+} from '../../components/marketplace/FiverrLikeFeatures';
 
-const categories = [
-  { name: 'All', value: 'all', img: 'https://fiverr-res.cloudinary.com/images/q_auto,f_auto/gigs/1234567890/sample-graphic.jpg' },
-  { name: 'Graphics & Design', value: 'graphic-design', img: 'https://fiverr-res.cloudinary.com/images/q_auto,f_auto/gigs/1234567890/sample-graphic.jpg' },
-  { name: 'Digital Marketing', value: 'digital-marketing', img: 'https://fiverr-res.cloudinary.com/images/q_auto,f_auto/gigs/1234567890/sample-marketing.jpg' },
-  { name: 'Writing & Translation', value: 'content-writing', img: 'https://fiverr-res.cloudinary.com/images/q_auto,f_auto/gigs/1234567890/sample-writing.jpg' },
-  { name: 'Video & Animation', value: 'video-animation', img: 'https://fiverr-res.cloudinary.com/images/q_auto,f_auto/gigs/1234567890/sample-video.jpg' },
-  { name: 'Music & Audio', value: 'music-audio', img: 'https://fiverr-res.cloudinary.com/images/q_auto,f_auto/gigs/1234567890/sample-music.jpg' },
-  { name: 'Programming & Tech', value: 'programming-tech', img: 'https://fiverr-res.cloudinary.com/images/q_auto,f_auto/gigs/1234567890/sample-tech.jpg' },
+// Exact Fiverr-like categories with subcategories - Updated with Ajira colors
+const fiverCategories = [
+  { 
+    name: 'Graphics & Design', 
+    value: 'Graphics & Design',
+    subcategories: ['Logo Design', 'Brand Style Guides', 'Business Cards', 'Flyer Design', 'Poster Design', 'Brochure Design', 'Social Media Design', 'Web & Mobile Design', 'Package & Label Design', 'Illustration', 'Pattern Design', 'Presentations', 'Infographic Design', 'Vector Tracing', 'Resume Design'],
+    icon: '🎨',
+    color: 'from-ajira-primary to-ajira-blue-600'
+  },
+  { 
+    name: 'Digital Marketing', 
+    value: 'Digital Marketing',
+    subcategories: ['Social Media Marketing', 'SEO', 'Content Marketing', 'Video Marketing', 'Email Marketing', 'Search Engine Marketing', 'Marketing Strategy', 'Web Analytics', 'Influencer Marketing', 'Public Relations', 'Local SEO', 'E-Commerce Marketing', 'Mobile App Marketing', 'Music Promotion', 'Podcast Marketing'],
+    icon: '📊',
+    color: 'from-ajira-secondary to-ajira-green-600'
+  },
+  { 
+    name: 'Writing & Translation', 
+    value: 'Writing & Translation',
+    subcategories: ['Content Writing', 'Copywriting', 'Technical Writing', 'Creative Writing', 'Translation', 'Proofreading & Editing', 'Resume Writing', 'Cover Letters', 'LinkedIn Profiles', 'Product Descriptions', 'Press Releases', 'Speechwriting', 'Grant Writing', 'Book Writing', 'Script Writing'],
+    icon: '✍️',
+    color: 'from-ajira-accent to-ajira-orange-600'
+  },
+  { 
+    name: 'Video & Animation', 
+    value: 'Video & Animation',
+    subcategories: ['Video Editing', 'Visual Effects', 'Intro & Outro Videos', 'Video Ads', 'Lyric & Music Videos', 'Slideshow Videos', 'Live Action Explainer', 'Animation', 'Character Animation', 'Logo Animation', 'Lottie & Web Animation', 'NFT Animation', 'Article to Video', 'App & Website Previews', 'Crowdfunding Videos'],
+    icon: '🎬',
+    color: 'from-ajira-info to-ajira-blue-500'
+  },
+  { 
+    name: 'Music & Audio', 
+    value: 'Music & Audio',
+    subcategories: ['Voice Over', 'Music Production', 'Audio Editing', 'Sound Design', 'Mixing & Mastering', 'Jingles & Intros', 'Audiobook Production', 'Podcast Production', 'Audio Ads', 'Custom Songs', 'Online Music Lessons', 'Audio Logo & Sonic Branding', 'DJ Drops & Tags', 'Singer-Songwriter', 'Session Musicians'],
+    icon: '🎵',
+    color: 'from-purple-500 to-ajira-primary'
+  },
+  { 
+    name: 'Programming & Tech', 
+    value: 'Programming & Tech',
+    subcategories: ['Website Development', 'Website Platforms', 'Website Maintenance', 'Mobile Apps', 'Desktop Applications', 'Chatbot Development', 'Game Development', 'Web Programming', 'E-Commerce Development', 'Database', 'User Testing', 'QA & Review', 'DevOps & Cloud', 'Cybersecurity', 'Data Processing'],
+    icon: '💻',
+    color: 'from-ajira-dark to-ajira-primary'
+  },
+  { 
+    name: 'Business', 
+    value: 'Business',
+    subcategories: ['Virtual Assistant', 'Data Entry', 'Market Research', 'Business Plans', 'Legal Consulting', 'Financial Consulting', 'HR Consulting', 'Customer Care', 'Project Management', 'CRM Management', 'ERP Management', 'Supply Chain Management', 'Event Management', 'Sales', 'Lead Generation'],
+    icon: '💼',
+    color: 'from-ajira-secondary to-ajira-green-700'
+  },
+  { 
+    name: 'Lifestyle', 
+    value: 'Lifestyle',
+    subcategories: ['Gaming', 'Fitness', 'Nutrition', 'Cooking Lessons', 'Arts & Crafts', 'Relationship Advice', 'Travel Itineraries', 'Astrology', 'Spiritual & Healing', 'Family & Genealogy', 'Career Counseling', 'Life Coaching', 'Fashion Advice', 'Beauty', 'Wellness'],
+    icon: '🌟',
+    color: 'from-ajira-accent to-ajira-orange-700'
+  }
 ];
 
-const howItWorks = [
-  {
-    title: '1. Find a Service',
-    desc: 'Browse categories or use the search bar to find the perfect gig.',
-    img: 'https://cdn-icons-png.flaticon.com/512/482/482631.png',
-  },
-  {
-    title: '2. Place Your Order',
-    desc: 'Contact the seller, discuss your needs, and place your order securely.',
-    img: 'https://cdn-icons-png.flaticon.com/512/1256/1256650.png',
-  },
-  {
-    title: '3. Get Your Delivery',
-    desc: 'Receive your work, request revisions, and approve the final delivery.',
-    img: 'https://cdn-icons-png.flaticon.com/512/190/190411.png',
-  },
-];
-
+// Fiverr-like sort options
 const SORT_OPTIONS = [
-  { value: 'newest', label: 'Newest' },
-  { value: 'priceLow', label: 'Price: Low to High (KES)' },
-  { value: 'priceHigh', label: 'Price: High to Low (KES)' },
+  { value: 'recommended', label: 'Recommended' },
+  { value: 'kinapChoice', label: "KiNaP's Choice" },
+  { value: 'bestSelling', label: 'Best Selling' },
+  { value: 'newest', label: 'Newest Arrivals' },
   { value: 'topRated', label: 'Top Rated' },
+  { value: 'priceLow', label: 'Price: Low to High' },
+  { value: 'priceHigh', label: 'Price: High to Low' },
 ];
 
-const GIGS_PER_PAGE = 6;
+// Fiverr-like price ranges
+const PRICE_RANGES = [
+  { value: 'all', label: 'Any Price', min: 0, max: Infinity },
+  { value: 'under500', label: 'Under KES 500', min: 0, max: 500 },
+  { value: '500to2000', label: 'KES 500 - KES 2,000', min: 500, max: 2000 },
+  { value: '2000to5000', label: 'KES 2,000 - KES 5,000', min: 2000, max: 5000 },
+  { value: '5000to10000', label: 'KES 5,000 - KES 10,000', min: 5000, max: 10000 },
+  { value: 'over10000', label: 'KES 10,000+', min: 10000, max: Infinity },
+];
 
+// Delivery time filters
+const DELIVERY_OPTIONS = [
+  { value: 'all', label: 'Any Time' },
+  { value: '1day', label: 'Express 24H' },
+  { value: '3days', label: 'Up to 3 days' },
+  { value: '7days', label: 'Up to 7 days' },
+  { value: '14days', label: 'Up to 14 days' },
+];
+
+const GIGS_PER_PAGE = 20;
 
 const MarketplacePage = () => {
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedSubcategory, setSelectedSubcategory] = useState('all');
   const [search, setSearch] = useState('');
-  const [sortBy, setSortBy] = useState('newest');
+  const [sortBy, setSortBy] = useState('recommended');
+  const [priceRange, setPriceRange] = useState('all');
+  const [deliveryTime, setDeliveryTime] = useState('all');
+  const [showKinapChoiceOnly, setShowKinapChoiceOnly] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+  const [viewMode, setViewMode] = useState('grid');
   const [page, setPage] = useState(1);
 
-  // Fetch all gigs (for filtering/searching client-side)
-  const { data: gigs, isLoading } = useQuery(
-    ['allGigs'],
-    async () => {
-      const q = query(collection(db, 'gigs'), orderBy('createdAt', 'desc'));
-      const snapshot = await getDocs(q);
-      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Gig));
-    }
-  );
+  // Use sample gigs data
+  const gigs = sampleGigs;
+  const isLoading = false;
 
-  // Filter gigs by category and search
-  let filteredGigs = (gigs || []).filter((gig: Gig) => {
+  // Get current category data
+  const currentCategory = fiverCategories.find(cat => cat.value === selectedCategory);
+  const subcategories = currentCategory?.subcategories || [];
+
+  // Advanced filtering with Fiverr-like logic
+  let filteredGigs = (gigs || []).filter((gig: any) => {
+    // Category filter
     const matchesCategory = selectedCategory === 'all' || gig.category === selectedCategory;
-    const matchesSearch =
-      gig.title.toLowerCase().includes(search.toLowerCase()) ||
-      gig.description.toLowerCase().includes(search.toLowerCase());
-    return matchesCategory && matchesSearch;
+    
+    // Subcategory filter
+    const matchesSubcategory = selectedSubcategory === 'all' || gig.subcategory === selectedSubcategory;
+    
+    // Search filter (title, description, tags, seller name)
+    const searchTerm = search.toLowerCase();
+    const matchesSearch = !searchTerm || 
+      gig.title.toLowerCase().includes(searchTerm) ||
+      gig.description.toLowerCase().includes(searchTerm) ||
+      gig.seller?.name.toLowerCase().includes(searchTerm) ||
+      (gig.tags && gig.tags.some((tag: string) => tag.toLowerCase().includes(searchTerm)));
+    
+    // Price range filter
+    const priceRangeData = PRICE_RANGES.find(range => range.value === priceRange);
+    const gigPrice = gig.packages?.[0]?.price || gig.price || 0;
+    const matchesPrice = !priceRangeData || (gigPrice >= priceRangeData.min && gigPrice <= priceRangeData.max);
+    
+    // Delivery time filter
+    const gigDeliveryDays = parseInt(gig.deliveryTime) || parseInt(gig.packages?.[0]?.deliveryTime) || 999;
+    const matchesDelivery = deliveryTime === 'all' || 
+      (deliveryTime === '1day' && gigDeliveryDays <= 1) ||
+      (deliveryTime === '3days' && gigDeliveryDays <= 3) ||
+      (deliveryTime === '7days' && gigDeliveryDays <= 7) ||
+      (deliveryTime === '14days' && gigDeliveryDays <= 14);
+    
+    // KiNaP's Choice filter
+    const matchesKinapChoice = !showKinapChoiceOnly || gig.isKinapChoice;
+    
+    return matchesCategory && matchesSubcategory && matchesSearch && matchesPrice && matchesDelivery && matchesKinapChoice;
   });
 
-  // Sort gigs
-  filteredGigs = filteredGigs.sort((a, b) => {
-    const getTimestamp = (val: any) => {
-      if (val instanceof Date) return val.getTime();
-      // Firestore Timestamp has toDate, FieldValue does not
-      if (val && typeof val.toDate === 'function') return (val as Timestamp).toDate().getTime();
-      return 0;
-    };
-    if (sortBy === 'newest') {
-      return getTimestamp(b.createdAt) - getTimestamp(a.createdAt);
-    } else if (sortBy === 'priceLow') {
-      return Number(a.packages[0]?.price) - Number(b.packages[0]?.price);
-    } else if (sortBy === 'priceHigh') {
-      return Number(b.packages[0]?.price) - Number(a.packages[0]?.price);
-    } else if (sortBy === 'topRated') {
-      return (Number(b.stats?.rating) || 0) - (Number(a.stats?.rating) || 0);
+  // Advanced sorting with Fiverr-like algorithm
+  filteredGigs = filteredGigs.sort((a: any, b: any) => {
+    const getPrice = (gig: any) => gig.packages?.[0]?.price || gig.price || 0;
+    const getRating = (gig: any) => Number(gig.stats?.rating || gig.rating) || 0;
+    const getOrders = (gig: any) => Number(gig.stats?.orders || gig.orders) || 0;
+    const getReviews = (gig: any) => Number(gig.stats?.reviews || gig.reviews) || 0;
+
+    switch (sortBy) {
+      case 'recommended':
+        // Fiverr's algorithm: KiNaP's Choice first, then score based on rating, orders, and reviews
+        if (a.isKinapChoice && !b.isKinapChoice) return -1;
+        if (!a.isKinapChoice && b.isKinapChoice) return 1;
+        const scoreA = (getRating(a) * 0.4) + (Math.log(getOrders(a) + 1) * 0.3) + (Math.log(getReviews(a) + 1) * 0.3);
+        const scoreB = (getRating(b) * 0.4) + (Math.log(getOrders(b) + 1) * 0.3) + (Math.log(getReviews(b) + 1) * 0.3);
+        return scoreB - scoreA;
+      case 'kinapChoice':
+        if (a.isKinapChoice && !b.isKinapChoice) return -1;
+        if (!a.isKinapChoice && b.isKinapChoice) return 1;
+        return getRating(b) - getRating(a);
+      case 'bestSelling':
+        return getOrders(b) - getOrders(a);
+      case 'newest':
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      case 'topRated':
+        if (getRating(b) !== getRating(a)) return getRating(b) - getRating(a);
+        return getReviews(b) - getReviews(a);
+      case 'priceLow':
+        return getPrice(a) - getPrice(b);
+      case 'priceHigh':
+        return getPrice(b) - getPrice(a);
+      default:
+        return 0;
     }
-    return 0;
   });
 
   // Pagination
   const totalPages = Math.ceil(filteredGigs.length / GIGS_PER_PAGE);
   const paginatedGigs = filteredGigs.slice((page - 1) * GIGS_PER_PAGE, page * GIGS_PER_PAGE);
 
-  // Reset to page 1 when filters/search/sort change
-  React.useEffect(() => {
+  // Reset to page 1 when filters change
+  useEffect(() => {
     setPage(1);
-  }, [selectedCategory, search, sortBy]);
+  }, [selectedCategory, selectedSubcategory, search, sortBy, priceRange, deliveryTime, showKinapChoiceOnly]);
 
-  // If loading, show loading state
+  // Loading state
   if (isLoading) {
     return <LoadingState message="Loading marketplace" description="Please wait while we fetch the latest gigs" />
   }
 
-  // If no gigs, show demo gigs
-  if (!gigs || gigs.length === 0) {
-    const demoGigs = [
-      {
-        id: 'demo1',
-        title: 'Logo Design for Startups',
-        description: 'Get a professional logo for your business. Delivered in 48 hours!',
-        category: 'Graphics & Design',
-        packages: [{ price: 1500 }],
-        stats: { rating: 4.9 },
-        image: 'https://fiverr-res.cloudinary.com/images/q_auto,f_auto/gigs/1234567890/sample-graphic.jpg',
-        seller: { name: 'Jane Doe', avatar: 'https://randomuser.me/api/portraits/women/44.jpg' },
-      },
-      {
-        id: 'demo2',
-        title: 'SEO Content Writing',
-        description: 'SEO-optimized articles and blog posts for your website.',
-        category: 'Writing & Translation',
-        packages: [{ price: 1000 }],
-        stats: { rating: 4.8 },
-        image: 'https://fiverr-res.cloudinary.com/images/q_auto,f_auto/gigs/1234567890/sample-writing.jpg',
-        seller: { name: 'John Smith', avatar: 'https://randomuser.me/api/portraits/men/32.jpg' },
-      }
-    ];
-    return (
-      <div className="bg-gray-50 min-h-screen">
-        <section className="bg-ajira-primary text-white py-16 px-4 text-center">
-          <h1 className="text-4xl md:text-5xl font-bold mb-4">Find the perfect freelance services for your business</h1>
-          <p className="text-lg mb-8">Get things done with top talent on Ajira Marketplace, inspired by Kinaps</p>
-        </section>
-        <section className="py-12 px-4 max-w-6xl mx-auto">
-          <h2 className="text-2xl font-bold mb-6 text-center">Featured Gigs (Demo)</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {demoGigs.map(gig => (
-              <div key={gig.id} className="bg-white rounded-lg shadow p-6 flex flex-col items-center">
-                <img src={gig.image} alt={gig.title} className="w-32 h-32 object-cover rounded mb-4" />
-                <h3 className="text-xl font-semibold mb-2">{gig.title}</h3>
-                <p className="text-gray-600 mb-2">{gig.description}</p>
-                <div className="mb-2"><span className="font-semibold">Category:</span> {gig.category}</div>
-                <div className="mb-2"><span className="font-semibold">Price:</span> KES {gig.packages[0].price}</div>
-                <div className="mb-2"><span className="font-semibold">Rating:</span> {gig.stats.rating}</div>
-                <div className="flex items-center mt-2">
-                  <img src={gig.seller.avatar} alt={gig.seller.name} className="w-8 h-8 rounded-full mr-2" />
-                  <span className="text-sm">{gig.seller.name}</span>
-                </div>
-              </div>
+  return (
+    <div className="bg-ajira-light min-h-screen">
+      {/* Enhanced Ajira Digital Hero Section - Single Search */}
+      <section className="relative bg-gradient-ajira text-white py-24 px-4 overflow-hidden">
+        {/* Background Pattern */}
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute top-10 left-10 w-20 h-20 border-2 border-white rounded-full"></div>
+          <div className="absolute top-32 right-20 w-16 h-16 border-2 border-ajira-orange-300 rounded-lg rotate-45"></div>
+          <div className="absolute bottom-20 left-1/4 w-12 h-12 bg-ajira-green-300 rounded-full"></div>
+          <div className="absolute bottom-32 right-1/3 w-24 h-24 border-2 border-ajira-blue-300 rounded-full"></div>
+        </div>
+        
+        <div className="max-w-6xl mx-auto text-center relative z-10">
+          <div className="flex items-center justify-center gap-2 mb-6">
+            <Sparkles className="w-8 h-8 text-ajira-orange-300 animate-spin-slow" />
+            <span className="text-ajira-orange-200 text-lg font-medium">KiNaP Digital Marketplace</span>
+            <Sparkles className="w-8 h-8 text-ajira-orange-300 animate-spin-slow" />
+          </div>
+          
+          <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight">
+            Find the <span className="text-transparent bg-clip-text bg-gradient-to-r from-ajira-orange-200 to-ajira-green-200">perfect</span>
+            <br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-ajira-green-200 to-ajira-blue-200">freelance service</span>
+          </h1>
+          
+          <p className="text-xl md:text-2xl text-ajira-blue-200 mb-12 max-w-3xl mx-auto">
+            Connect with top Kenyan talent and get your projects done with quality and speed
+          </p>
+          
+          {/* Main Search Bar */}
+          <div className="max-w-4xl mx-auto mb-12">
+            <div className="flex items-center bg-white/10 backdrop-blur-md rounded-2xl shadow-ajira-xl overflow-hidden border border-white/20">
+              <Search className="w-6 h-6 text-ajira-blue-200 ml-6" />
+              <input
+                type="text"
+                placeholder="What service are you looking for today?"
+                className="flex-1 px-6 py-6 text-lg text-white placeholder-ajira-blue-200 bg-transparent outline-none"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+              />
+              <button 
+                className="bg-ajira-accent hover:bg-ajira-orange-600 text-white px-10 py-6 font-semibold text-lg transition-all duration-200 hover:scale-105"
+                onClick={() => {
+                  // Trigger search or navigate to results
+                  if (search.trim()) {
+                    document.getElementById('results-section')?.scrollIntoView({ behavior: 'smooth' });
+                  }
+                }}
+              >
+                Search
+              </button>
+            </div>
+          </div>
+          
+          {/* Popular Tags */}
+          <div className="flex flex-wrap justify-center gap-3 mb-8">
+            <span className="text-ajira-orange-200 text-lg">Popular:</span>
+            {['Logo Design', 'WordPress', 'Voice Over', 'Video Editing', 'Data Entry', 'Social Media', 'SEO'].map(tag => (
+              <button 
+                key={tag}
+                onClick={() => setSearch(tag)}
+                className="bg-white/10 backdrop-blur-sm hover:bg-white/20 px-4 py-2 rounded-full text-sm transition-all duration-200 border border-white/20 hover:border-ajira-accent/50 hover:scale-105"
+              >
+                {tag}
+              </button>
             ))}
           </div>
-          <div className="mt-8 text-center">
-            <p className="text-gray-500">Sign up or log in to post your own gig and hire freelancers!</p>
+
+          {/* Stats */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mt-16">
+            <div className="text-center">
+              <div className="text-3xl md:text-4xl font-bold text-ajira-orange-200">1000+</div>
+              <div className="text-ajira-blue-200">Active Services</div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl md:text-4xl font-bold text-ajira-green-200">50+</div>
+              <div className="text-ajira-blue-200">Expert Freelancers</div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl md:text-4xl font-bold text-ajira-orange-200">98%</div>
+              <div className="text-ajira-blue-200">Satisfaction Rate</div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl md:text-4xl font-bold text-ajira-green-200">24H</div>
+              <div className="text-ajira-blue-200">Avg Response</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Enhanced Category Navigation */}
+      <section className="bg-white border-b border-ajira-gray-200 sticky top-0 z-40 shadow-ajira">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="flex items-center overflow-x-auto py-4 space-x-6">
+            <button
+              onClick={() => {setSelectedCategory('all'); setSelectedSubcategory('all');}}
+              className={`flex items-center whitespace-nowrap px-6 py-3 rounded-xl transition-all duration-200 ${
+                selectedCategory === 'all' 
+                  ? 'bg-gradient-ajira-blue text-white font-semibold shadow-ajira-lg scale-105' 
+                  : 'text-ajira-text-secondary hover:text-ajira-primary hover:bg-ajira-light'
+              }`}
+            >
+              <span className="mr-2 text-lg">🏠</span>
+              All Categories
+            </button>
+            {fiverCategories.map(category => (
+              <button
+                key={category.value}
+                onClick={() => {setSelectedCategory(category.value); setSelectedSubcategory('all');}}
+                className={`flex items-center whitespace-nowrap px-6 py-3 rounded-xl transition-all duration-200 relative overflow-hidden ${
+                  selectedCategory === category.value 
+                    ? `bg-gradient-to-r ${category.color} text-white font-semibold shadow-ajira-lg scale-105` 
+                    : 'text-ajira-text-secondary hover:text-ajira-primary hover:bg-ajira-light hover:scale-105'
+                }`}
+              >
+                <span className="mr-2 text-lg">{category.icon}</span>
+                {category.name}
+                {selectedCategory === category.value && (
+                  <div className="absolute inset-0 bg-white/10 animate-pulse"></div>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Enhanced Subcategory Navigation */}
+      {selectedCategory !== 'all' && subcategories.length > 0 && (
+        <section className="bg-ajira-light border-b border-ajira-gray-200">
+          <div className="max-w-7xl mx-auto px-4 py-4">
+            <div className="flex items-center overflow-x-auto space-x-3">
+              <button
+                onClick={() => setSelectedSubcategory('all')}
+                className={`whitespace-nowrap px-4 py-2 rounded-full text-sm transition-all duration-200 ${
+                  selectedSubcategory === 'all' 
+                    ? 'bg-ajira-primary text-white shadow-ajira' 
+                    : 'text-ajira-text-secondary hover:text-ajira-primary hover:bg-white'
+                }`}
+              >
+                All {currentCategory?.name}
+              </button>
+              {subcategories.map(sub => (
+                <button
+                  key={sub}
+                  onClick={() => setSelectedSubcategory(sub)}
+                  className={`whitespace-nowrap px-4 py-2 rounded-full text-sm transition-all duration-200 ${
+                    selectedSubcategory === sub 
+                      ? 'bg-ajira-primary text-white shadow-ajira' 
+                      : 'text-ajira-text-secondary hover:text-ajira-primary hover:bg-white'
+                  }`}
+                >
+                  {sub}
+                </button>
+              ))}
+            </div>
           </div>
         </section>
-      </div>
-    );
-  }
+      )}
 
-  return (
-    <div className="bg-gray-50 min-h-screen">
-      {/* Hero Section */}
-      <section className="bg-ajira-primary text-white py-16 px-4 text-center">
-        <h1 className="text-4xl md:text-5xl font-bold mb-4">Find the perfect freelance services for your business</h1>
-        <p className="text-lg mb-8">Get things done with top talent on Ajira Marketplace, inspired by Kinaps</p>
-        <div className="max-w-xl mx-auto flex items-center bg-white rounded-full shadow px-4 py-2">
-          <input
-            type="text"
-            placeholder="Try 'logo design'"
-            className="flex-1 px-4 py-2 rounded-full text-black outline-none"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-          />
-          <button className="bg-ajira-accent text-white px-6 py-2 rounded-full ml-2 font-semibold hover:bg-ajira-accent/90 transition">Search</button>
-        </div>
-        <img
-          src="https://fiverr-res.cloudinary.com/npm-assets/@fiverr/logged_out_homepage_perseus/hero-illustration-v2.svg"
-          alt="Marketplace Hero"
-          className="mx-auto mt-8 w-full max-w-2xl"
-        />
-      </section>
-
-      {/* Popular Categories (with filter) */}
-      <section className="py-12 px-4 max-w-6xl mx-auto">
-        <h2 className="text-2xl font-bold mb-6 text-center">Popular Categories</h2>
-        <div className="flex flex-wrap justify-center gap-4 mb-8">
-          {categories.map((cat) => (
-            <button
-              key={cat.value}
-              className={`flex flex-col items-center px-4 py-2 rounded-lg border transition shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-ajira-accent/50 ${selectedCategory === cat.value ? 'bg-ajira-accent text-white border-ajira-accent' : 'bg-white text-gray-800 border-gray-200'}`}
-              onClick={() => setSelectedCategory(cat.value)}
-            >
-              <img src={cat.img} alt={cat.name} className="w-10 h-10 object-cover rounded-full mb-1" />
-              <span className="font-semibold text-sm">{cat.name}</span>
-            </button>
-          ))}
-        </div>
-      </section>
-
-      {/* How it Works */}
-      <section className="py-12 px-4 bg-white">
-        <h2 className="text-2xl font-bold mb-6 text-center">How it Works</h2>
-        <div className="flex flex-col md:flex-row justify-center items-center gap-8">
-          {howItWorks.map((step) => (
-            <div key={step.title} className="flex flex-col items-center max-w-xs text-center">
-              <img src={step.img} alt={step.title} className="w-20 h-20 mb-4" />
-              <h3 className="font-bold text-lg mb-2">{step.title}</h3>
-              <p className="text-gray-600">{step.desc}</p>
+      {/* KiNaP's Choice Banner - Enhanced with Ajira colors */}
+      {gigs.filter((g: any) => g.isKinapChoice).length > 0 && !showKinapChoiceOnly && (
+        <section className="bg-gradient-ajira-orange text-white py-16 relative overflow-hidden">
+          <div className="absolute inset-0 bg-black/10"></div>
+          <div className="max-w-7xl mx-auto px-4 text-center relative z-10">
+            <div className="flex items-center justify-center gap-4 mb-6">
+              <Award className="w-12 h-12 animate-bounce-slow" />
+              <h2 className="text-5xl font-bold">KiNaP's Choice</h2>
+              <Award className="w-12 h-12 animate-bounce-slow" />
             </div>
-          ))}
-        </div>
-      </section>
+            <p className="text-xl mb-8 max-w-3xl mx-auto">
+              Premium services hand-picked by our team for exceptional quality and customer satisfaction. 
+              Work with the best talent in Kenya.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+              <button
+                onClick={() => setShowKinapChoiceOnly(true)}
+                className="bg-white text-ajira-accent px-8 py-4 rounded-xl font-semibold hover:bg-ajira-gray-100 transition-all duration-200 shadow-ajira-lg hover:scale-105"
+              >
+                Explore KiNaP's Choice
+              </button>
+              <div className="flex items-center gap-2 text-ajira-orange-200">
+                <Shield className="w-5 h-5" />
+                <span>Quality Guaranteed</span>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
 
-      {/* Featured Gigs (filtered, sorted, paginated) */}
-      <section className="py-12 px-4 max-w-6xl mx-auto">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
-          <h2 className="text-2xl font-bold text-center md:text-left">Featured Gigs</h2>
-          <div className="flex items-center gap-2">
-            <span className="text-gray-600 text-sm">Sort by:</span>
+      {/* Main Content */}
+      <section id="results-section" className="max-w-7xl mx-auto px-4 py-12">
+        {/* Enhanced Filters and Results Header */}
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-8 gap-6">
+          <div>
+            <h1 className="text-3xl font-bold text-ajira-text-primary mb-2">
+              {showKinapChoiceOnly ? (
+                <span className="flex items-center gap-3">
+                  <Award className="w-8 h-8 text-ajira-accent" />
+                  KiNaP's Choice Services
+                </span>
+              ) : (
+                `${filteredGigs.length.toLocaleString()} services available`
+              )}
+              {selectedCategory !== 'all' && (
+                <span className="text-xl font-normal text-ajira-text-secondary ml-3">
+                  in {currentCategory?.name}
+                  {selectedSubcategory !== 'all' && ` > ${selectedSubcategory}`}
+                </span>
+              )}
+            </h1>
+            <div className="flex items-center gap-6 text-sm text-ajira-text-muted">
+              <div className="flex items-center gap-2">
+                <Users className="w-4 h-4" />
+                <span>{gigs.length.toLocaleString()} freelancers</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <MapPin className="w-4 h-4" />
+                <span>Kenya</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <TrendingUp className="w-4 h-4" />
+                <span>Growing daily</span>
+              </div>
+            </div>
+          </div>
+          
+          <div className="flex flex-col sm:flex-row items-center gap-4">
+            {/* KiNaP's Choice Toggle */}
+            <button
+              onClick={() => setShowKinapChoiceOnly(!showKinapChoiceOnly)}
+              className={`flex items-center gap-2 px-6 py-3 rounded-xl border transition-all duration-200 ${
+                showKinapChoiceOnly 
+                  ? 'bg-ajira-accent text-white border-ajira-accent shadow-ajira-lg' 
+                  : 'bg-white text-ajira-text-primary border-ajira-gray-300 hover:border-ajira-accent hover:shadow-ajira'
+              }`}
+            >
+              <Award className="w-5 h-5" />
+              <span className="font-medium">KiNaP's Choice</span>
+            </button>
+            
+            {/* Filters Toggle */}
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className="flex items-center gap-2 px-6 py-3 rounded-xl border border-ajira-gray-300 bg-white text-ajira-text-primary hover:border-ajira-secondary hover:shadow-ajira transition-all duration-200"
+            >
+              <Filter className="w-5 h-5" />
+              <span className="font-medium">Filter</span>
+              <ChevronDown className={`w-4 h-4 transition-transform ${showFilters ? 'rotate-180' : ''}`} />
+            </button>
+            
+            {/* Sort Dropdown */}
             <select
               value={sortBy}
               onChange={e => setSortBy(e.target.value)}
-              className="bg-white border border-gray-300 text-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-ajira-accent/50"
+              className="px-6 py-3 border border-ajira-gray-300 rounded-xl bg-white text-ajira-text-primary focus:outline-none focus:ring-2 focus:ring-ajira-secondary focus:border-transparent shadow-ajira hover:shadow-ajira-lg transition-all duration-200"
             >
               {SORT_OPTIONS.map(opt => (
                 <option key={opt.value} value={opt.value}>{opt.label}</option>
               ))}
             </select>
+            
+            {/* View Mode Toggle */}
+            <div className="flex border border-ajira-gray-300 rounded-xl overflow-hidden shadow-ajira">
+              <button
+                onClick={() => setViewMode('grid')}
+                className={`p-3 transition-all duration-200 ${viewMode === 'grid' ? 'bg-ajira-primary text-white' : 'bg-white text-ajira-text-secondary hover:bg-ajira-light'}`}
+              >
+                <Grid className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => setViewMode('list')}
+                className={`p-3 transition-all duration-200 ${viewMode === 'list' ? 'bg-ajira-primary text-white' : 'bg-white text-ajira-text-secondary hover:bg-ajira-light'}`}
+              >
+                <List className="w-5 h-5" />
+              </button>
+            </div>
           </div>
         </div>
+
+        {/* Enhanced Advanced Filters Panel */}
+        {showFilters && (
+          <div className="bg-white border border-ajira-gray-200 rounded-2xl p-8 mb-8 shadow-ajira-lg">
+            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
+              <div>
+                <label className="block text-sm font-semibold text-ajira-text-primary mb-3">Price Range</label>
+                <select
+                  value={priceRange}
+                  onChange={e => setPriceRange(e.target.value)}
+                  className="w-full px-4 py-3 border border-ajira-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-ajira-secondary transition-all duration-200"
+                >
+                  {PRICE_RANGES.map(range => (
+                    <option key={range.value} value={range.value}>{range.label}</option>
+                  ))}
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-semibold text-ajira-text-primary mb-3">Delivery Time</label>
+                <select
+                  value={deliveryTime}
+                  onChange={e => setDeliveryTime(e.target.value)}
+                  className="w-full px-4 py-3 border border-ajira-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-ajira-secondary transition-all duration-200"
+                >
+                  {DELIVERY_OPTIONS.map(option => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
+              </div>
+              
+              <div className="md:col-span-2 lg:col-span-2">
+                <div className="flex items-center justify-end space-x-4 h-full">
+                  <button
+                    onClick={() => {
+                      setPriceRange('all');
+                      setDeliveryTime('all');
+                      setShowKinapChoiceOnly(false);
+                    }}
+                    className="px-6 py-3 text-ajira-text-muted hover:text-ajira-text-primary transition-colors"
+                  >
+                    Clear all filters
+                  </button>
+                  <button
+                    onClick={() => setShowFilters(false)}
+                    className="px-8 py-3 bg-ajira-primary text-white rounded-xl hover:bg-ajira-blue-600 transition-all duration-200 shadow-ajira"
+                  >
+                    Apply Filters
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Results */}
         {paginatedGigs.length > 0 ? (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              {paginatedGigs.map((gig: Gig) => (
-                <GigCard key={gig.id} gig={gig} />
+            {/* Active Filters Display */}
+            {(showKinapChoiceOnly || priceRange !== 'all' || deliveryTime !== 'all' || selectedCategory !== 'all') && (
+              <div className="flex flex-wrap items-center gap-3 mb-8">
+                <span className="text-sm text-ajira-text-muted font-medium">Active filters:</span>
+                {showKinapChoiceOnly && (
+                  <span className="inline-flex items-center gap-2 bg-ajira-orange-100 text-ajira-orange-800 px-4 py-2 rounded-full text-sm font-medium">
+                    <Award className="w-4 h-4" />
+                    KiNaP's Choice
+                    <button onClick={() => setShowKinapChoiceOnly(false)} className="ml-1 hover:text-ajira-orange-900 text-lg">×</button>
+                  </span>
+                )}
+                {selectedCategory !== 'all' && (
+                  <span className="inline-flex items-center gap-2 bg-ajira-green-100 text-ajira-green-800 px-4 py-2 rounded-full text-sm font-medium">
+                    {currentCategory?.name}
+                    <button onClick={() => setSelectedCategory('all')} className="ml-1 hover:text-ajira-green-900 text-lg">×</button>
+                  </span>
+                )}
+                {priceRange !== 'all' && (
+                  <span className="inline-flex items-center gap-2 bg-ajira-blue-100 text-ajira-blue-800 px-4 py-2 rounded-full text-sm font-medium">
+                    {PRICE_RANGES.find(r => r.value === priceRange)?.label}
+                    <button onClick={() => setPriceRange('all')} className="ml-1 hover:text-ajira-blue-900 text-lg">×</button>
+                  </span>
+                )}
+                {deliveryTime !== 'all' && (
+                  <span className="inline-flex items-center gap-2 bg-purple-100 text-purple-800 px-4 py-2 rounded-full text-sm font-medium">
+                    <Clock className="w-4 h-4" />
+                    {DELIVERY_OPTIONS.find(d => d.value === deliveryTime)?.label}
+                    <button onClick={() => setDeliveryTime('all')} className="ml-1 hover:text-purple-900 text-lg">×</button>
+                  </span>
+                )}
+              </div>
+            )}
+
+            {/* Quality Assurance Banner */}
+            <div className="bg-gradient-to-r from-ajira-green-50 to-ajira-blue-50 border border-ajira-green-200 rounded-2xl p-6 mb-8">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <Shield className="w-8 h-8 text-ajira-secondary" />
+                  <div>
+                    <h4 className="font-bold text-ajira-green-800 text-lg">Quality Guaranteed</h4>
+                    <p className="text-ajira-green-600">All services are verified and quality-checked by our team</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-8 text-sm text-ajira-green-700">
+                  <div className="flex items-center gap-2">
+                    <Zap className="w-5 h-5" />
+                    <span className="font-medium">Fast delivery</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Award className="w-5 h-5" />
+                    <span className="font-medium">Expert freelancers</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Shield className="w-5 h-5" />
+                    <span className="font-medium">Secure payments</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Gigs Grid */}
+            <div className={`grid gap-8 ${
+              viewMode === 'grid' 
+                ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' 
+                : 'grid-cols-1'
+            }`}>
+              {paginatedGigs.map((gig: any) => (
+                <GigCard 
+                  key={gig.id} 
+                  gig={gig} 
+                  viewMode={viewMode}
+                />
               ))}
             </div>
-            {/* Pagination Controls */}
-            <div className="flex justify-center mt-8 gap-2">
-              <button
-                onClick={() => setPage(page - 1)}
-                disabled={page === 1}
-                className="px-4 py-2 rounded bg-gray-200 text-gray-700 disabled:opacity-50"
-              >
-                Previous
-              </button>
-              {Array.from({ length: totalPages }, (_, i) => (
-                <button
-                  key={i + 1}
-                  onClick={() => setPage(i + 1)}
-                  className={`px-4 py-2 rounded ${page === i + 1 ? 'bg-ajira-accent text-white' : 'bg-gray-200 text-gray-700'}`}
-                >
-                  {i + 1}
-                </button>
-              ))}
-              <button
-                onClick={() => setPage(page + 1)}
-                disabled={page === totalPages}
-                className="px-4 py-2 rounded bg-gray-200 text-gray-700 disabled:opacity-50"
-              >
-                Next
-              </button>
+
+            {/* Enhanced Pagination */}
+            <div className="mt-16">
+              <div className="text-center text-sm text-ajira-text-muted mb-8">
+                Showing {(page - 1) * GIGS_PER_PAGE + 1} - {Math.min(page * GIGS_PER_PAGE, filteredGigs.length)} of {filteredGigs.length.toLocaleString()} results
+              </div>
+              
+              {totalPages > 1 && (
+                <div className="flex justify-center items-center gap-3">
+                  <button
+                    onClick={() => setPage(Math.max(1, page - 1))}
+                    disabled={page === 1}
+                    className="px-6 py-3 border border-ajira-gray-300 rounded-xl text-ajira-text-primary bg-white hover:bg-ajira-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-ajira"
+                  >
+                    Previous
+                  </button>
+                  
+                  {/* Page numbers */}
+                  {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
+                    let pageNum;
+                    if (totalPages <= 7) {
+                      pageNum = i + 1;
+                    } else if (page <= 4) {
+                      pageNum = i + 1;
+                    } else if (page >= totalPages - 3) {
+                      pageNum = totalPages - 6 + i;
+                    } else {
+                      pageNum = page - 3 + i;
+                    }
+                    
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => setPage(pageNum)}
+                        className={`px-4 py-3 border rounded-xl transition-all duration-200 ${
+                          page === pageNum 
+                            ? 'bg-ajira-primary text-white border-ajira-primary shadow-ajira-lg' 
+                            : 'border-ajira-gray-300 text-ajira-text-primary bg-white hover:bg-ajira-gray-50 shadow-ajira'
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  })}
+                  
+                  <button
+                    onClick={() => setPage(Math.min(totalPages, page + 1))}
+                    disabled={page === totalPages}
+                    className="px-6 py-3 border border-ajira-gray-300 rounded-xl text-ajira-text-primary bg-white hover:bg-ajira-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-ajira"
+                  >
+                    Next
+                  </button>
+                </div>
+              )}
             </div>
           </>
         ) : (
-          <div className="text-center py-12">
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">
-              No gigs found
-            </h3>
-            <p className="text-gray-600">
-              Try adjusting your filters or search criteria.
-            </p>
+          <div className="text-center py-20">
+            <div className="max-w-md mx-auto">
+              <div className="w-24 h-24 bg-ajira-light rounded-full flex items-center justify-center mx-auto mb-6">
+                <Search className="w-12 h-12 text-ajira-text-muted" />
+              </div>
+              <h3 className="text-2xl font-semibold text-ajira-text-primary mb-4">
+                No services found
+              </h3>
+              <p className="text-ajira-text-muted mb-8">
+                Try adjusting your search or filter criteria to find what you're looking for.
+              </p>
+              <button
+                onClick={() => {
+                  setSearch('');
+                  setSelectedCategory('all');
+                  setSelectedSubcategory('all');
+                  setPriceRange('all');
+                  setDeliveryTime('all');
+                  setShowKinapChoiceOnly(false);
+                }}
+                className="px-8 py-4 bg-ajira-primary text-white rounded-xl hover:bg-ajira-blue-600 transition-all duration-200 shadow-ajira-lg"
+              >
+                Clear all filters
+              </button>
+            </div>
           </div>
         )}
       </section>
 
-      {/* Call to Action */}
-      <section className="py-12 px-4 text-center">
-        <h2 className="text-2xl font-bold mb-4">Ready to get started?</h2>
-        <p className="mb-6">Join Ajira Marketplace and start your freelancing journey today!</p>
-        <button className="bg-ajira-accent text-white px-8 py-3 rounded-full font-semibold hover:bg-ajira-accent/90 transition">Join Now</button>
-      </section>
+      {/* Additional Fiverr-like sections */}
+      {!showKinapChoiceOnly && (
+        <>
+          <CategoryShowcase />
+          <PopularServicesSection />
+          <HowItWorksSection />
+          <TestimonialsSection />
+          <TrustedBySection />
+        </>
+      )}
     </div>
   );
 };

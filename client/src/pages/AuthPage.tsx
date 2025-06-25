@@ -1,16 +1,16 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useMutation } from 'react-query'
 import axios from 'axios'
-import { register as apiRegister, login as apiLogin } from '../api/auth'
-import { Loader2, Mail, Lock, User, MapPin, Eye, EyeOff, AlertCircle } from 'lucide-react'
+import { Loader2, Mail, Lock, User, Eye, EyeOff, AlertCircle } from 'lucide-react'
 import type { UserRole } from '../types/marketplace'
 import LoadingState from '../components/common/LoadingState'
-import { useAuth } from '../hooks/useAuth'
 
 const TEMP_MAIL_DOMAINS = [
   'tempmail', 'mailinator', '10minutemail', 'guerrillamail', 'yopmail', 'dispostable', 'maildrop', 'fakeinbox', 'trashmail', 'getnada', 'sharklasers', 'spamgourmet', 'mailnesia', 'mintemail', 'throwawaymail', 'mailcatch', 'spambox', 'mailnull', 'mytempemail', 'tempail', 'moakt', 'emailondeck', 'mail-temp', 'inboxkitten', 'mailsac', 'mailpoof', 'mail.tm', 'temp-mail', 'tempinbox', 'mail7', 'easytrashmail', 'mailbox52', 'spambog', 'spam4.me', 'dropmail', 'mailcatch.com', 'mailnesia.com', 'yopmail.com', 'mailinator.com', '10minutemail.com', 'guerrillamail.com', 'dispostable.com', 'getnada.com', 'sharklasers.com', 'spamgourmet.com', 'maildrop.cc', 'fakeinbox.com', 'trashmail.com', 'mintemail.com', 'throwawaymail.com', 'mytempemail.com', 'moakt.com', 'emailondeck.com', 'mail-temp.com', 'inboxkitten.com', 'mailsac.com', 'mailpoof.com', 'mail.tm', 'temp-mail.org', 'tempinbox.com', 'mail7.io', 'easytrashmail.com', 'mailbox52.com', 'spambog.com', 'spam4.me', 'dropmail.me'
 ];
+
+const BASEURL='https://a4a6-197-136-138-2.ngrok-free.app/api'
 
 interface FormData {
   email: string
@@ -30,7 +30,7 @@ interface FormData {
 }
 
 const AuthPage = () => {
-  const { user, loading: authLoading } = useAuth()
+  // ALL HOOKS FIRST - NEVER CHANGE THE ORDER OF HOOKS
   const navigate = useNavigate()
   const location = useLocation()
   const from = (location.state as any)?.from?.pathname || '/'
@@ -59,29 +59,13 @@ const AuthPage = () => {
   const [resetEmail, setResetEmail] = useState('')
   const [showResend, setShowResend] = useState(false)
 
-  // If user is already logged in, redirect to the intended page
-  if (user) {
-    navigate(from)
-    return null
-  }
-
-  if (authLoading) {
-    return <LoadingState message="Loading authentication" description="Please wait while we check your login status" fullScreen />
-  }
-
-  // Helper: detect temp mail
+  // Helper function to detect temp mail - MUST BE BEFORE useMutation
   const isTempMail = (email: string) => {
     const domain = email.split('@')[1]?.toLowerCase() || ''
     return TEMP_MAIL_DOMAINS.some(temp => domain.includes(temp))
   }
 
-  // Handle form input changes
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target
-    setFormData(prev => ({ ...prev, [name]: value }))
-  }
-
-  // Sign up mutation
+  // Sign up mutation - ALWAYS CALLED IN SAME ORDER
   const signUpMutation = useMutation(async () => {
     if (isTempMail(formData.email)) {
       throw new Error('Temporary/disposable email addresses are not allowed.')
@@ -101,7 +85,7 @@ const AuthPage = () => {
     }
 
     try {
-      const response = await axios.post('https://71bc-197-136-138-2.ngrok-free.app/api/students/register-student', studentData, {
+      const response = await axios.post(`${BASEURL}/students/register-student`, studentData, {
         headers: {
           'Content-Type': 'application/json',
         }
@@ -111,6 +95,9 @@ const AuthPage = () => {
       
       // Save email to localStorage for future use
       localStorage.setItem('userEmail', formData.email)
+      
+      // Notify of auth update so nav can refresh if we ever auto-login at signup later
+      window.dispatchEvent(new Event('authUpdated'))
       
       // Switch to sign in mode after successful registration
       setIsSignUp(false)
@@ -124,26 +111,44 @@ const AuthPage = () => {
     }
   })
 
-  // Sign in mutation
+  // Sign in mutation - ALWAYS CALLED IN SAME ORDER
   const signInMutation = useMutation(async () => {
     try {
-      const response = await axios.post('https://71bc-197-136-138-2.ngrok-free.app/api/students/login-student', {
-      email: formData.email,
-      password: formData.password,
+      const response = await axios.post(`${BASEURL}/students/login-student`, {
+        email: formData.email,
+        password: formData.password,
       }, {
         headers: {
           'Content-Type': 'application/json',
         }
-    })
+      })
 
       const data = response.data
       
-      // Save both token and email to localStorage
-    localStorage.setItem('token', data.token)
-      localStorage.setItem('userEmail', formData.email)
+      // Persist session details the same way AuthContext expects
+      localStorage.setItem('token', data.token)
       
-      // Navigate to profile page
-      navigate('/profile')
+      // Ensure user details are cached so Navbar/contexts can update right away
+      const userToStore = data.user ?? {
+        id: Date.now().toString(),
+        email: formData.email,
+        displayName: formData.displayName || formData.email.split('@')[0],
+        role: 'student',
+      }
+      try {
+        localStorage.setItem('userData', JSON.stringify(userToStore))
+      } catch (err) {
+        console.warn('Unable to stringify user object:', err)
+      }
+      
+      // Fall-back to at least store the email (used elsewhere in the UI)
+      localStorage.setItem('userEmail', data.user?.email || formData.email)
+      
+      // Notify of auth update so nav can refresh if we ever auto-login at signup later
+      window.dispatchEvent(new Event('authUpdated'))
+      
+      // Navigate to profile page after login
+      navigate('/')
     } catch (error: any) {
       if (error.response?.data?.message) {
         throw new Error(error.response.data.message)
@@ -151,6 +156,25 @@ const AuthPage = () => {
       throw new Error('Login failed')
     }
   })
+
+  // useEffect hooks - ALWAYS CALLED IN SAME ORDER
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search)
+    const isRegisterMode = searchParams.get('mode') === 'register'
+    if (isRegisterMode) {
+      setIsSignUp(true)
+    }
+  }, [location.search])
+
+
+
+  // EARLY RETURNS ONLY AFTER ALL HOOKS
+
+  // Event handlers
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target
+    setFormData(prev => ({ ...prev, [name]: value }))
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -170,7 +194,6 @@ const AuthPage = () => {
     }
   }
 
-  // Password reset & email verification flows are not implemented in this backend demo
   const handlePasswordReset = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setError('Password reset functionality is not available yet.');
@@ -181,10 +204,13 @@ const AuthPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-br from-kenya-white via-gray-50 to-kenya-green/10 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <h2 className="mt-6 text-center text-3xl font-bold text-ajira-primary">
-          {isSignUp ? 'Join Ajira Digital KiNaP Club' : 'Welcome back to Ajira Digital'}
+        <div className="flex justify-center mb-6">
+          <img src="/logo.jpeg" alt="KiNaP Ajira Club" className="h-16 w-auto drop-shadow-lg rounded-lg" />
+        </div>
+        <h2 className="mt-6 text-center text-3xl font-bold text-kenya-black">
+          {isSignUp ? 'Join KiNaP Ajira Digital Club' : 'Welcome back to KiNaP Ajira'}
         </h2>
         <p className="mt-2 text-center text-sm text-gray-600">
           {isSignUp ? 'Start your digital transformation journey' : 'Continue your digital journey'}{' '}
@@ -192,7 +218,7 @@ const AuthPage = () => {
           {isSignUp ? 'Already a member?' : "New to Ajira Digital?"}{' '}
           <button
             onClick={() => { setIsSignUp(!isSignUp); setError(''); setInfo(''); setShowResend(false) }}
-            className="font-medium text-ajira-accent hover:text-ajira-accent/80"
+            className="font-medium text-kenya-red hover:text-kenya-green transition-colors"
           >
             {isSignUp ? 'Sign in here' : 'Join the club'}
           </button>
@@ -200,7 +226,7 @@ const AuthPage = () => {
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
+        <div className="bg-white py-8 px-4 shadow-xl border border-kenya-green/20 sm:rounded-xl sm:px-10">
           {/* Error/Info Messages */}
           {error && (
             <div className="mb-4 bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg flex items-start">
@@ -237,7 +263,7 @@ const AuthPage = () => {
               <div className="flex items-center justify-between">
                 <button
                   type="submit"
-                  className="w-full flex justify-center py-2 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-ajira-accent hover:bg-ajira-accent/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ajira-accent"
+                  className="w-full flex justify-center py-2 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-ajira-accent hover:bg-ajira-orange-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ajira-accent"
                 >
                   Send Reset Link
                 </button>
@@ -472,7 +498,7 @@ const AuthPage = () => {
                 <button
                   type="submit"
                   disabled={signUpMutation.isLoading || signInMutation.isLoading}
-                  className="w-full flex justify-center py-2 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-ajira-accent hover:bg-ajira-accent/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ajira-accent disabled:opacity-50"
+                  className="w-full flex justify-center py-2 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-gradient-to-r from-kenya-red to-kenya-green hover:from-kenya-green hover:to-kenya-red focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-kenya-red disabled:opacity-50 transition-all duration-300"
                 >
                   {(signUpMutation.isLoading || signInMutation.isLoading) ? (
                     <>

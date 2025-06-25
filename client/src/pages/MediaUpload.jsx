@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Upload, Image as ImageIcon, X, Check } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import { useAuth } from '../hooks/useAuth'
+import { useAuth } from '../contexts/AuthContext'
 
 const MediaUpload = () => {
   const [formData, setFormData] = useState({

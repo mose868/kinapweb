@@ -14,7 +14,6 @@
     "axios": "^1.6.2",
     "chart.js": "^4.4.0",
     "date-fns": "^4.1.0",
-    "firebase": "^10.14.1",
     "framer-motion": "^10.16.5",
     "lucide-react": "^0.294.0",
     "openai": "^5.1.1",

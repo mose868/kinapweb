@@ -1,7 +1,5 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { collection, query, where, getDocs, orderBy, limit, addDoc, serverTimestamp } from 'firebase/firestore'
-import { db } from '../../config/firebase'
 import { ArrowRight, Star } from 'lucide-react'
 
 interface Story {
@@ -33,117 +31,90 @@ const StoryOfTheDay = () => {
   useEffect(() => {
     const fetchStories = async () => {
       try {
-        const q = query(
-          collection(db, 'stories'),
-          where('featured', '==', true),
-          orderBy('createdAt', 'desc'),
-          limit(5)
-        )
-        const snapshot = await getDocs(q)
-        if (snapshot.empty) {
-          // Add sample 2025 stories if none exist
-          const sampleStories = [
-            {
-              title: "From Local Developer to Global AI Innovator",
-              content: "Through Ajira's AI Development Program, I transformed from a traditional web developer into a Quantum AI specialist. Now I lead a team developing neural interfaces for the African market.",
-              author: "Sarah Mwangi",
-              authorRole: "Senior Quantum AI Architect",
-              rating: 5,
-              image: "https://images.unsplash.com/photo-1519125323398-675f0ddb6308?auto=format&fit=crop&w=800&q=80",
-              impact: {
-                earnings: 5000000,
-                jobsCreated: 15,
-                skillsGained: ["Quantum Computing", "Neural Networks", "AI Ethics"]
-              },
-              aiInsights: {
-                marketPotential: "High growth in African AI market expected (300% by 2026)",
-                growthOpportunities: [
-                  "Neural Interface Development",
-                  "Quantum AI Solutions",
-                  "Green Tech Integration"
-                ],
-                skillRecommendations: [
-                  "Advanced Quantum Programming",
-                  "Neural Architecture Design",
-                  "Sustainable AI Practices"
-                ]
-              }
+        // Add sample 2025 stories if none exist
+        const sampleStories = [
+          {
+            title: "From Local Developer to Global AI Innovator",
+            content: "Through Ajira's AI Development Program, I transformed from a traditional web developer into a Quantum AI specialist. Now I lead a team developing neural interfaces for the African market.",
+            author: "Sarah Mwangi",
+            authorRole: "Senior Quantum AI Architect",
+            rating: 5,
+            image: "https://images.unsplash.com/photo-1519125323398-675f0ddb6308?auto=format&fit=crop&w=800&q=80",
+            impact: {
+              earnings: 5000000,
+              jobsCreated: 15,
+              skillsGained: ["Quantum Computing", "Neural Networks", "AI Ethics"]
             },
-            {
-              title: "Freelancer to Digital Agency Owner",
-              content: "Ajira's mentorship helped me scale from a solo freelancer to running a digital agency with 20+ employees, serving clients worldwide.",
-              author: "James Kamau",
-              authorRole: "Founder, Kamau Digital Solutions",
-              rating: 5,
-              image: "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80",
-              impact: {
-                earnings: 3000000,
-                jobsCreated: 22,
-                skillsGained: ["Project Management", "Client Acquisition", "Team Leadership"]
-              },
-              aiInsights: {
-                marketPotential: "Digital services demand is booming in Africa and globally.",
-                growthOpportunities: [
-                  "Remote Team Building",
-                  "Cross-border E-commerce",
-                  "Brand Strategy"
-                ],
-                skillRecommendations: [
-                  "Digital Marketing",
-                  "Business Automation",
-                  "Cross-cultural Communication"
-                ]
-              }
-            },
-            {
-              title: "Student to Award-Winning Content Creator",
-              content: "With Ajira's training, I turned my passion for storytelling into a career. My YouTube channel now has 100k+ subscribers and I mentor other students.",
-              author: "Grace Wanjiru",
-              authorRole: "Content Creator & Mentor",
-              rating: 5,
-              image: "https://images.unsplash.com/photo-1465101046530-73398c7f28ca?auto=format&fit=crop&w=800&q=80",
-              impact: {
-                earnings: 1200000,
-                jobsCreated: 5,
-                skillsGained: ["Video Production", "Public Speaking", "Mentorship"]
-              },
-              aiInsights: {
-                marketPotential: "Content creation is a top growth sector for youth in Africa.",
-                growthOpportunities: [
-                  "Edutainment",
-                  "Online Courses",
-                  "Brand Partnerships"
-                ],
-                skillRecommendations: [
-                  "SEO for Video",
-                  "Personal Branding",
-                  "Community Building"
-                ]
-              }
+            aiInsights: {
+              marketPotential: "High growth in African AI market expected (300% by 2026)",
+              growthOpportunities: [
+                "Neural Interface Development",
+                "Quantum AI Solutions",
+                "Green Tech Integration"
+              ],
+              skillRecommendations: [
+                "Advanced Quantum Programming",
+                "Neural Architecture Design",
+                "Sustainable AI Practices"
+              ]
             }
-          ]
-
-          for (const story of sampleStories) {
-            await addDoc(collection(db, 'stories'), {
-              ...story,
-              featured: true,
-              createdAt: serverTimestamp()
-            })
+          },
+          {
+            title: "Freelancer to Digital Agency Owner",
+            content: "Ajira's mentorship helped me scale from a solo freelancer to running a digital agency with 20+ employees, serving clients worldwide.",
+            author: "James Kamau",
+            authorRole: "Founder, Kamau Digital Solutions",
+            rating: 5,
+            image: "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80",
+            impact: {
+              earnings: 3000000,
+              jobsCreated: 22,
+              skillsGained: ["Project Management", "Client Acquisition", "Team Leadership"]
+            },
+            aiInsights: {
+              marketPotential: "Digital services demand is booming in Africa and globally.",
+              growthOpportunities: [
+                "Remote Team Building",
+                "Cross-border E-commerce",
+                "Brand Strategy"
+              ],
+              skillRecommendations: [
+                "Digital Marketing",
+                "Business Automation",
+                "Cross-cultural Communication"
+              ]
+            }
+          },
+          {
+            title: "Student to Award-Winning Content Creator",
+            content: "With Ajira's training, I turned my passion for storytelling into a career. My YouTube channel now has 100k+ subscribers and I mentor other students.",
+            author: "Grace Wanjiru",
+            authorRole: "Content Creator & Mentor",
+            rating: 5,
+            image: "https://images.unsplash.com/photo-1465101046530-73398c7f28ca?auto=format&fit=crop&w=800&q=80",
+            impact: {
+              earnings: 1200000,
+              jobsCreated: 5,
+              skillsGained: ["Video Production", "Public Speaking", "Mentorship"]
+            },
+            aiInsights: {
+              marketPotential: "Content creation is a top growth sector for youth in Africa.",
+              growthOpportunities: [
+                "Edutainment",
+                "Online Courses",
+                "Brand Partnerships"
+              ],
+              skillRecommendations: [
+                "SEO for Video",
+                "Personal Branding",
+                "Community Building"
+              ]
+            }
           }
-          
-          // Fetch again after adding samples
-          const newSnapshot = await getDocs(q)
-          const data = newSnapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-          })) as Story[]
-          setStories(data)
-        } else {
-          const data = snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-          })) as Story[]
-          setStories(data)
+        ]
+
+        for (const story of sampleStories) {
+          setStories(prevStories => [...prevStories, story])
         }
         setLoading(false)
       } catch (error) {

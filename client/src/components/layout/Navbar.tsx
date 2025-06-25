@@ -1,127 +1,200 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
-import { Search, X, User, LogOut, Settings, Bell } from 'lucide-react';
-import { useAuth } from '../../hooks/useAuth';
+import { Search, X, User, LogOut, Settings, Bell, Menu, ChevronDown, Info, Users, BookOpen, Briefcase, Globe, Star, Award, MessageCircle, UserCheck, HelpCircle, ChevronRight, Camera } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
 
 const Navbar = () => {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [userEmail, setUserEmail] = useState('');
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [dropdown, setDropdown] = useState<string | null>(null);
-  const [userDropdown, setUserDropdown] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
+  const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+  const [notificationDropdownOpen, setNotificationDropdownOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearchResults, setShowSearchResults] = useState(false);
-  const [profileDropdown, setProfileDropdown] = useState(false);
+  const [notifications, setNotifications] = useState([
+    { id: 1, title: 'New message from Sarah', message: 'Hey! I loved your portfolio work. Can we discuss a project?', time: '2 min ago', type: 'message', unread: true },
+    { id: 2, title: 'Order completed', message: 'Your graphic design project has been delivered successfully.', time: '1 hour ago', type: 'order', unread: true },
+    { id: 3, title: 'New review received', message: 'Michael gave you a 5-star review for web development.', time: '3 hours ago', type: 'review', unread: false },
+    { id: 4, title: 'Payment received', message: 'KSh 15,000 has been credited to your account.', time: '1 day ago', type: 'payment', unread: true },
+    { id: 5, title: 'Profile verification', message: 'Your KiNaP student verification is complete!', time: '2 days ago', type: 'system', unread: false }
+  ]);
   const searchRef = useRef<HTMLDivElement>(null);
   const userDropdownRef = useRef<HTMLDivElement>(null);
+  const notificationRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
-  const { user, signOut } = useAuth();
+  const { user, logout } = useAuth();
 
-  // Check localStorage for authentication status
-  useEffect(() => {
-    const checkAuthStatus = () => {
-      const email = localStorage.getItem('userEmail');
-      const token = localStorage.getItem('token');
-      
-      if (email && token) {
-        setIsLoggedIn(true);
-        setUserEmail(email);
-      } else {
-        setIsLoggedIn(false);
-        setUserEmail('');
-      }
-    };
+  // Calculate unread notifications count
+  const unreadCount = notifications.filter(n => n.unread).length;
 
-    // Check on component mount
-    checkAuthStatus();
+  // Mark notification as read
+  const markAsRead = (notificationId: number) => {
+    setNotifications(prev => 
+      prev.map(n => n.id === notificationId ? { ...n, unread: false } : n)
+    );
+  };
 
-    // Listen for storage changes (when user logs in/out in another tab)
-    window.addEventListener('storage', checkAuthStatus);
-    
-    return () => {
-      window.removeEventListener('storage', checkAuthStatus);
-    };
-  }, []);
+  // Mark all notifications as read
+  const markAllAsRead = () => {
+    setNotifications(prev => prev.map(n => ({ ...n, unread: false })));
+  };
 
-  // Custom logout function - handles both Firebase and localStorage
-  const handleSignOut = async () => {
-    try {
-      // Clear localStorage
-      localStorage.removeItem('token');
-      localStorage.removeItem('userEmail');
-      setIsLoggedIn(false);
-      setUserEmail('');
-      setProfileDropdown(false);
-      setUserDropdown(false);
-      
-      // Sign out from Firebase if user exists
-      if (user) {
-        await signOut();
-      }
-      
-      navigate('/');
-    } catch (error) {
-      console.error('Error signing out:', error);
-      // Still navigate even if Firebase signout fails
-      navigate('/');
+  // Get notification icon based on type
+  const getNotificationIcon = (type: string) => {
+    switch (type) {
+      case 'message': return '💬';
+      case 'order': return '📦';
+      case 'review': return '⭐';
+      case 'payment': return '💰';
+      case 'system': return '🔔';
+      default: return '📢';
     }
   };
 
-  // All searchable pages and content
+  // Get user initials for avatar fallback
+  const getUserInitials = (user: any) => {
+    if (!user) return 'U';
+    const name = user.displayName || user.email || 'User';
+    return name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
+  };
+
+  // Get user avatar
+  const getUserAvatar = (user: any) => {
+    if (user?.photoURL) return user.photoURL;
+    return null;
+  };
+
+  // Searchable content organized by categories
   const searchableContent = [
-    // Pages
-    { title: 'Home', description: 'Main landing page', url: '/', type: 'page' },
-    { title: 'About Us', description: 'Learn about Ajira Digital KiNaP Club', url: '/about', type: 'page' },
-    { title: 'Team', description: 'Meet our team members', url: '/team', type: 'page' },
-    { title: 'Events', description: 'Upcoming workshops and events', url: '/events', type: 'page' },
-    { title: 'Community Hub', description: 'Connect with other members', url: '/community', type: 'page' },
-    { title: 'Mazungumzo Hub', description: 'Live chat and discussions with community', url: '/mazungumzo', type: 'page' },
-    { title: 'Showcase', description: 'Member projects and achievements', url: '/showcase', type: 'page' },
-    { title: 'Testimonials', description: 'Success stories from members', url: '/testimonials', type: 'page' },
-    { title: 'Training', description: 'Digital skills training programs', url: '/training', type: 'page' },
-    { title: 'Mentorship', description: 'Find mentors and mentees', url: '/mentorship', type: 'page' },
-    { title: 'Videos', description: 'Educational video content', url: '/videos', type: 'page' },
-    { title: 'Blog', description: 'Latest articles and insights', url: '/blog', type: 'page' },
-    { title: 'Marketplace', description: 'Digital services marketplace', url: '/marketplace', type: 'page' },
-    { title: 'Profile', description: 'Your personal profile - complete to 100%', url: '/profile', type: 'page' },
-    { title: 'Sign In', description: 'Access your account and profile', url: '/auth', type: 'page' },
-    { title: 'Sign Up', description: 'Create account and build your profile', url: '/auth', type: 'page' },
-    { title: 'Contact', description: 'Get in touch with us', url: '/contact', type: 'page' },
+    // Main Pages
+    { title: 'Home', description: 'Welcome to KiNaP Ajira Club', url: '/', category: 'Pages' },
+    { title: 'Community Hub', description: 'Connect with other members and join discussions', url: '/community', category: 'Community' },
+    { title: 'Videos', description: 'Educational video content and tutorials', url: '/videos', category: 'Learning' },
+    { title: 'Marketplace', description: 'Digital services marketplace', url: '/marketplace', category: 'Services' },
+    { title: 'Profile', description: 'Manage your personal profile', url: '/profile', category: 'Account' },
     
-    // Skills and topics
-    { title: 'Web Development', description: 'Learn HTML, CSS, JavaScript, React', url: '/training', type: 'skill' },
-    { title: 'Graphic Design', description: 'Adobe Creative Suite, Logo Design', url: '/events', type: 'skill' },
-    { title: 'Financial Markets', description: 'Trading, Forex, Cryptocurrency', url: '/events', type: 'skill' },
-    { title: 'Digital Marketing', description: 'SEO, Social Media, Content Marketing', url: '/training', type: 'skill' },
-    { title: 'Freelancing', description: 'Start your freelancing career', url: '/training', type: 'skill' },
-    { title: 'Data Entry', description: 'Data processing and management', url: '/training', type: 'skill' },
-    { title: 'Content Writing', description: 'Blog writing, copywriting', url: '/training', type: 'skill' },
-    { title: 'Video Editing', description: 'Video production and editing', url: '/training', type: 'skill' },
+    // About Pages
+    { title: 'About Us', description: 'Learn about KiNaP Ajira Club', url: '/about', category: 'About' },
+    { title: 'Team', description: 'Meet our team members', url: '/team', category: 'About' },
+    { title: 'Updates', description: 'Latest news and updates', url: '/updates', category: 'About' },
+    { title: 'FAQ', description: 'Frequently asked questions', url: '/faq', category: 'About' },
     
-    // Quick actions
-    { title: 'Join Ajira Digital', description: 'Create your account', url: '/auth', type: 'action' },
-    { title: 'Sign In', description: 'Access your account', url: '/auth', type: 'action' },
-    { title: 'Become Seller', description: 'Start offering services', url: '/become-seller', type: 'action' },
-    { title: 'Upload Media', description: 'Share your content', url: '/media-upload', type: 'action' },
+    // Community Pages
+    { title: 'Testimonials', description: 'Success stories from members', url: '/testimonials', category: 'Community' },
+    { title: 'Ambassador Program', description: 'Join our ambassador program', url: '/ambassador', category: 'Community' },
+    { title: 'Showcase', description: 'Member projects and achievements', url: '/showcase', category: 'Community' },
+    
+    // Learning & Content
+    { title: 'Training', description: 'Digital skills training programs', url: '/training', category: 'Learning' },
+    { title: 'Mentorship', description: 'Find mentors and mentees', url: '/mentorship', category: 'Learning' },
+    { title: 'Blog', description: 'Latest articles and insights', url: '/blog', category: 'Learning' },
+    { title: 'Events', description: 'Upcoming workshops and events', url: '/events', category: 'Learning' },
+    
+    // Services
+    { title: 'Become Seller', description: 'Start offering digital services', url: '/become-seller', category: 'Services' },
+    { title: 'Media Upload', description: 'Share your content', url: '/media-upload', category: 'Services' },
+    
+    // Account
+    { title: 'Orders', description: 'View your orders and transactions', url: '/orders', category: 'Account' },
+    { title: 'Notifications', description: 'Manage your notifications', url: '/notifications', category: 'Account' },
+    { title: 'Sign In', description: 'Access your account', url: '/auth', category: 'Account' },
+    
+    // Contact
+    { title: 'Contact', description: 'Get in touch with us', url: '/contact', category: 'Support' }
   ];
 
-  // Search functionality - simplified
+  // Professional dropdown menu structure
+  const dropdownMenus = [
+    {
+      id: 'about',
+      label: 'About',
+      icon: Info,
+      items: [
+        { label: 'About KiNaP', to: '/about', icon: Info, description: 'Learn about our mission' },
+        { label: 'Our Team', to: '/team', icon: Users, description: 'Meet our dedicated team' },
+        { label: 'Latest Updates', to: '/updates', icon: Star, description: 'News and announcements' },
+        { label: 'FAQ', to: '/faq', icon: HelpCircle, description: 'Common questions' },
+        { label: 'Contact Us', to: '/contact', icon: MessageCircle, description: 'Get in touch' }
+      ]
+    },
+    {
+      id: 'programs',
+      label: 'Programs',
+      icon: BookOpen,
+      items: [
+        { label: 'Digital Training', to: '/training', icon: BookOpen, description: 'Skill development courses' },
+        { label: 'Mentorship', to: '/mentorship', icon: UserCheck, description: 'Connect with mentors' },
+        { label: 'Events & Workshops', to: '/events', icon: Award, description: 'Live learning sessions' },
+        { label: 'Videos & Resources', to: '/videos', icon: Globe, description: 'Educational content' }
+      ]
+    },
+    {
+      id: 'community',
+      label: 'Community',
+      icon: Users,
+      items: [
+        { label: 'Community Hub', to: '/community', icon: Users, description: 'Join discussions' },
+        { label: 'Success Stories', to: '/testimonials', icon: Star, description: 'Member achievements' },
+        { label: 'Project Showcase', to: '/showcase', icon: Award, description: 'Featured work' },
+        { label: 'Ambassador Program', to: '/ambassador', icon: UserCheck, description: 'Become a leader' }
+      ]
+    },
+    {
+      id: 'services',
+      label: 'Services',
+      icon: Briefcase,
+      items: [
+        { label: 'Marketplace', to: '/marketplace', icon: Briefcase, description: 'Digital services hub' },
+        { label: 'Become a Seller', to: '/become-seller', icon: UserCheck, description: 'Offer your skills' },
+        { label: 'Content Creation', to: '/media-upload', icon: MessageCircle, description: 'Share your work' }
+      ]
+    }
+  ];
+
+  // Filter and group search results
+  const filteredSearchResults = searchableContent.filter(item =>
+    item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    item.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    item.category.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const groupedSearchResults = filteredSearchResults.reduce((acc, item) => {
+    if (!acc[item.category]) {
+      acc[item.category] = [];
+    }
+    acc[item.category].push(item);
+    return acc;
+  }, {} as Record<string, typeof searchableContent>);
+
+  // Handle search visibility
   useEffect(() => {
     if (searchQuery.trim() === '') {
       setShowSearchResults(false);
-      return;
+    } else {
+      setShowSearchResults(true);
     }
-    setShowSearchResults(true);
   }, [searchQuery]);
 
-  // Close search results and profile dropdown when clicking outside
+  // Enhanced click outside handlers with better mobile support
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
         setShowSearchResults(false);
       }
       if (userDropdownRef.current && !userDropdownRef.current.contains(event.target as Node)) {
-        setUserDropdown(false);
+        setUserDropdownOpen(false);
+      }
+      if (notificationRef.current && !notificationRef.current.contains(event.target as Node)) {
+        setNotificationDropdownOpen(false);
+      }
+    };
+
+    const handleEscapeKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setShowSearchResults(false);
+        setUserDropdownOpen(false);
+        setNotificationDropdownOpen(false);
+        setActiveDropdown(null);
+        setMobileMenuOpen(false);
       }
       // Close profile dropdown when clicking outside
       if (!(event.target as Element).closest('.profile-dropdown')) {
@@ -130,12 +203,31 @@ const Navbar = () => {
     };
 
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleEscapeKey);
+    
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscapeKey);
+    };
   }, []);
+
+  // Enhanced mobile menu handling
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [mobileMenuOpen]);
 
   const handleSearchSelect = () => {
     setSearchQuery('');
     setShowSearchResults(false);
+    setMobileMenuOpen(false);
   };
 
   const clearSearch = () => {
@@ -143,502 +235,552 @@ const Navbar = () => {
     setShowSearchResults(false);
   };
 
-  const getTypeIcon = (type: string) => {
-    switch (type) {
-      case 'page': return '📄';
-      case 'skill': return '💻';
-      case 'action': return '🚀';
-      default: return '🔍';
+  const handleSignOut = async () => {
+    try {
+      await logout();
+      setUserDropdownOpen(false);
+      setNotificationDropdownOpen(false);
+      setMobileMenuOpen(false);
+      navigate('/');
+    } catch (error) {
+      console.error('Error signing out:', error);
     }
   };
 
-  const handleLogout = () => {
-    handleSignOut();
+  const handleDropdownToggle = (dropdownId: string) => {
+    setActiveDropdown(activeDropdown === dropdownId ? null : dropdownId);
   };
 
-  // Dropdown groupings with all pages
-  const dropdowns = [
-    {
-      label: 'About',
-      items: [
-        { label: 'About Us', to: '/about' },
-        { label: 'Team', to: '/team' },
-        { label: 'Updates', to: '/updates' },
-        { label: 'FAQ', to: '/faq' },
-      ],
-    },
-    {
-      label: 'Community',
-      items: [
-        { label: 'Community Hub', to: '/community' },
-        { label: 'Mazungumzo Hub', to: '/mazungumzo' },
-        { label: 'Testimonials', to: '/testimonials' },
-        { label: 'Ambassador Program', to: '/ambassador' },
-      ],
-    },
-    {
-      label: 'Showcase',
-      items: [
-        { label: 'Member Showcase', to: '/showcase' },
-        { label: 'Success Stories', to: '/testimonials' },
-        { label: 'Portfolio Gallery', to: '/showcase' },
-        { label: 'Featured Projects', to: '/showcase' },
-      ],
-    },
-    {
-      label: 'Events',
-      items: [
-        { label: 'Upcoming Events', to: '/events' },
-        { label: 'Workshops', to: '/training' },
-        { label: 'Webinars', to: '/events' },
-        { label: 'Community Meetups', to: '/events' },
-      ],
-    },
-    {
-      label: 'Learning',
-      items: [
-        { label: 'Training', to: '/training' },
-        { label: 'Mentorship', to: '/mentorship' },
-        { label: 'Blog', to: '/blog' },
-      ],
-    },
-    {
-      label: 'Services',
-      items: [
-        { label: 'Marketplace', to: '/marketplace' },
-        { label: 'Become Seller', to: '/become-seller' },
-        { label: 'Media Upload', to: '/media-upload' },
-      ],
-    },
-    {
-      label: 'Account',
-      items: [
-        { label: 'Sign In / Sign Up', to: '/auth' },
-        { label: 'Profile', to: '/profile' },
-        { label: 'Orders', to: '/orders' },
-        { label: 'Notifications', to: '/notifications' },
-      ],
-    },
-  ];
+  const closeAllDropdowns = () => {
+    setActiveDropdown(null);
+    setUserDropdownOpen(false);
+    setNotificationDropdownOpen(false);
+    setMobileMenuOpen(false);
+  };
 
   return (
-    <nav className="bg-white shadow sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto flex items-center justify-between py-3 px-4">
-        <Link to="/" className="text-2xl font-bold text-ajira-primary flex items-center gap-2">
-          <span className="bg-gradient-to-r from-red-600 to-black bg-clip-text text-transparent">
-            Ajira Digital
+    <nav className="bg-white shadow-lg border-b border-gray-200 sticky top-0 z-50 backdrop-blur-sm">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-16">
+          {/* Logo with Professional KiNaP Branding */}
+          <div className="flex-shrink-0 flex items-center">
+            <Link to="/" className="flex items-center group">
+              <img 
+                src="/logo.jpeg" 
+                alt="KiNaP Ajira Club Logo" 
+                className="h-10 w-auto drop-shadow-md rounded-md"
+                onError={(e) => { e.currentTarget.style.display = 'none'; }}
+              />
+              <div className="ml-3 flex flex-col">
+                <span className="text-lg font-bold text-gray-900 group-hover:text-kenya-red transition-colors leading-tight">
+                  KiNaP Ajira Club
+                </span>
+                <span className="text-xs text-kenya-green leading-tight font-medium">
+                  Digital Skills Hub
           </span>
-          <span className="text-sm text-gray-600 font-normal">KiNaP</span>
+              </div>
         </Link>
-        
-        {/* Search Bar - Always Visible */}
-        <div className="flex items-center flex-1 max-w-lg mx-4 relative" ref={searchRef}>
-          <div className="relative w-full">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Search className="h-4 w-4 text-gray-400" />
+          </div>
+          
+          {/* Navigation Links with Professional Styling */}
+          <div className="hidden lg:flex items-center space-x-1">
+            {dropdownMenus.map((menu) => (
+              <div key={menu.id} className="relative">
+                <button
+                  onClick={() => handleDropdownToggle(menu.id)}
+                  className={`flex items-center px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
+                    activeDropdown === menu.id
+                      ? 'text-kenya-red bg-kenya-green/10 shadow-sm'
+                      : 'text-gray-700 hover:text-kenya-red hover:bg-gray-50'
+                  }`}
+                >
+                  <menu.icon className="w-4 h-4 mr-2" />
+                  {menu.label}
+                  <ChevronDown className={`w-3 h-3 ml-1 transition-transform ${activeDropdown === menu.id ? 'rotate-180' : ''}`} />
+                </button>
+                {activeDropdown === menu.id && (
+                  <div className="absolute left-0 mt-2 w-64 bg-white rounded-lg shadow-xl border border-gray-200 py-2 z-50 animate-in slide-in-from-top-2 duration-200">
+                    {menu.items.map((item, index) => (
+                      <Link
+                        key={index}
+                        to={item.to}
+                        className="flex items-start px-4 py-3 text-sm text-gray-700 hover:bg-kenya-green/5 hover:text-kenya-black transition-colors"
+                        onClick={closeAllDropdowns}
+                      >
+                        <item.icon className="w-4 h-4 mt-0.5 mr-3 text-kenya-green flex-shrink-0" />
+                        <div className="flex-1">
+                          <div className="font-medium text-gray-900">{item.label}</div>
+                          <div className="text-xs text-gray-500 mt-0.5">{item.description}</div>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
             </div>
+          
+          {/* Professional Search Bar */}
+          <div className="hidden md:flex items-center mx-6 flex-1 max-w-md">
+            <div ref={searchRef} className="relative w-full">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <input
               type="text"
-              placeholder="Search pages, skills, or actions..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none transition-all"
+                  placeholder="Search programs, services..."
+                  className="w-full pl-10 pr-10 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-kenya-red/20 focus:border-kenya-red transition-all duration-200"
             />
             {searchQuery && (
               <button
                 onClick={clearSearch}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 hover:text-kenya-red transition-colors"
               >
-                <X className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+                    <X className="h-4 w-4" />
               </button>
             )}
           </div>
           
-          {/* Search Results Dropdown - Simplified */}
-          {showSearchResults && searchQuery.trim() !== '' && (
-            <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-xl border border-gray-200 z-50">
-              <div className="p-4 text-center text-gray-500">
-                <Search className="h-8 w-8 mx-auto mb-2 text-gray-300" />
-                <div className="font-medium">Search functionality temporarily disabled</div>
-                <div className="text-sm">Navigation dropdowns are now available</div>
+              {/* Enhanced Search Results */}
+              {showSearchResults && filteredSearchResults.length > 0 && (
+                <div className="absolute top-full mt-2 w-full bg-white rounded-lg shadow-xl border border-gray-200 py-2 z-50 max-h-80 overflow-y-auto">
+                  {Object.entries(groupedSearchResults).map(([category, items]) => (
+                    <div key={category} className="mb-2 last:mb-0">
+                      <div className="px-4 py-2 text-xs font-semibold text-kenya-red uppercase tracking-wide border-b border-gray-100">
+                        {category}
+                      </div>
+                      {items.map((item, index) => (
+                        <Link
+                          key={index}
+                          to={item.url}
+                          onClick={handleSearchSelect}
+                          className="flex items-center px-4 py-3 hover:bg-gray-50 transition-colors group"
+                        >
+                          <div className="flex-1">
+                            <div className="text-sm font-medium text-gray-900 group-hover:text-kenya-red">
+                              {item.title}
+                            </div>
+                            <div className="text-xs text-gray-500 mt-0.5">
+                              {item.description}
               </div>
+                          </div>
+                          <ChevronRight className="w-4 h-4 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </Link>
+                      ))}
+                    </div>
+                  ))}
             </div>
           )}
         </div>
-
-        <div className="hidden md:flex items-center gap-6">
-          <NavLink 
-            to="/" 
-            className={({ isActive }) => 
-              isActive 
-                ? 'text-ajira-accent font-semibold border-b-2 border-ajira-accent pb-1' 
-                : 'text-gray-700 hover:text-ajira-accent transition-colors'
-            }
-          >
-            Home
-          </NavLink>
+          </div>
           
-          <NavLink 
-            to="/videos" 
-            className={({ isActive }) => 
-              isActive 
-                ? 'text-ajira-accent font-semibold border-b-2 border-ajira-accent pb-1' 
-                : 'text-gray-700 hover:text-ajira-accent transition-colors'
-            }
-          >
-            Videos
-          </NavLink>
-          
-          <NavLink 
-            to="/mazungumzo" 
-            className={({ isActive }) => 
-              isActive 
-                ? 'text-ajira-accent font-semibold border-b-2 border-ajira-accent pb-1' 
-                : 'text-gray-700 hover:text-ajira-accent transition-colors'
-            }
-          >
-            Mazungumzo Hub
-          </NavLink>
-          
-          {dropdowns
-            .filter(dd => !(dd.label === 'Account' && (user || isLoggedIn))) // Hide Account dropdown when logged in
-            .map((dd) => (
-            <div key={dd.label} className="relative group">
-              <button
-                className="text-gray-700 hover:text-ajira-accent font-semibold px-2 py-1 focus:outline-none transition-colors flex items-center gap-1"
-                onMouseEnter={() => setDropdown(dd.label)}
-                onMouseLeave={() => setDropdown(null)}
-                onClick={() => setDropdown(dropdown === dd.label ? null : dd.label)}
-              >
-                {dd.label}
-                <svg 
-                  className={`w-4 h-4 transition-transform ${dropdown === dd.label ? 'rotate-180' : ''}`} 
-                  fill="none" 
-                  stroke="currentColor" 
-                  strokeWidth="2" 
-                  viewBox="0 0 24 24"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
-              
-              {/* Dropdown menu */}
-              <div
-                className={`absolute left-0 mt-2 w-56 bg-white rounded-lg shadow-xl py-2 border border-gray-100 transition-all duration-200 ${
-                  dropdown === dd.label ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible -translate-y-2'
-                }`}
-                onMouseEnter={() => setDropdown(dd.label)}
-                onMouseLeave={() => setDropdown(null)}
-              >
-                {dd.items
-                  .filter(item => !(item.label === 'Sign In / Sign Up' && isLoggedIn)) // Hide sign in item when logged in
-                  .map((item) => (
-                  <NavLink
-                    key={item.to}
-                    to={item.to}
-                    className={({ isActive }) =>
-                                      'block px-4 py-3 text-gray-700 hover:bg-gradient-to-r hover:from-red-50 hover:to-gray-50 hover:text-ajira-accent transition-all ' +
-                (isActive ? 'font-semibold text-ajira-accent bg-gradient-to-r from-red-50 to-gray-50' : '')
-                    }
-                    onClick={() => setDropdown(null)}
+          {/* Enhanced User Section with Separate Auth Buttons */}
+          <div className="flex items-center space-x-4">
+            {user ? (
+              <div className="flex items-center space-x-3">
+                {/* Enhanced Notifications with Dropdown */}
+                <div ref={notificationRef} className="relative">
+                  <button
+                    onClick={() => setNotificationDropdownOpen(!notificationDropdownOpen)}
+                    className="relative p-2 text-gray-600 hover:text-kenya-red hover:bg-gray-50 rounded-lg transition-colors group"
                   >
-                    {item.label}
-                  </NavLink>
-                ))}
+                    <Bell className="h-5 w-5 group-hover:animate-pulse" />
+                    {unreadCount > 0 && (
+                      <div className="absolute -top-1 -right-1 h-5 w-5 bg-gradient-to-r from-kenya-red to-kenya-green rounded-full flex items-center justify-center shadow-lg animate-pulse">
+                        <span className="text-white text-xs font-bold">
+                          {unreadCount > 9 ? '9+' : unreadCount}
+                        </span>
+                      </div>
+                    )}
+                  </button>
+
+                  {/* Notification Dropdown */}
+                  {notificationDropdownOpen && (
+                    <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden z-50 max-h-96">
+                      {/* Header */}
+                      <div className="px-4 py-3 bg-gradient-to-r from-kenya-green/10 to-kenya-red/10 border-b border-gray-100">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                            <Bell className="h-4 w-4" />
+                            Notifications
+                          </h3>
+                          {unreadCount > 0 && (
+              <button
+                              onClick={markAllAsRead}
+                              className="text-xs text-kenya-red hover:text-kenya-green transition-colors font-medium"
+                            >
+                              Mark all read
+              </button>
+                          )}
+                        </div>
+                        {unreadCount > 0 && (
+                          <p className="text-xs text-gray-600 mt-1">
+                            {unreadCount} new notification{unreadCount > 1 ? 's' : ''}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Notifications List */}
+                      <div className="max-h-64 overflow-y-auto">
+                        {notifications.slice(0, 5).map((notification) => (
+                          <div
+                            key={notification.id}
+                            onClick={() => markAsRead(notification.id)}
+                            className={`p-3 hover:bg-gray-50 transition-colors cursor-pointer border-l-4 ${
+                              notification.unread 
+                                ? 'bg-blue-50/50 border-l-kenya-red' 
+                                : 'border-l-transparent'
+                            }`}
+                          >
+                            <div className="flex items-start gap-3">
+                              <span className="text-lg flex-shrink-0 mt-0.5">
+                                {getNotificationIcon(notification.type)}
+                              </span>
+                              <div className="flex-1 min-w-0">
+                                <p className={`text-sm truncate ${
+                                  notification.unread ? 'font-semibold text-gray-900' : 'text-gray-700'
+                                }`}>
+                                  {notification.title}
+                                </p>
+                                <p className="text-xs text-gray-600 line-clamp-2 mt-1">
+                                  {notification.message}
+                                </p>
+                                <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                                  <span className="w-1 h-1 bg-gray-400 rounded-full"></span>
+                                  {notification.time}
+                                </p>
+                              </div>
+                              {notification.unread && (
+                                <div className="w-2 h-2 bg-kenya-red rounded-full flex-shrink-0 mt-2"></div>
+                              )}
               </div>
             </div>
           ))}
+                      </div>
           
-          {/* User Profile Section or Sign In Button */}
-          {(user || isLoggedIn) ? (
-            <div className="relative profile-dropdown" ref={userDropdownRef}>
-              <button
-                onClick={() => {
-                  setUserDropdown(!userDropdown);
-                  setProfileDropdown(!profileDropdown);
-                }}
-                className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-100 transition-colors"
-              >
-                {user?.photoURL ? (
-                  <img 
-                    src={user.photoURL} 
-                    alt={user.displayName || 'User'} 
-                    className="w-8 h-8 rounded-full object-cover"
-                  />
-                ) : (
-                  <div className="w-8 h-8 bg-gradient-to-r from-red-600 to-black rounded-full flex items-center justify-center text-white text-sm font-semibold">
-                    {user?.displayName ? user.displayName.charAt(0).toUpperCase() : user?.email?.charAt(0).toUpperCase() || userEmail?.charAt(0).toUpperCase() || 'U'}
-                  </div>
-                )}
-                <span className="hidden sm:block text-sm font-medium text-gray-700">
-                  {user?.displayName || user?.email?.split('@')[0] || userEmail.split('@')[0]}
-                </span>
-                <svg 
-                  className={`w-4 h-4 transition-transform ${(userDropdown || profileDropdown) ? 'rotate-180' : ''}`}
-                  fill="none" 
-                  stroke="currentColor" 
-                  strokeWidth="2" 
-                  viewBox="0 0 24 24"
+                      {/* Footer */}
+                      <div className="px-4 py-3 bg-gray-50 text-center border-t border-gray-100">
+          <Link
+                          to="/notifications"
+                          onClick={() => setNotificationDropdownOpen(false)}
+                          className="text-sm font-medium text-kenya-red hover:text-kenya-green transition-colors"
+          >
+                          View all notifications
+          </Link>
+        </div>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Enhanced User Profile Dropdown */}
+                <div ref={userDropdownRef} className="relative">
+                  <button
+                    onClick={() => setUserDropdownOpen(!userDropdownOpen)}
+                    className="flex items-center space-x-2 p-2 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors group"
+                  >
+                    {/* Profile Picture */}
+                    <div className="relative">
+                      {getUserAvatar(user) ? (
+                        <img
+                          src={getUserAvatar(user)}
+                          alt={user.displayName || user.email}
+                          className="w-9 h-9 rounded-full object-cover border-2 border-gray-200 group-hover:border-kenya-red transition-colors shadow-sm"
+                        />
+                      ) : (
+                        <div className="w-9 h-9 bg-gradient-to-br from-kenya-red via-kenya-green to-kenya-red rounded-full flex items-center justify-center shadow-sm border-2 border-gray-200 group-hover:border-kenya-green transition-colors">
+                          <span className="text-white text-sm font-bold">
+                            {getUserInitials(user)}
+                          </span>
+                        </div>
+                      )}
+                      {/* Online Status Indicator */}
+                      <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-white shadow-sm animate-pulse"></div>
+                    </div>
+                    
+                    <div className="hidden sm:block text-left">
+                      <div className="text-sm font-medium text-gray-900 truncate max-w-32">
+                        {user.displayName || user.email?.split('@')[0] || 'User'}
+                      </div>
+                      <UserVerificationBadge user={user} />
+                    </div>
+                    <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${userDropdownOpen ? 'rotate-180' : ''}`} />
+                  </button>
+                  
+                  {userDropdownOpen && (
+                    <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-2xl border border-gray-200 py-2 z-50 overflow-hidden">
+                      {/* User Info Header */}
+                      <div className="px-4 py-3 bg-gradient-to-r from-kenya-green/10 to-kenya-red/10 border-b border-gray-100">
+                        <div className="flex items-center gap-3">
+                          {getUserAvatar(user) ? (
+                            <img
+                              src={getUserAvatar(user)}
+                              alt={user.displayName || user.email}
+                              className="w-12 h-12 rounded-full object-cover border-2 border-white shadow-lg"
+                            />
+                          ) : (
+                            <div className="w-12 h-12 bg-gradient-to-br from-kenya-red via-kenya-green to-kenya-red rounded-full flex items-center justify-center shadow-lg border-2 border-white">
+                              <span className="text-white text-lg font-bold">
+                                {getUserInitials(user)}
+                              </span>
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-semibold text-gray-900 truncate">
+                              {user.displayName || user.email?.split('@')[0] || 'User'}
+                            </div>
+                            <div className="text-xs text-gray-600 truncate">{user.email}</div>
+                            <div className="mt-1">
+                              <UserVerificationBadge user={user} />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Menu Items */}
+                      <div className="py-2">
+                        <Link 
+                          to="/profile" 
+                          className="flex items-center px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors group"
+                          onClick={() => setUserDropdownOpen(false)}
+                        >
+                          <User className="h-4 w-4 mr-3 text-kenya-green group-hover:text-kenya-red transition-colors" />
+                          My Profile
+                        </Link>
+                        <Link 
+                          to="/orders" 
+                          className="flex items-center px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors group"
+                          onClick={() => setUserDropdownOpen(false)}
+                        >
+                          <Settings className="h-4 w-4 mr-3 text-kenya-green group-hover:text-kenya-red transition-colors" />
+                          My Orders
+                        </Link>
+                        <Link 
+                          to="/notifications" 
+                          className="flex items-center px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors group"
+                          onClick={() => setUserDropdownOpen(false)}
+                        >
+                          <Bell className="h-4 w-4 mr-3 text-kenya-green group-hover:text-kenya-red transition-colors" />
+                          Notifications
+                          {unreadCount > 0 && (
+                            <span className="ml-auto bg-kenya-red text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                              {unreadCount > 9 ? '9+' : unreadCount}
+                            </span>
+                          )}
+                        </Link>
+                        <div className="border-t border-gray-100 mt-2 pt-2">
+        <button
+                            onClick={handleSignOut} 
+                            className="flex items-center w-full px-4 py-2.5 text-sm text-kenya-red hover:bg-kenya-red/5 transition-colors group"
+                          >
+                            <LogOut className="h-4 w-4 mr-3 group-hover:animate-pulse" />
+                            Sign Out
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center space-x-3">
+                {/* Sign In Button */}
+                <Link
+                  to="/auth"
+                  className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-kenya-red border border-gray-300 rounded-lg hover:border-kenya-red transition-all duration-200"
                 >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
-              
-              {/* User Dropdown Menu */}
-              {(userDropdown || profileDropdown) && (
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl py-2 border border-gray-100 z-50">
-                  <div className="px-4 py-2 border-b border-gray-100">
-                    <p className="text-sm font-medium text-gray-900">
-                      {user?.displayName || userEmail.split('@')[0] || 'User'}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {user?.email || userEmail}
-                    </p>
+                  Sign In
+                </Link>
+                
+                {/* Register Button - Primary CTA */}
+                <Link
+                  to="/auth?mode=register"
+                  className="bg-gradient-to-r from-kenya-red to-kenya-green hover:from-kenya-green hover:to-kenya-red text-white px-6 py-2 rounded-lg text-sm font-medium shadow-md hover:shadow-lg transition-all duration-200 hover:scale-105"
+                >
+                  Join Now
+                </Link>
+              </div>
+            )}
+      </div>
+      
+          {/* Mobile Menu Button */}
+          <div className="lg:hidden ml-4">
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="p-2 rounded-lg text-gray-600 hover:text-kenya-red hover:bg-gray-50 transition-colors"
+            >
+              <Menu className="h-6 w-6" />
+            </button>
+          </div>
+        </div>
+      </div>
+      {/* Enhanced Mobile Menu with better animations */}
+      {mobileMenuOpen && (
+        <div className="md:hidden border-t border-kenya-green/10 bg-white shadow-xl animate-in slide-in-from-top duration-300">
+          <div className="px-4 pt-4 pb-6 space-y-4">
+            {/* Mobile Navigation Links */}
+            <div className="space-y-3">
+              {dropdownMenus.map((menu) => (
+                <div key={menu.id} className="space-y-1">
+                  <button
+                    onClick={() => handleDropdownToggle(menu.id)}
+                    className={`flex items-center justify-between w-full px-4 py-3 rounded-lg text-lg font-semibold transition-all duration-200 ${
+                      activeDropdown === menu.id
+                        ? 'text-kenya-red bg-kenya-green/10 border-kenya-green'
+                        : 'text-kenya-black hover:text-kenya-red hover:bg-kenya-green/10 hover:border-kenya-green/30'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <menu.icon className="w-5 h-5" />
+                      {menu.label}
+                    </div>
+                    <ChevronDown className={`w-4 h-4 transition-transform ${activeDropdown === menu.id ? 'rotate-180' : ''}`} />
+                  </button>
+                  {activeDropdown === menu.id && (
+                    <div className="ml-4 space-y-1 animate-in slide-in-from-top duration-200">
+                      {menu.items.map((item, index) => (
+                        <Link
+                          key={index}
+                          to={item.to}
+                          className="flex items-center gap-3 px-6 py-3 text-base text-kenya-black hover:bg-kenya-green/10 hover:text-kenya-red rounded-lg transition-colors mx-2"
+                          onClick={closeAllDropdowns}
+                        >
+                          <item.icon className="w-4 h-4 text-kenya-green" />
+                          <div>
+                            <div className="font-medium">{item.label}</div>
+                            <div className="text-xs text-gray-600">{item.description}</div>
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+            
+            {/* Enhanced Mobile User Section */}
+            <div className="border-t border-kenya-green/10 pt-4 mt-4">
+              {user ? (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-kenya-green/10 to-kenya-red/10 rounded-lg">
+                    {getUserAvatar(user) ? (
+                      <img
+                        src={getUserAvatar(user)}
+                        alt={user.displayName || user.email}
+                        className="w-12 h-12 rounded-full object-cover border-2 border-white shadow-lg"
+                      />
+                    ) : (
+                      <div className="w-12 h-12 bg-gradient-to-br from-kenya-red via-kenya-green to-kenya-red rounded-full flex items-center justify-center shadow-lg border-2 border-white">
+                        <span className="text-white text-lg font-bold">
+                          {getUserInitials(user)}
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex-1">
+                      <div className="font-semibold text-kenya-black">
+                        {user.displayName || user.email?.split('@')[0] || 'User'}
+                      </div>
+                      <div className="text-sm text-gray-600 truncate">{user.email}</div>
+                      <div className="mt-1">
+                        <UserVerificationBadge user={user} />
+                      </div>
+                    </div>
+                    {/* Online Status */}
+                    <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
                   </div>
-                  
-                  <Link
-                    to="/profile"
-                    className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                    onClick={() => {
-                      setUserDropdown(false);
-                      setProfileDropdown(false);
-                    }}
-                  >
-                    <User className="w-4 h-4" />
-                    Profile
-                  </Link>
-                  
-                  <Link
-                    to="/notifications"
-                    className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                    onClick={() => {
-                      setUserDropdown(false);
-                      setProfileDropdown(false);
-                    }}
-                  >
-                    <Bell className="w-4 h-4" />
-                    Notifications
-                  </Link>
-                  
-                  <Link
-                    to="/orders"
-                    className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                    onClick={() => {
-                      setUserDropdown(false);
-                      setProfileDropdown(false);
-                    }}
-                  >
-                    <Settings className="w-4 h-4" />
-                    Orders
-                  </Link>
-                  
-                  <div className="border-t border-gray-100 mt-2 pt-2">
-                    <button
-                      onClick={() => {
-                        handleSignOut();
-                        handleLogout();
-                        setUserDropdown(false);
-                        setProfileDropdown(false);
-                      }}
-                      className="flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors w-full text-left"
+                  <div className="space-y-1">
+                    <Link to="/profile" className="flex items-center gap-3 px-4 py-3 text-kenya-black hover:bg-kenya-green/10 rounded-lg transition-colors group" onClick={closeAllDropdowns}>
+                      <User className="h-4 w-4 text-kenya-green group-hover:text-kenya-red transition-colors" />
+                      My Profile
+                    </Link>
+                    <Link to="/orders" className="flex items-center gap-3 px-4 py-3 text-kenya-black hover:bg-kenya-green/10 rounded-lg transition-colors group" onClick={closeAllDropdowns}>
+                      <Settings className="h-4 w-4 text-kenya-green group-hover:text-kenya-red transition-colors" />
+                      My Orders
+                    </Link>
+                    <Link to="/notifications" className="flex items-center gap-3 px-4 py-3 text-kenya-black hover:bg-kenya-green/10 rounded-lg transition-colors group" onClick={closeAllDropdowns}>
+                      <Bell className="h-4 w-4 text-kenya-green group-hover:text-kenya-red transition-colors" />
+                      Notifications
+                      {unreadCount > 0 && (
+                        <span className="ml-auto bg-kenya-red text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                          {unreadCount > 9 ? '9+' : unreadCount}
+                        </span>
+                      )}
+                    </Link>
+                    <button 
+                      onClick={handleSignOut} 
+                      className="flex items-center gap-3 w-full px-4 py-3 text-kenya-red hover:bg-kenya-red/10 rounded-lg transition-colors group"
                     >
-                      <LogOut className="w-4 h-4" />
+                      <LogOut className="h-4 w-4 group-hover:animate-pulse" />
                       Sign Out
                     </button>
                   </div>
                 </div>
+              ) : (
+                <div className="space-y-3">
+                  <Link
+                    to="/auth"
+                    className="flex items-center justify-center gap-2 w-full px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:text-kenya-red hover:border-kenya-red transition-all duration-200"
+                    onClick={closeAllDropdowns}
+                  >
+                    <User className="w-5 h-5" />
+                    Sign In
+                  </Link>
+                  <Link
+                    to="/auth?mode=register"
+                    className="flex items-center justify-center gap-2 w-full bg-gradient-to-r from-kenya-red to-kenya-green hover:from-kenya-green hover:to-kenya-red text-white px-6 py-3 rounded-lg font-medium shadow-md hover:shadow-lg transition-all duration-200"
+                    onClick={closeAllDropdowns}
+                  >
+                    <Star className="w-5 h-5" />
+                    Join Now
+                  </Link>
+                </div>
               )}
             </div>
-          ) : (
-            // Sign up/Sign in buttons for non-authenticated users
-            <div className="flex items-center gap-3">
-              <Link
-                to="/auth"
-                className="text-gray-700 hover:text-ajira-accent font-medium transition-colors"
-              >
-                Sign In
-              </Link>
-              <Link
-                to="/auth"
-                className="bg-gradient-to-r from-red-600 to-black text-white px-4 py-2 rounded-lg hover:shadow-lg transition-all duration-200 font-semibold"
-              >
-                Join / Sign Up
-              </Link>
-            </div>
-          )}
-        </div>
-        
-        {/* Mobile menu button */}
-        <button
-          className="md:hidden text-gray-700 focus:outline-none p-2"
-          onClick={() => setMenuOpen(!menuOpen)}
-        >
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-            {menuOpen ? (
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            ) : (
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-            )}
-          </svg>
-        </button>
-      </div>
-      
-      {/* Mobile menu */}
-      {menuOpen && (
-        <div className="md:hidden bg-white shadow-lg border-t border-gray-100">
-          <div className="px-4 py-2">
-            {/* Removed duplicate mobile search bar for clarity */}
-            
-            <NavLink 
-              to="/" 
-              className={({ isActive }) => 
-                isActive 
-                  ? 'block py-3 text-ajira-accent font-semibold border-l-4 border-ajira-accent pl-4' 
-                  : 'block py-3 text-gray-700 hover:text-ajira-accent pl-4'
-              } 
-              onClick={() => setMenuOpen(false)}
-            >
-              Home
-            </NavLink>
-            
-            <NavLink 
-              to="/videos" 
-              className={({ isActive }) => 
-                isActive 
-                  ? 'block py-3 text-ajira-accent font-semibold border-l-4 border-ajira-accent pl-4' 
-                  : 'block py-3 text-gray-700 hover:text-ajira-accent pl-4'
-              } 
-              onClick={() => setMenuOpen(false)}
-            >
-              Videos
-            </NavLink>
-            
-            <NavLink 
-              to="/mazungumzo" 
-              className={({ isActive }) => 
-                isActive 
-                  ? 'block py-3 text-ajira-accent font-semibold border-l-4 border-ajira-accent pl-4' 
-                  : 'block py-3 text-gray-700 hover:text-ajira-accent pl-4'
-              } 
-              onClick={() => setMenuOpen(false)}
-            >
-              Mazungumzo Hub
-            </NavLink>
-            
-            {dropdowns
-              .filter(dd => !(dd.label === 'Account' && isLoggedIn)) // Hide Account dropdown when logged in
-              .map((dd) => (
-              <div key={dd.label} className="mb-4">
-                <div className="font-semibold text-gray-800 mb-2 px-4 py-2 bg-gray-50 rounded">
-                  {dd.label}
-                </div>
-                {dd.items
-                  .filter(item => !(item.label === 'Sign In / Sign Up' && isLoggedIn)) // Hide sign in item when logged in
-                  .map((item) => (
-                  <NavLink
-                    key={item.to}
-                    to={item.to}
-                    className={({ isActive }) =>
-                                        'block px-6 py-2 text-gray-700 hover:bg-gradient-to-r hover:from-red-50 hover:to-gray-50 hover:text-ajira-accent transition-all ' +
-                  (isActive ? 'font-semibold text-ajira-accent bg-gradient-to-r from-red-50 to-gray-50 border-l-4 border-ajira-accent' : '')
-                    }
-                    onClick={() => setMenuOpen(false)}
-                  >
-                    {item.label}
-                  </NavLink>
+
+            {/* Mobile Search Results */}
+            {showSearchResults && filteredSearchResults.length > 0 && (
+              <div className="border-t border-kenya-green/10 pt-4 mt-4">
+                <div className="text-sm font-semibold text-kenya-red mb-3">Search Results</div>
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {Object.entries(groupedSearchResults).map(([category, items]) => (
+                    <div key={category}>
+                      <div className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">
+                        {category}
+                      </div>
+                      {items.map((item, index) => (
+                        <Link
+                          key={index}
+                          to={item.url}
+                          onClick={handleSearchSelect}
+                          className="block px-3 py-2 hover:bg-kenya-green/10 rounded-lg transition-colors"
+                        >
+                          <div className="font-medium text-kenya-black">{item.title}</div>
+                          <div className="text-xs text-gray-600">{item.description}</div>
+                        </Link>
                 ))}
               </div>
             ))}
-            
-            {/* Mobile User Section */}
-            {(user || isLoggedIn) ? (
-              <div className="mb-4 p-4 bg-gray-50 rounded-lg">
-                <div className="flex items-center gap-3 mb-3">
-                  {user?.photoURL ? (
-                    <img 
-                      src={user.photoURL} 
-                      alt={user.displayName || 'User'} 
-                      className="w-10 h-10 rounded-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-10 h-10 bg-gradient-to-r from-red-600 to-black rounded-full flex items-center justify-center text-white font-semibold">
-                      {user?.displayName ? user.displayName.charAt(0).toUpperCase() : user?.email?.charAt(0).toUpperCase() || userEmail?.charAt(0).toUpperCase() || 'U'}
-                    </div>
-                  )}
-                  <div>
-                    <p className="font-medium text-gray-900">
-                      {user?.displayName || userEmail?.split('@')[0] || 'User'}
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      {user?.email || userEmail}
-                    </p>
-                  </div>
                 </div>
-                
-                <div className="space-y-2">
-                  <Link
-                    to="/profile"
-                    className="flex items-center gap-3 px-3 py-2 text-sm text-gray-700 hover:bg-white rounded transition-colors"
-                    onClick={() => setMenuOpen(false)}
-                  >
-                    <User className="w-4 h-4" />
-                    Profile
-                  </Link>
-                  
-                  <Link
-                    to="/notifications"
-                    className="flex items-center gap-3 px-3 py-2 text-sm text-gray-700 hover:bg-white rounded transition-colors"
-                    onClick={() => setMenuOpen(false)}
-                  >
-                    <Bell className="w-4 h-4" />
-                    Notifications
-                  </Link>
-                  
-                  <Link
-                    to="/orders"
-                    className="flex items-center gap-3 px-3 py-2 text-sm text-gray-700 hover:bg-white rounded transition-colors"
-                    onClick={() => setMenuOpen(false)}
-                  >
-                    <Settings className="w-4 h-4" />
-                    Orders
-                  </Link>
-                  
-                  <button
-                    onClick={() => {
-                      handleSignOut();
-                      handleLogout();
-                      setMenuOpen(false);
-                    }}
-                    className="flex items-center gap-3 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded transition-colors w-full text-left"
-                  >
-                    <LogOut className="w-4 h-4" />
-                    Sign Out
-                  </button>
-                </div>
-              </div>
-            ) : (
-              // Mobile sign up/sign in buttons for non-authenticated users
-              <div className="mx-4 mb-4 space-y-2">
-                <Link
-                  to="/auth"
-                  className="block bg-white border border-gray-300 text-gray-700 px-4 py-3 rounded-lg text-center font-semibold hover:bg-gray-50 transition-colors"
-                  onClick={() => setMenuOpen(false)}
-                >
-                  Sign In
-                </Link>
-                <Link
-                  to="/auth"
-                  className="block bg-gradient-to-r from-red-600 to-black text-white px-4 py-3 rounded-lg text-center font-semibold"
-                  onClick={() => setMenuOpen(false)}
-                >
-                  Join / Sign Up
-                </Link>
               </div>
             )}
           </div>
         </div>
       )}
     </nav>
+  );
+};
+
+// User Verification Badge Component
+const UserVerificationBadge = ({ user }: { user: any }) => {
+  if (!user) return null;
+  
+  return (
+    <div className="flex items-center gap-1">
+      <div className="w-4 h-4 bg-kenya-accent rounded-full flex items-center justify-center">
+        <div className="w-2 h-2 bg-white rounded-full"></div>
+      </div>
+      <span className="text-xs text-kenya-text-muted">Verified Member</span>
+    </div>
   );
 };
 

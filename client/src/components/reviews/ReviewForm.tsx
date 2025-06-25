@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useMutation, useQueryClient } from 'react-query';
 import { collection, addDoc, doc, updateDoc, serverTimestamp, increment } from 'firebase/firestore';
 import { db, COLLECTIONS } from '../../config/firebase';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuth } from '../../contexts/AuthContext';
 import { Star } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import type { Review, Order } from '../../types/marketplace';

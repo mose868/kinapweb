@@ -26,39 +26,138 @@ const UpdatesPage = () => {
   const updates: Update[] = [
     {
       id: '1',
-      title: 'Upcoming Digital Skills Workshop',
-      content: `Join us for a comprehensive workshop on digital marketing and social media management. Learn from industry experts and get hands-on experience.`,
+      title: 'KiNaP Ajira Club AI & Machine Learning Bootcamp 2025',
+      content: `Join our intensive 6-week AI and Machine Learning bootcamp starting February 2025. Learn Python, TensorFlow, and real-world AI applications. Industry professionals from Nairobi tech companies will mentor participants.`,
       category: 'event',
-      date: '2024-04-15',
-      image: 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&q=80',
-      tags: ['workshop', 'digital-marketing', 'training']
+      date: '2025-02-15',
+      image: 'https://images.unsplash.com/photo-1485827404703-89b55fcc595e?auto=format&fit=crop&q=80',
+      tags: ['AI', 'machine-learning', 'bootcamp', 'python']
     },
     {
       id: '2',
-      title: 'Club Achievement Highlight',
-      content: `Our members have successfully completed over 100 freelance projects this quarter! Congratulations to everyone for this amazing milestone.`,
+      title: 'Record-Breaking Year: 500+ Members Secured Digital Jobs',
+      content: `Incredible achievement! Our club members have secured over 500 digital job placements in 2024, with average salary increases of 300%. This includes positions at top companies like Safaricom, Equity Bank, and international remote roles.`,
       category: 'achievement',
-      date: '2024-04-10',
+      date: '2025-01-20',
       image: 'https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&q=80',
-      tags: ['achievement', 'freelancing']
+      tags: ['achievement', 'employment', 'success-stories']
     },
     {
       id: '3',
-      title: 'New Partnership with Tech Giant',
-      content: `We're excited to announce our new partnership with a leading tech company that will provide internship opportunities and mentorship programs for our club members.`,
+      title: 'Partnership with Google Africa and Microsoft Kenya',
+      content: `Exciting news! KiNaP Ajira Club has signed partnerships with Google Africa and Microsoft Kenya to provide free certification programs, cloud credits, and exclusive internship opportunities for our members throughout 2025.`,
       category: 'announcement',
-      date: '2024-04-08',
-      image: 'https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&q=80',
-      tags: ['partnership', 'opportunity']
+      date: '2025-01-18',
+      image: 'https://images.unsplash.com/photo-1573164713714-d95e436ab8d6?auto=format&fit=crop&q=80',
+      tags: ['partnership', 'google', 'microsoft', 'certifications']
     },
     {
       id: '4',
-      title: 'Remote Work Opportunities',
-      content: 'Multiple companies are looking for talented digital professionals for remote positions. Roles include web developers, digital marketers, and content writers.',
+      title: 'New State-of-the-Art Innovation Lab Opens',
+      content: `Our brand new Innovation Lab is now open! Featuring VR/AR equipment, 3D printers, IoT development kits, and high-performance computing resources. Members can book sessions for hands-on learning and project development.`,
+      category: 'announcement',
+      date: '2025-01-15',
+      image: 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&q=80',
+      tags: ['innovation-lab', 'technology', 'equipment', 'learning']
+    },
+    {
+      id: '5',
+      title: 'Blockchain & Web3 Development Program Launch',
+      content: `Starting March 2025, learn blockchain development, smart contracts, and DeFi applications. Partner with local fintech companies for real project experience. Prerequisites: Basic programming knowledge.`,
+      category: 'event',
+      date: '2025-03-01',
+      image: 'https://images.unsplash.com/photo-1639762681485-074b7f938ba0?auto=format&fit=crop&q=80',
+      tags: ['blockchain', 'web3', 'cryptocurrency', 'smart-contracts']
+    },
+    {
+      id: '6',
+      title: '1000+ Freelance Projects Completed in Q4 2024',
+      content: `Our members successfully delivered over 1000 freelance projects in the last quarter of 2024, earning a collective income of over KSh 50 million. Top categories: web development, digital marketing, and graphic design.`,
+      category: 'achievement',
+      date: '2025-01-10',
+      image: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&q=80',
+      tags: ['freelancing', 'income', 'projects', 'success']
+    },
+    {
+      id: '7',
+      title: 'International Exchange Program with Silicon Valley',
+      content: `Selected members will participate in a 3-month exchange program with tech companies in Silicon Valley. Applications open February 2025. Fully sponsored including flights, accommodation, and stipend.`,
       category: 'opportunity',
-      date: '2024-04-05',
-      image: 'https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&q=80',
-      tags: ['jobs', 'remote-work']
+      date: '2025-02-01',
+      image: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&q=80',
+      tags: ['exchange-program', 'silicon-valley', 'international', 'sponsored']
+    },
+    {
+      id: '8',
+      title: 'KiNaP Ajira Annual Tech Conference 2025',
+      content: `Join us for our biggest event of the year! 3-day conference featuring keynote speakers from Meta, Amazon, and local tech leaders. Workshops, networking sessions, and startup pitch competitions. Early bird tickets available.`,
+      category: 'event',
+      date: '2025-06-15',
+      image: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&q=80',
+      tags: ['conference', 'networking', 'workshops', 'tech-leaders']
+    },
+    {
+      id: '9',
+      title: 'New Mobile App Development Track',
+      content: `Learn Flutter, React Native, and native Android/iOS development. 12-week comprehensive program includes UI/UX design, backend integration, and app store deployment. Mentorship from senior mobile developers.`,
+      category: 'announcement',
+      date: '2025-04-01',
+      image: 'https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?auto=format&fit=crop&q=80',
+      tags: ['mobile-development', 'flutter', 'react-native', 'app-development']
+    },
+    {
+      id: '10',
+      title: 'Cybersecurity Awareness Month Campaign',
+      content: `March 2025 is our Cybersecurity Awareness Month! Free workshops on ethical hacking, penetration testing, and digital security. Collaboration with Kenya's National Computer and Cybercrimes Coordination Committee.`,
+      category: 'event',
+      date: '2025-03-01',
+      image: 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&q=80',
+      tags: ['cybersecurity', 'ethical-hacking', 'digital-security', 'awareness']
+    },
+    {
+      id: '11',
+      title: 'Alumni Network Reaches 5000+ Professionals',
+      content: `Our alumni network has grown to over 5000 professionals working across 50+ countries. New mentorship matching system connects current students with successful graduates for career guidance and opportunities.`,
+      category: 'achievement',
+      date: '2025-01-05',
+      image: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&q=80',
+      tags: ['alumni', 'mentorship', 'global-network', 'career-guidance']
+    },
+    {
+      id: '12',
+      title: 'Digital Marketing Certification Program with HubSpot',
+      content: `Free HubSpot Digital Marketing Certification for all members! Covers content marketing, social media strategy, SEO, and analytics. Successful completion leads to job placement assistance with partner agencies.`,
+      category: 'opportunity',
+      date: '2025-02-10',
+      image: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&q=80',
+      tags: ['digital-marketing', 'hubspot', 'certification', 'job-placement']
+    },
+    {
+      id: '13',
+      title: 'Startup Incubator Program Launch',
+      content: `Transform your ideas into reality! Our new startup incubator provides funding, mentorship, and workspace for student entrepreneurs. Applications open for the first cohort of 20 startups. Seed funding up to KSh 2 million available.`,
+      category: 'announcement',
+      date: '2025-03-15',
+      image: 'https://images.unsplash.com/photo-1556761175-b413da4baf72?auto=format&fit=crop&q=80',
+      tags: ['startup-incubator', 'entrepreneurship', 'funding', 'mentorship']
+    },
+    {
+      id: '14',
+      title: 'Data Science & Analytics Bootcamp Success',
+      content: `100% job placement rate for our Data Science bootcamp graduates! All 50 participants secured positions as data analysts, data scientists, and business intelligence specialists. Next cohort starts April 2025.`,
+      category: 'achievement',
+      date: '2025-01-25',
+      image: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&q=80',
+      tags: ['data-science', 'job-placement', 'analytics', 'bootcamp-success']
+    },
+    {
+      id: '15',
+      title: 'Remote Work Opportunities: 200+ Open Positions',
+      content: `Exclusive access to 200+ remote work opportunities from our partner companies globally. Positions range from entry-level to senior roles in development, design, marketing, and project management. Apply through our job portal.`,
+      category: 'opportunity',
+      date: '2025-01-30',
+      image: 'https://images.unsplash.com/photo-1553877522-43269d4ea984?auto=format&fit=crop&q=80',
+      tags: ['remote-work', 'job-opportunities', 'global-positions', 'career-growth']
     }
   ]
 

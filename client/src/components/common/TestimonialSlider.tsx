@@ -1,43 +1,52 @@
 import React, { useState, useEffect } from 'react';
-import { db } from '../../config/firebase';
-import { collection, getDocs, query, limit, orderBy } from 'firebase/firestore';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { Star, ChevronLeft, ChevronRight, Quote } from 'lucide-react';
 
 interface Testimonial {
   id: string;
   name: string;
   role: string;
-  message: string;
-  image?: string;
+  content: string;
   rating: number;
-  date: any;
+  avatar: string;
 }
 
 const TestimonialSlider: React.FC = () => {
-  const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
 
-  useEffect(() => {
-    const fetchTestimonials = async () => {
-      try {
-        const q = query(
-          collection(db, 'testimonials'),
-          orderBy('date', 'desc'),
-          limit(10)
-        );
-        const querySnapshot = await getDocs(q);
-        const testimonialData = querySnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        })) as Testimonial[];
-        setTestimonials(testimonialData);
-      } catch (error) {
-        console.error('Error fetching testimonials:', error);
-      }
-    };
-
-    fetchTestimonials();
-  }, []);
+  const testimonials: Testimonial[] = [
+    {
+      id: '1',
+      name: 'Grace Wanjiku',
+      role: 'Web Developer',
+      content: 'Ajira Digital transformed my career completely. From learning basic HTML to building full-stack applications, the program gave me all the tools I needed to succeed as a freelancer.',
+      rating: 5,
+      avatar: 'https://randomuser.me/api/portraits/women/44.jpg'
+    },
+    {
+      id: '2',
+      name: 'James Kamau',
+      role: 'Digital Marketer',
+      content: 'The mentorship and hands-on training at Ajira Digital helped me land a remote job with a US company. I now earn 3x what I used to make locally.',
+      rating: 5,
+      avatar: 'https://randomuser.me/api/portraits/men/32.jpg'
+    },
+    {
+      id: '3',
+      name: 'Mary Njeri',
+      role: 'Content Creator',
+      content: 'Through Ajira Digital, I learned video editing and content creation. I now run my own YouTube channel with over 50K subscribers and multiple income streams.',
+      rating: 5,
+      avatar: 'https://randomuser.me/api/portraits/women/67.jpg'
+    },
+    {
+      id: '4',
+      name: 'Peter Ochieng',
+      role: 'Mobile App Developer',
+      content: 'The React Native training was exceptional. I built my first app within 3 months and now have clients from different countries. Life-changing experience!',
+      rating: 5,
+      avatar: 'https://randomuser.me/api/portraits/men/45.jpg'
+    }
+  ];
 
   const nextTestimonial = () => {
     setCurrentIndex((prevIndex) => 
@@ -51,58 +60,89 @@ const TestimonialSlider: React.FC = () => {
     );
   };
 
-  if (testimonials.length === 0) {
-    return null;
-  }
+  // Auto-slide functionality
+  useEffect(() => {
+    const interval = setInterval(nextTestimonial, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const renderStars = (rating: number) => {
+    return Array.from({ length: 5 }, (_, index) => (
+      <Star
+        key={index}
+        className={`w-5 h-5 ${
+          index < rating ? 'text-yellow-400 fill-current' : 'text-gray-300'
+        }`}
+      />
+    ));
+  };
 
   return (
-    <div className="relative max-w-4xl mx-auto px-4">
-      <div className="bg-white rounded-2xl shadow-xl p-8 md:p-12">
-        <div className="flex flex-col items-center text-center">
-          {testimonials[currentIndex].image && (
-            <img
-              src={testimonials[currentIndex].image}
-              alt={testimonials[currentIndex].name}
-              className="w-20 h-20 rounded-full object-cover mb-6"
-            />
-          )}
-          <div className="flex gap-1 mb-6">
-            {[...Array(testimonials[currentIndex].rating)].map((_, i) => (
-              <svg
-                key={i}
-                className="w-5 h-5 text-yellow-400"
-                fill="currentColor"
-                viewBox="0 0 20 20"
-              >
-                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-              </svg>
-            ))}
-          </div>
-          <p className="text-gray-700 text-lg md:text-xl mb-6 italic">
-            "{testimonials[currentIndex].message}"
+    <div className="relative bg-gradient-to-br from-blue-50 to-purple-50 rounded-2xl p-8 md:p-12">
+      <div className="max-w-4xl mx-auto">
+        {/* Quote Icon */}
+        <div className="flex justify-center mb-8">
+          <Quote className="w-12 h-12 text-blue-500" />
+        </div>
+
+        {/* Testimonial Content */}
+        <div className="text-center">
+          <p className="text-xl md:text-2xl text-gray-700 mb-8 leading-relaxed italic">
+            "{testimonials[currentIndex].content}"
           </p>
-          <h3 className="text-xl font-bold text-gray-900 mb-2">
-            {testimonials[currentIndex].name}
-          </h3>
-          <p className="text-gray-600">{testimonials[currentIndex].role}</p>
+
+          {/* Rating */}
+          <div className="flex justify-center mb-6">
+            {renderStars(testimonials[currentIndex].rating)}
+          </div>
+
+          {/* Author Info */}
+          <div className="flex items-center justify-center space-x-4">
+            <img
+              src={testimonials[currentIndex].avatar}
+              alt={testimonials[currentIndex].name}
+              className="w-16 h-16 rounded-full object-cover"
+            />
+            <div className="text-left">
+              <h4 className="text-lg font-semibold text-gray-900">
+                {testimonials[currentIndex].name}
+              </h4>
+              <p className="text-gray-600">{testimonials[currentIndex].role}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Navigation Buttons */}
+        <div className="flex justify-center space-x-4 mt-8">
+          <button
+            onClick={prevTestimonial}
+            className="p-3 bg-white rounded-full shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 text-gray-600 hover:text-blue-600"
+          >
+            <ChevronLeft className="w-6 h-6" />
+          </button>
+          <button
+            onClick={nextTestimonial}
+            className="p-3 bg-white rounded-full shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 text-gray-600 hover:text-blue-600"
+          >
+            <ChevronRight className="w-6 h-6" />
+          </button>
+        </div>
+
+        {/* Dots Indicator */}
+        <div className="flex justify-center space-x-2 mt-6">
+          {testimonials.map((_, index) => (
+            <button
+              key={index}
+              onClick={() => setCurrentIndex(index)}
+              className={`w-3 h-3 rounded-full transition-all duration-200 ${
+                index === currentIndex 
+                  ? 'bg-blue-500 scale-125' 
+                  : 'bg-gray-300 hover:bg-gray-400'
+              }`}
+            />
+          ))}
         </div>
       </div>
-
-      {/* Navigation Buttons */}
-      <button
-        onClick={prevTestimonial}
-        className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 bg-white rounded-full p-2 shadow-lg hover:bg-gray-50 transition-colors"
-        aria-label="Previous testimonial"
-      >
-        <ChevronLeft className="w-6 h-6 text-gray-600" />
-      </button>
-      <button
-        onClick={nextTestimonial}
-        className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 bg-white rounded-full p-2 shadow-lg hover:bg-gray-50 transition-colors"
-        aria-label="Next testimonial"
-      >
-        <ChevronRight className="w-6 h-6 text-gray-600" />
-      </button>
     </div>
   );
 };

@@ -1,26 +1,3 @@
-import { 
-  collection,
-  doc,
-  addDoc,
-  updateDoc,
-  getDoc,
-  query,
-  where,
-  serverTimestamp
-} from 'firebase/firestore';
-import { db, COLLECTIONS } from '../config/firebase';
-import type { 
-  PaymentDetails, 
-  EscrowTransaction,
-  PaymentMethod,
-  Order,
-  PaymentAnalytics,
-  WithdrawalRequest,
-  AutomaticPayoutSettings,
-  MilestonePayment
-} from '../types/marketplace';
-import { Timestamp } from 'firebase/firestore';
-
 // Platform fee percentage
 const PLATFORM_FEE_PERCENTAGE = 0.10; // 10%
 

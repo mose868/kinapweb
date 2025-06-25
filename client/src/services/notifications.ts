@@ -1,6 +1,3 @@
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db, COLLECTIONS } from '../config/firebase';
-
 type NotificationType = 'message' | 'order' | 'review' | 'payment' | 'system';
 
 interface NotificationData {
@@ -13,12 +10,12 @@ interface NotificationData {
 
 export const createNotification = async (data: NotificationData) => {
   try {
-    const notificationRef = collection(db, COLLECTIONS.NOTIFICATIONS);
-    await addDoc(notificationRef, {
-      ...data,
-      isRead: false,
-      createdAt: serverTimestamp()
-    });
+    // const notificationRef = collection(db, COLLECTIONS.NOTIFICATIONS);
+    // await addDoc(notificationRef, {
+    //   ...data,
+    //   isRead: false,
+    //   createdAt: serverTimestamp()
+    // });
   } catch (error) {
     console.error('Error creating notification:', error);
     throw error;

@@ -8,6 +8,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+      '@babel/runtime': path.resolve(__dirname, 'node_modules/@babel/runtime')
     },
   },
   server: {
@@ -20,4 +21,7 @@ export default defineConfig({
     },
     historyApiFallback: true,
   },
+  optimizeDeps: {
+    include: ['@babel/runtime/helpers/esm/assertThisInitialized', '@babel/runtime/helpers/esm/inherits']
+  }
 }) 
