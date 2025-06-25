@@ -54,28 +54,28 @@ const ProfilePage = () => {
   const [activeTab, setActiveTab] = useState('overview')
   
   const [formData, setFormData] = useState<ClubMemberProfile>({
-    displayName: user?.displayName || '',
+    displayName: user?.name || '',
     email: user?.email || '',
-    photoURL: user?.photoURL || '',
-    bio: user?.bio || '',
-    location: user?.location || '',
-    course: user?.course || '',
-    year: user?.year || '',
-    skills: user?.skills || [],
-    preferredPlatforms: user?.preferredPlatforms || [],
-    experienceLevel: user?.experienceLevel || '',
-    ajiraGoals: user?.ajiraGoals || '',
-    preferredLearningMode: user?.preferredLearningMode || '',
-    linkedinProfile: user?.linkedinProfile || '',
-    githubProfile: user?.githubProfile || '',
-    portfolioUrl: user?.portfolioUrl || '',
-    phoneNumber: user?.phoneNumber || '',
-    idNumber: user?.idNumber || '',
-    achievements: user?.achievements || [],
-    completedProjects: user?.completedProjects || 0,
-    mentorshipInterest: user?.mentorshipInterest || false,
-    availableForFreelance: user?.availableForFreelance || false,
-    joinedDate: user?.joinedDate || new Date().toISOString(),
+    photoURL: '',
+    bio: '',
+    location: '',
+    course: '',
+    year: '',
+    skills: [],
+    preferredPlatforms: [],
+    experienceLevel: '',
+    ajiraGoals: '',
+    preferredLearningMode: '',
+    linkedinProfile: '',
+    githubProfile: '',
+    portfolioUrl: '',
+    phoneNumber: '',
+    idNumber: '',
+    achievements: [],
+    completedProjects: 0,
+    mentorshipInterest: false,
+    availableForFreelance: false,
+    joinedDate: new Date().toISOString(),
     lastActive: new Date().toISOString()
   })
 
@@ -84,7 +84,9 @@ const ProfilePage = () => {
     const fetchProfile = async () => {
       if (!user?.email) return
       try {
-        const res = await axios.post('/api/students/get-profile', { email: user.email })
+        const res = await axios.post('https://a4a6-197-136-138-2.ngrok-free.app/api/students/get-profile', { email: user.email }, {
+          headers: { 'Content-Type': 'application/json' }
+        })
         const profile = res.data
         setFormData(prev => ({
           ...prev,
@@ -176,10 +178,37 @@ const ProfilePage = () => {
 
   // Update profile mutation
   const updateProfileMutation = useMutation(async () => {
-    if (!user) return
-    // Only update local state
-    setFormData(prev => ({ ...prev, lastActive: new Date().toISOString() }))
-    setIsEditing(false)
+    if (!user?.email) return
+    
+    // Prepare data for backend update
+    const updateData = {
+      fullname: formData.displayName,
+      bio: formData.bio,
+      course: formData.course,
+      year: formData.year,
+      skills: formData.skills.join(', '),
+      experience: formData.experienceLevel,
+      phone: formData.phoneNumber,
+      idNo: formData.idNumber,
+      goals: formData.ajiraGoals,
+      linkedin: formData.linkedinProfile || '',
+      mentoring: formData.mentorshipInterest,
+      freelancing: formData.availableForFreelance,
+      achievements: formData.achievements.join(', ')
+    }
+    
+    try {
+      await axios.post('https://a4a6-197-136-138-2.ngrok-free.app/api/students/update-profile', 
+        { email: user.email, ...updateData },
+        { headers: { 'Content-Type': 'application/json' } }
+      )
+      
+      setFormData(prev => ({ ...prev, lastActive: new Date().toISOString() }))
+      setIsEditing(false)
+    } catch (error) {
+      console.error('Failed to update profile:', error)
+      throw new Error('Failed to update profile')
+    }
   })
 
   // Handle form input changes
