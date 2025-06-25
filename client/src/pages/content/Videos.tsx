@@ -23,7 +23,7 @@ import {
   Settings,
   History,
   Star,
-  WatchLater
+  Bookmark
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
@@ -447,7 +447,7 @@ const Videos: React.FC = () => {
                   <span className="text-white">History</span>
                 </button>
                 <button className="flex items-center space-x-6 px-3 py-2 hover:bg-gray-800 rounded-lg w-full text-left transition-colors">
-                  <WatchLater size={20} className="text-white" />
+                  <Bookmark size={20} className="text-white" />
                   <span className="text-white">Watch Later</span>
                 </button>
               </div>
