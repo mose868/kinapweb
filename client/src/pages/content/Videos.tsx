@@ -22,7 +22,8 @@ import {
   Verified,
   Settings,
   History,
-  Star
+  Star,
+  WatchLater
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
