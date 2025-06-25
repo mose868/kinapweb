@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useMutation } from 'react-query'
 import { useAuth } from '../contexts/AuthContext'
 import { 
@@ -20,6 +20,7 @@ import {
   Phone,
   Mail
 } from 'lucide-react'
+import axios from 'axios'
 
 interface ClubMemberProfile {
   displayName: string
@@ -77,6 +78,33 @@ const ProfilePage = () => {
     joinedDate: user?.joinedDate || new Date().toISOString(),
     lastActive: new Date().toISOString()
   })
+
+  // Fetch latest profile from backend using email
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (!user?.email) return
+      try {
+        const res = await axios.post('/api/students/get-profile', { email: user.email })
+        const profile = res.data
+        setFormData(prev => ({
+          ...prev,
+          displayName: profile.fullname || prev.displayName,
+          bio: profile.bio || prev.bio,
+          course: profile.course || prev.course,
+          year: profile.year || prev.year,
+          skills: profile.skills ? profile.skills.split(',').map((s:string)=>s.trim()) : prev.skills,
+          experienceLevel: profile.experience || prev.experienceLevel,
+          ajiraGoals: profile.goals || prev.ajiraGoals,
+          phoneNumber: profile.phone || prev.phoneNumber,
+          idNumber: profile.idNo || prev.idNumber,
+          achievements: profile.achievements ? profile.achievements.split(',').map((a:string)=>a.trim()) : prev.achievements
+        }))
+      } catch (err) {
+        console.warn('Failed to load profile', err)
+      }
+    }
+    fetchProfile()
+  }, [user?.email])
 
   // Calculate profile completion percentage
   const calculateProfileCompletion = () => {
@@ -517,22 +545,7 @@ const ProfilePage = () => {
                 <p className="text-sm text-gray-500 mt-1">Separate skills with commas</p>
               </div>
 
-              {/* Preferred Platforms */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Preferred Work Platforms *
-                </label>
-                <input
-                  type="text"
-                  value={formData.preferredPlatforms.join(', ')}
-                  onChange={(e) => handleArrayChange(e.target.value, 'preferredPlatforms')}
-                  placeholder="e.g., Upwork, Fiverr, LinkedIn, Local Clients"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ajira-accent/50 focus:border-transparent"
-                />
-                <p className="text-sm text-gray-500 mt-1">
-                  Platforms you use or want to use for finding work. Options: {platformOptions.join(', ')}
-                </p>
-              </div>
+            
 
               {/* Goals and Learning */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -551,25 +564,7 @@ const ProfilePage = () => {
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Preferred Learning Mode *
-                  </label>
-                  <select
-                    name="preferredLearningMode"
-                    value={formData.preferredLearningMode}
-                    onChange={handleChange}
-                    required
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ajira-accent/50 focus:border-transparent"
-                  >
-                    <option value="">Select learning preference</option>
-                    <option value="Self-paced online">Self-paced online</option>
-                    <option value="Live virtual sessions">Live virtual sessions</option>
-                    <option value="In-person workshops">In-person workshops</option>
-                    <option value="Hybrid (online + in-person)">Hybrid (online + in-person)</option>
-                    <option value="Mentorship-based">Mentorship-based</option>
-                  </select>
-                </div>
+              
               </div>
 
               {/* Professional Links */}
@@ -588,33 +583,6 @@ const ProfilePage = () => {
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    GitHub Profile
-                  </label>
-                  <input
-                    type="url"
-                    name="githubProfile"
-                    value={formData.githubProfile}
-                    onChange={handleChange}
-                    placeholder="https://github.com/yourusername"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ajira-accent/50 focus:border-transparent"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Portfolio URL
-                  </label>
-                  <input
-                    type="url"
-                    name="portfolioUrl"
-                    value={formData.portfolioUrl}
-                    onChange={handleChange}
-                    placeholder="https://yourportfolio.com"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ajira-accent/50 focus:border-transparent"
-                  />
-                </div>
               </div>
 
               {/* Preferences */}

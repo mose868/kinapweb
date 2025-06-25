@@ -71,7 +71,7 @@ const AuthPage = () => {
       throw new Error('Temporary/disposable email addresses are not allowed.')
     }
     
-    // Prepare data for student registration API
+    // Build payload exactly matching the backend model
     const studentData = {
       fullname: formData.displayName,
       idNo: formData.idNumber,
@@ -81,7 +81,7 @@ const AuthPage = () => {
       experience: formData.experienceLevel,
       email: formData.email,
       phone: formData.phoneNumber,
-      password: formData.password
+      password: formData.password,
     }
 
     try {
@@ -128,12 +128,10 @@ const AuthPage = () => {
       // Persist session details the same way AuthContext expects
       localStorage.setItem('token', data.token)
       
-      // Ensure user details are cached so Navbar/contexts can update right away
-      const userToStore = data.user ?? {
-        id: Date.now().toString(),
+      // Build basic user object; full profile will be fetched on Profile page
+      const userToStore = {
         email: formData.email,
-        displayName: formData.displayName || formData.email.split('@')[0],
-        role: 'student',
+        fullname: formData.displayName || formData.email.split('@')[0],
       }
       try {
         localStorage.setItem('userData', JSON.stringify(userToStore))
