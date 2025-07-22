@@ -33,6 +33,8 @@ const Videos: React.FC = () => {
   const [sortBy, setSortBy] = useState('relevance')
   const [viewMode, setViewMode] = useState('grid')
   const [showSidebar, setShowSidebar] = useState(true)
+  // Add state for currently playing video
+  const [playingVideoId, setPlayingVideoId] = useState<number | null>(null)
 
   const categories = [
     'All',
@@ -55,248 +57,32 @@ const Videos: React.FC = () => {
     { value: 'duration', label: 'Duration' }
   ]
 
-  // Enhanced YouTube-like video data with better verification system
+  // Minimal sample list (1 video) for testing
   const videos = [
     {
       id: 1,
-      title: "How I Earn $2000+ Monthly as a Kenyan Freelancer - Complete Guide 2025",
-      thumbnail: "https://images.unsplash.com/photo-1611224923853-80b023f02d71?w=400&h=300&fit=crop",
-      videoUrl: "https://www.learningcontainer.com/wp-content/uploads/2020/05/sample-mp4-file.mp4",
-      duration: "15:42",
-      views: "125K",
-      uploadDate: "2 days ago",
+      title: "KiNaP Demo Video (YouTube)",
+      thumbnail: "https://img.youtube.com/vi/dQw4w9WgXcQ/maxresdefault.jpg",
+      videoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+      duration: "03:32",
+      views: "Just added",
+      uploadDate: "Moments ago",
       channel: {
-        name: "KiNaP Success Stories",
-        avatar: "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=50&h=50&fit=crop&crop=face",
-        subscribers: "45.2K",
-        verified: true,
-        verificationBadge: "official" // official, music, verified
-      },
-      description: "In this video, I share my complete journey from student to successful freelancer earning over $2000 monthly. I'll show you the exact strategies, platforms, and skills that helped me achieve financial freedom through digital work.",
-      category: "Success Stories",
-      tags: ["freelancing", "kenya", "success", "digital work", "income"],
-      likes: 8500,
-      dislikes: 120,
-      isLive: false,
-      quality: "HD",
-      isPremium: false,
-      isSponsored: false
-    },
-    {
-      id: 2,
-      title: "WordPress Website Development Tutorial - Build Professional Sites in 2025",
-      thumbnail: "https://img.youtube.com/vi/9bZkp7q19f0/maxresdefault.jpg",
-      duration: "45:18",
-      views: "89K",
-      uploadDate: "1 week ago",
-      channel: {
-        name: "KiNaP Tech Academy",
-        avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=50&h=50&fit=crop&crop=face",
-        subscribers: "78.9K",
-        verified: true,
-        verificationBadge: "verified"
-      },
-      description: "Complete WordPress tutorial for beginners. Learn how to create professional websites from scratch using the latest WordPress features and best practices for 2025.",
-      category: "Web Development",
-      tags: ["wordpress", "web development", "tutorial", "website", "coding"],
-      likes: 6200,
-      dislikes: 89,
-      isLive: false,
-      quality: "4K",
-      isPremium: true,
-      isSponsored: false
-    },
-    {
-      id: 3,
-      title: "🔴 LIVE: Digital Marketing Q&A - Growing Your Online Business in Kenya",
-      thumbnail: "https://img.youtube.com/vi/ScMzIvxBSi4/maxresdefault.jpg",
-      duration: "LIVE",
-      views: "1.2K watching",
-      uploadDate: "Live now",
-      channel: {
-        name: "KiNaP Marketing Hub",
-        avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=50&h=50&fit=crop&crop=face",
-        subscribers: "32.1K",
-        verified: true,
-        verificationBadge: "official"
-      },
-      description: "Join our live Q&A session where we answer your questions about digital marketing, social media growth, and building successful online businesses in Kenya.",
-      category: "Live Streams",
-      tags: ["live", "digital marketing", "q&a", "business", "kenya"],
-      likes: 450,
-      dislikes: 12,
-      isLive: true,
-      quality: "HD",
-      isPremium: false,
-      isSponsored: false
-    },
-    {
-      id: 4,
-      title: "Data Entry Mastery: Earn $500+ Monthly Working from Home",
-      thumbnail: "https://img.youtube.com/vi/UB1O30fR-EE/maxresdefault.jpg",
-      duration: "28:35",
-      views: "67K",
-      uploadDate: "3 days ago",
-      channel: {
-        name: "KiNaP Work From Home",
-        avatar: "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=50&h=50&fit=crop&crop=face",
-        subscribers: "23.7K",
+        name: "KiNaP Demo Channel",
+        avatar: "https://via.placeholder.com/50x50.png?text=KD",
+        subscribers: "0",
         verified: false,
         verificationBadge: null
       },
-      description: "Learn the best data entry techniques, tools, and platforms to start earning money from home. Perfect for students and anyone looking for flexible online work.",
-      category: "Data Entry",
-      tags: ["data entry", "work from home", "online jobs", "income", "tutorial"],
-      likes: 3400,
-      dislikes: 67,
-      isLive: false,
-      quality: "HD",
-      isPremium: false,
-      isSponsored: true
-    },
-    {
-      id: 5,
-      title: "Content Creation Secrets: How I Built 100K+ Followers in 6 Months",
-      thumbnail: "https://img.youtube.com/vi/kJQP7kiw5Fk/maxresdefault.jpg",
-      duration: "22:14",
-      views: "156K",
-      uploadDate: "5 days ago",
-      channel: {
-        name: "KiNaP Creators",
-        avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=50&h=50&fit=crop&crop=face",
-        subscribers: "89.3K",
-        verified: true,
-        verificationBadge: "verified"
-      },
-      description: "The exact content creation strategy I used to grow from 0 to 100K+ followers across all platforms. Includes templates, tools, and actionable tips you can implement today.",
-      category: "Content Creation",
-      tags: ["content creation", "social media", "followers", "growth", "strategy"],
-      likes: 12500,
-      dislikes: 234,
-      isLive: false,
-      quality: "4K",
-      isPremium: true,
-      isSponsored: false
-    },
-    {
-      id: 6,
-      title: "Graphic Design for Beginners: Create Stunning Logos in Canva",
-      thumbnail: "https://img.youtube.com/vi/hFZFjoX2cGg/maxresdefault.jpg",
-      duration: "35:27",
-      views: "43K",
-      uploadDate: "1 week ago",
-      channel: {
-        name: "KiNaP Design Studio",
-        avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=50&h=50&fit=crop&crop=face",
-        subscribers: "19.8K",
-        verified: false,
-        verificationBadge: null
-      },
-      description: "Complete beginner's guide to graphic design using Canva. Learn to create professional logos, social media graphics, and marketing materials without any prior experience.",
-      category: "Digital Skills",
-      tags: ["graphic design", "canva", "logo design", "tutorial", "beginner"],
-      likes: 2800,
-      dislikes: 45,
+      description: "This is a placeholder video entry for functionality testing purposes.",
+      category: "Tutorial",
+      tags: ["demo", "test"],
+      likes: 0,
+      dislikes: 0,
       isLive: false,
       quality: "HD",
       isPremium: false,
       isSponsored: false
-    },
-    {
-      id: 7,
-      title: "SEO Secrets: Rank #1 on Google in 2025 - Complete Guide",
-      thumbnail: "https://img.youtube.com/vi/L_LUpnjgPso/maxresdefault.jpg",
-      duration: "52:18",
-      views: "234K",
-      uploadDate: "2 weeks ago",
-      channel: {
-        name: "KiNaP SEO Masters",
-        avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=50&h=50&fit=crop&crop=face",
-        subscribers: "156.7K",
-        verified: true,
-        verificationBadge: "official"
-      },
-      description: "The most comprehensive SEO guide for 2025. Learn the latest Google algorithm updates, keyword research techniques, and on-page optimization strategies that actually work.",
-      category: "Digital Marketing",
-      tags: ["seo", "google", "ranking", "digital marketing", "website"],
-      likes: 18900,
-      dislikes: 456,
-      isLive: false,
-      quality: "4K",
-      isPremium: true,
-      isSponsored: false
-    },
-    {
-      id: 8,
-      title: "Virtual Assistant Success: From Zero to $1500/Month in 90 Days",
-      thumbnail: "https://img.youtube.com/vi/fJ9rUzIMcZQ/maxresdefault.jpg",
-      duration: "38:45",
-      views: "78K",
-      uploadDate: "4 days ago",
-      channel: {
-        name: "KiNaP VA Academy",
-        avatar: "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=50&h=50&fit=crop&crop=face",
-        subscribers: "34.5K",
-        verified: true,
-        verificationBadge: "verified"
-      },
-      description: "My complete virtual assistant journey and the exact steps I took to build a successful VA business. Includes client acquisition strategies, pricing, and service packages.",
-      category: "Freelancing",
-      tags: ["virtual assistant", "freelancing", "business", "income", "success"],
-      likes: 5600,
-      dislikes: 89,
-      isLive: false,
-      quality: "HD",
-      isPremium: false,
-      isSponsored: false
-    },
-    {
-      id: 9,
-      title: "Python Programming for Beginners - Build Your First App",
-      thumbnail: "https://img.youtube.com/vi/rfscVS0vtbw/maxresdefault.jpg",
-      duration: "1:15:32",
-      views: "92K",
-      uploadDate: "1 week ago",
-      channel: {
-        name: "KiNaP Code Academy",
-        avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=50&h=50&fit=crop&crop=face",
-        subscribers: "67.2K",
-        verified: true,
-        verificationBadge: "verified"
-      },
-      description: "Complete Python programming course for absolute beginners. Build your first application while learning programming fundamentals, data structures, and best practices.",
-      category: "Web Development",
-      tags: ["python", "programming", "coding", "tutorial", "beginner"],
-      likes: 7800,
-      dislikes: 123,
-      isLive: false,
-      quality: "4K",
-      isPremium: true,
-      isSponsored: false
-    },
-    {
-      id: 10,
-      title: "Affiliate Marketing in Kenya: Earn Passive Income Online",
-      thumbnail: "https://img.youtube.com/vi/5qap5aO4i9A/maxresdefault.jpg",
-      duration: "31:29",
-      views: "145K",
-      uploadDate: "6 days ago",
-      channel: {
-        name: "KiNaP Passive Income",
-        avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=50&h=50&fit=crop&crop=face",
-        subscribers: "98.4K",
-        verified: true,
-        verificationBadge: "official"
-      },
-      description: "Learn how to start affiliate marketing in Kenya and build passive income streams. Covers the best affiliate programs, promotion strategies, and legal requirements.",
-      category: "Digital Marketing",
-      tags: ["affiliate marketing", "passive income", "kenya", "online business", "marketing"],
-      likes: 11200,
-      dislikes: 267,
-      isLive: false,
-      quality: "HD",
-      isPremium: false,
-      isSponsored: true
     }
   ]
 
@@ -566,57 +352,85 @@ const Videos: React.FC = () => {
                   viewMode === 'list' ? 'flex bg-[#181818] rounded-lg overflow-hidden hover:bg-[#272727]' : ''
                 }`}
               >
-                {/* Video Thumbnail */}
+                {/* Video Thumbnail or Player */}
                 <div className={`relative ${viewMode === 'list' ? 'w-80 flex-shrink-0' : 'aspect-video'} rounded-lg overflow-hidden`}>
-                  <img
-                    src={video.thumbnail}
-                    alt={video.title}
-                    className="w-full h-full object-cover group-hover:rounded-none transition-all duration-200"
-                  />
-                  
-                  {/* Duration/Live Badge */}
-                  <div className="absolute bottom-2 right-2">
-                    {video.isLive ? (
-                      <div className="flex items-center space-x-1">
-                        <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-                        <span className="bg-red-600 text-white px-2 py-1 text-xs font-medium rounded">
-                          LIVE
-                        </span>
-                      </div>
-                    ) : (
-                      <span className="bg-black/80 text-white px-2 py-1 text-xs rounded font-medium">
-                        {video.duration}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Quality & Premium Badges */}
-                  <div className="absolute top-2 right-2 flex flex-col space-y-1">
-                    {video.quality === '4K' && (
-                      <span className="bg-black/80 text-white px-2 py-1 text-xs rounded font-medium">
-                        4K
-                      </span>
-                    )}
-                    {video.isPremium && (
-                      <span className="bg-yellow-600 text-white px-2 py-1 text-xs rounded font-medium">
-                        PREMIUM
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Sponsored Badge */}
-                  {video.isSponsored && (
-                    <div className="absolute top-2 left-2">
-                      <span className="bg-yellow-500 text-black px-2 py-1 text-xs rounded font-medium">
-                        AD
-                      </span>
+                  {playingVideoId === video.id ? (
+                    <div className="relative w-full h-full flex items-center justify-center bg-black">
+                      {/* YouTube iframe embed */}
+                      <iframe
+                        width="100%"
+                        height={viewMode === 'list' ? '225' : '225'}
+                        src={`https://www.youtube.com/embed/${video.videoUrl.split('v=')[1]}`}
+                        title={video.title}
+                        frameBorder="0"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        allowFullScreen
+                        className="w-full h-full min-h-[225px]"
+                      ></iframe>
+                      {/* Close button */}
+                      <button
+                        onClick={() => setPlayingVideoId(null)}
+                        className="absolute top-2 right-2 bg-black/70 text-white rounded-full p-2 hover:bg-black z-10"
+                        title="Close"
+                      >
+                        ✕
+                      </button>
                     </div>
+                  ) : (
+                    <>
+                      <img
+                        src={video.thumbnail}
+                        alt={video.title}
+                        className="w-full h-full object-cover group-hover:rounded-none transition-all duration-200"
+                        onClick={() => setPlayingVideoId(video.id)}
+                        style={{ cursor: 'pointer' }}
+                      />
+                      {/* Duration/Live Badge */}
+                      <div className="absolute bottom-2 right-2">
+                        {video.isLive ? (
+                          <div className="flex items-center space-x-1">
+                            <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                            <span className="bg-red-600 text-white px-2 py-1 text-xs font-medium rounded">
+                              LIVE
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="bg-black/80 text-white px-2 py-1 text-xs rounded font-medium">
+                            {video.duration}
+                          </span>
+                        )}
+                      </div>
+                      {/* Quality & Premium Badges */}
+                      <div className="absolute top-2 right-2 flex flex-col space-y-1">
+                        {video.quality === '4K' && (
+                          <span className="bg-black/80 text-white px-2 py-1 text-xs rounded font-medium">
+                            4K
+                          </span>
+                        )}
+                        {video.isPremium && (
+                          <span className="bg-yellow-600 text-white px-2 py-1 text-xs rounded font-medium">
+                            PREMIUM
+                          </span>
+                        )}
+                      </div>
+                      {/* Sponsored Badge */}
+                      {video.isSponsored && (
+                        <div className="absolute top-2 left-2">
+                          <span className="bg-yellow-500 text-black px-2 py-1 text-xs rounded font-medium">
+                            AD
+                          </span>
+                        </div>
+                      )}
+                      {/* Play Button Overlay */}
+                      <div
+                        className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20"
+                        onClick={() => setPlayingVideoId(video.id)}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        <PlayCircle className="w-16 h-16 text-white" />
+                      </div>
+                    </>
                   )}
-
-                  {/* Play Button Overlay */}
-                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20">
-                    <PlayCircle className="w-16 h-16 text-white" />
-                  </div>
                 </div>
 
                 {/* Video Info */}
