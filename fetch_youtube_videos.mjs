@@ -1,6 +1,6 @@
 import fs from 'fs';
 
-const API_KEY = 'AIzaSyAYVllkkioS_hE0KPfcS3NZNU5xnFq7ml4';
+const API_KEY = process.env.YOUTUBE_API_KEY || 'your_youtube_api_key';
 const SEARCH_TERMS = ['online work', 'remote jobs', 'freelancing', 'work from home', 'digital skills', 'online jobs', 'remote work', 'online income', 'freelance jobs', 'make money online'];
 const MAX_RESULTS = 50; // per search term
 

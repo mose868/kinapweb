@@ -8,7 +8,7 @@ MONGODB_URI=mongodb://127.0.0.1:27017/kinapweb
 JWT_SECRET=kinap-secret-key-2024
 
 # Gemini AI API Key
-GEMINI_API_KEY=AIzaSyD6UkUFlqHiL7z5CwqtFY1HX3z0pZ9KvYY
+GEMINI_API_KEY=your_gemini_api_key_here
 
 # Server Configuration
 PORT=5000

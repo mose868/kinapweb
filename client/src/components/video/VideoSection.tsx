@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { motion } from 'framer-motion'
 import { ThumbsUp, Radio, Upload, Play, Users, Clock, Search } from 'lucide-react'
 
-const YOUTUBE_API_KEY = 'AIzaSyAYVllkkioS_hE0KPfcS3NZNU5xnFq7ml4'; // <-- Replace with your real API key
+const YOUTUBE_API_KEY = import.meta.env.VITE_YOUTUBE_API_KEY || 'your_youtube_api_key'; // <-- Replace with your real API key
 const YOUTUBE_SEARCH_URL = 'https://www.googleapis.com/youtube/v3/search';
 const YOUTUBE_VIDEO_URL = 'https://www.googleapis.com/youtube/v3/videos';
 
