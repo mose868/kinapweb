@@ -72,22 +72,63 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Group message event
-  socket.on('group_message', async ({ sender, groupId, members, content, type }) => {
-    members.forEach(memberId => {
-      if (memberId !== sender) {
-        const memberSocketId = onlineUsers.get(memberId);
-        if (memberSocketId) {
-          io.to(memberSocketId).emit('group_message', { sender, groupId, content, type });
-        }
-      }
+  // Join group event
+  socket.on('join_group', ({ groupId, userId }) => {
+    socket.join(`group_${groupId}`);
+    console.log(`User ${userId} joined group ${groupId}`);
+    
+    // Notify other users in the group
+    socket.to(`group_${groupId}`).emit('user_joined', {
+      userId,
+      userName: socket.userName || 'Anonymous',
+      groupId
     });
+  });
+
+  // Leave group event
+  socket.on('leave_group', ({ groupId, userId }) => {
+    socket.leave(`group_${groupId}`);
+    console.log(`User ${userId} left group ${groupId}`);
+    
+    // Notify other users in the group
+    socket.to(`group_${groupId}`).emit('user_left', {
+      userId,
+      userName: socket.userName || 'Anonymous',
+      groupId
+    });
+  });
+
+  // Group message event
+  socket.on('group_message', async ({ sender, groupId, content, type, userName }) => {
+    const messageData = {
+      id: Date.now().toString(),
+      userId: sender,
+      userName: userName || 'Anonymous',
+      userAvatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(userName || 'User')}&background=1B4F72&color=fff`,
+      message: content,
+      timestamp: new Date(),
+      messageType: type || 'text',
+      status: 'sent'
+    };
+
+    // Broadcast to all users in the group (except sender)
+    socket.to(`group_${groupId}`).emit('message', messageData);
+    
     // Save to DB
     try {
       await Message.create({ sender, group: groupId, content, type });
     } catch (err) {
       console.error('Error saving group message:', err);
     }
+  });
+
+  // Typing events
+  socket.on('typing_start', ({ groupId, userName }) => {
+    socket.to(`group_${groupId}`).emit('typing', { groupId, userName });
+  });
+
+  socket.on('typing_stop', ({ groupId, userName }) => {
+    socket.to(`group_${groupId}`).emit('stop_typing', { groupId, userName });
   });
 
   socket.on('disconnect', () => {

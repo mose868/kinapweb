@@ -1,13 +1,23 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Search, MoreVertical, Send, Smile, Hash, MessageCircle, Settings, ChevronLeft, ChevronRight, Mic, Image, File, Plus, CheckCheck, Check, Volume2, Play, Pause, Download, Reply, X, Pin, Info } from 'lucide-react';
-import { io, Socket } from 'socket.io-client';
-import { useAuth } from '../../contexts/AuthContext';
-import CommunityChat from '../../components/community/CommunityChat';
-import Chatbot from '../../components/chatbot/Chatbot';
-import { api } from '../../config/api';
-import Modal from 'react-modal';
+import React, { useState, useEffect, useRef } from 'react';
+import { 
+  ChevronLeft, 
+  ChevronRight, 
+  MoreVertical, 
+  Search, 
+  X, 
+  Menu, 
+  Play, 
+  Check,
+  Settings,
+  Bell,
+  Key,
+  Keyboard,
+  MessageCircle,
+  User,
+  ArrowRight,
+  Plus
+} from 'lucide-react';
 
-// Enhanced interfaces
 interface ChatMessage {
   id: string;
   userId: string;
@@ -24,8 +34,8 @@ interface ChatMessage {
   duration?: string;
   isEdited?: boolean;
   reactions?: { emoji: string; users: string[] }[];
-  type?: 'system'; // Added for system messages
-  content?: string; // Added for system messages
+  type?: 'system';
+  content?: string;
 }
 
 interface ChatGroup {
@@ -46,940 +56,1027 @@ interface ChatGroup {
   type: 'group' | 'direct' | 'channel';
   isTyping?: boolean;
   typingUsers?: string[];
+  category?: string;
 }
 
-const INTEREST_OPTIONS = [
-  'Web Development',
-  'Mobile App Development',
-  'Digital Marketing',
-  'Data Science',
-  'Content Creation',
-  'Graphic Design',
-  'Cybersecurity',
-  'E-commerce',
-  'Freelancing',
-  'UI/UX Design',
-  'Blockchain',
-  'Cloud Computing',
-  'Other'
+interface User {
+  id: string;
+  name: string;
+  avatar: string;
+  status: 'online' | 'offline' | 'away';
+  lastSeen?: Date;
+}
+
+const SETTINGS_CATEGORIES = [
+  { id: 'account', name: 'Account', icon: Key, description: 'Security notifications, account info' },
+  { id: 'chats', name: 'Chats', icon: MessageCircle, description: 'Theme, wallpaper, chat settings' },
+  { id: 'notifications', name: 'Notifications', icon: Bell, description: 'Message notifications' },
+  { id: 'keyboard', name: 'Keyboard shortcuts', icon: Keyboard, description: 'Quick actions' }
 ];
 
-const SOCKET_URL = 'http://localhost:5000';
+const CHAT_SETTINGS = [
+  { id: 'display', name: 'Display', hasArrow: true },
+  { id: 'theme', name: 'Theme', hasArrow: true },
+  { id: 'wallpaper', name: 'Wallpaper', hasArrow: true },
+  { id: 'chat_settings', name: 'Chat settings', hasArrow: true },
+  { id: 'media_upload_quality', name: 'Media upload quality', hasArrow: true },
+  { id: 'media_auto_download', name: 'Media auto-download', hasArrow: true },
+  { id: 'spell_check', name: 'Spell check', description: 'Check spelling while typing', toggle: true, value: false },
+  { id: 'replace_text_with_emoji', name: 'Replace text with emoji', description: 'Emoji will replace specific text as you type', toggle: true, value: false }
+];
 
-const CommunityPage = () => {
-  const { user } = useAuth();
+const GROUP_CATEGORIES = [
+  'Web Development',
+  'Mobile Development', 
+  'Data Science',
+  'UI/UX Design',
+  'Digital Marketing',
+  'Content Creation',
+  'Business & Entrepreneurship',
+  'Student Support'
+];
+
+const CommunityPage: React.FC = () => {
+  // State management
   const [groups, setGroups] = useState<ChatGroup[]>([]);
-  const [users, setUsers] = useState<any[]>([]);
-  const [selectedGroup, setSelectedGroup] = useState<string>('');
-  const [currentGroup, setCurrentGroup] = useState<ChatGroup | null>(null);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [selectedGroup, setSelectedGroup] = useState<ChatGroup | null>(null);
   const [newMessage, setNewMessage] = useState('');
-  const [searchQuery] = useState('');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
-  const [showMediaPicker, setShowMediaPicker] = useState(false);
-  const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
-  const [showCreateGroup, setShowCreateGroup] = useState(false);
-  const [newGroup, setNewGroup] = useState({ name: '', description: '', members: [] });
+  const [showMainMenu, setShowMainMenu] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [profileForm, setProfileForm] = useState({
-    name: user?.name || user?.fullname || '',
-    avatar: user?.avatar || user?.photoURL || '',
-    interests: user?.interests || [],
+  const [showSettingsSidebar, setShowSettingsSidebar] = useState(false);
+  const [selectedSetting, setSelectedSetting] = useState('chats');
+  const [showStarredMessages, setShowStarredMessages] = useState(false);
+  const [starredMessages, setStarredMessages] = useState<ChatMessage[]>([]);
+  const [typingUsers, setTypingUsers] = useState<string[]>([]);
+  const [showCreateGroup, setShowCreateGroup] = useState(false);
+  const [showRingtoneModal, setShowRingtoneModal] = useState(false);
+  const [selectedRingtone, setSelectedRingtone] = useState('default');
+  const [showThemeModal, setShowThemeModal] = useState(false);
+  const [currentTheme, setCurrentTheme] = useState('system');
+  const [isSaving, setIsSaving] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [settingsSearchQuery, setSettingsSearchQuery] = useState('');
+
+  const [settings, setSettings] = useState({
+    darkTheme: false,
+    enterToSend: true,
+    messageNotifications: true,
+    sound: true,
+    spellCheck: false,
+    replaceTextWithEmoji: false,
+    messagePreview: false,
+    readReceipts: false,
+    typingIndicators: false,
+    autoSaveMedia: false,
+    lastSeen: false,
+    profilePhoto: false,
+    about: false,
+    groups: false,
+    status: false,
+    showPreviews: false,
+    reactionNotifications: false,
+    backgroundSync: false,
+    incomingSounds: false,
+    outgoingSounds: false,
+    vibration: false,
+    ledLight: false
   });
-  
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const messageInputRef = useRef<HTMLInputElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [socket, setSocket] = useState<Socket | null>(null);
-  const [groupMembers, setGroupMembers] = useState<any[]>([]);
 
-  // Current user data
-  const currentUser = {
-    id: user?.uid || 'current-user',
-    name: user?.displayName || 'You',
-    avatar: user?.photoURL || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=50&h=50&fit=crop&crop=face',
-    isOnline: true,
-    status: 'Online'
-  };
+  const [newGroup, setNewGroup] = useState({
+    name: '',
+    description: '',
+    category: ''
+  });
 
-  // Fetch groups and users on mount
-  useEffect(() => {
-    api.get('/groups').then(res => setGroups(res.data)).catch(console.error);
-    api.get('/users').then(res => setUsers(res.data)).catch(console.error);
-  }, []);
+  const menuRef = useRef<HTMLButtonElement>(null);
 
-  // Connect to Socket.IO on mount
-  useEffect(() => {
-    const s = io(SOCKET_URL, { transports: ['websocket'] });
-    setSocket(s);
-    return () => { s.disconnect(); };
-  }, []);
+  // Demo data
+  const demoUsers: User[] = [
+    { id: '1', name: 'John Doe', avatar: 'https://via.placeholder.com/40', status: 'online' },
+    { id: '2', name: 'Jane Smith', avatar: 'https://via.placeholder.com/40', status: 'online' },
+    { id: '3', name: 'Bob Johnson', avatar: 'https://via.placeholder.com/40', status: 'away' }
+  ];
 
-  // Join all groups when groups/user are loaded
-  useEffect(() => {
-    if (socket && user && groups.length > 0) {
-      const userId = user.id || user._id;
-      if (!userId) {
-        console.log('User object missing id and _id for join:', user);
-        return;
-      }
-      groups.forEach(g => {
-        console.log('Emitting join for group:', g.id || g._id, 'with userId:', userId);
-        socket.emit('join', userId); // Optionally, join group rooms if implemented
-      });
+  const activeUser = demoUsers[0];
+
+  const demoGroups: ChatGroup[] = [
+    {
+      id: '1',
+      name: 'Web Development',
+      description: 'Web development discussions',
+      avatar: 'https://via.placeholder.com/40',
+      members: 15,
+      lastMessage: 'Check out this new React tutorial...',
+      lastMessageTime: new Date(),
+      unreadCount: 2,
+      messages: [
+        {
+          id: '1',
+          userId: '1',
+          userName: 'John Doe',
+          userAvatar: 'https://via.placeholder.com/40',
+          message: 'Hello everyone!',
+          timestamp: new Date(Date.now() - 3600000),
+          messageType: 'text',
+          status: 'read',
+          content: 'Hello everyone!'
+        },
+        {
+          id: '2',
+          userId: '2',
+          userName: 'Jane Smith',
+          userAvatar: 'https://via.placeholder.com/40',
+          message: 'Hi John!',
+          timestamp: new Date(Date.now() - 1800000),
+          messageType: 'text',
+          status: 'read',
+          content: 'Hi John!'
+        }
+      ],
+      admins: ['1'],
+      type: 'group',
+      category: 'Web Development'
+    },
+    {
+      id: '2',
+      name: 'Mobile Development',
+      description: 'Mobile app development discussions',
+      avatar: 'https://via.placeholder.com/40',
+      members: 8,
+      lastMessage: 'Anyone working with Flutter?',
+      lastMessageTime: new Date(Date.now() - 1200000),
+      unreadCount: 0,
+      messages: [],
+      admins: ['1'],
+      type: 'group',
+      category: 'Mobile Development'
     }
-  }, [socket, user, groups]);
+  ];
 
-  // Listen for real-time group messages
+  const ringtones = [
+    { id: 'default', name: 'Default', description: 'Default notification sound' },
+    { id: 'notification', name: 'Notification', description: 'Standard notification' },
+    { id: 'chime', name: 'Chime', description: 'Gentle chime sound' },
+    { id: 'bell', name: 'Bell', description: 'Classic bell sound' }
+  ];
+
+  // Load persistent data from localStorage on component mount
   useEffect(() => {
-    if (!socket) return;
-    const handler = (msg: any) => {
-      if (msg.groupId === selectedGroup) {
-        setMessages(prev => [...prev, { ...msg, isOwn: msg.sender === user?.id }]);
+    const savedSettings = localStorage.getItem('kinap-chat-settings');
+    if (savedSettings) {
+      try {
+        const parsedSettings = JSON.parse(savedSettings);
+        setSettings(prev => ({ ...prev, ...parsedSettings }));
+      } catch (error) {
+        console.error('Error loading settings:', error);
       }
-    };
-    socket.on('group_message', handler);
-    return () => { socket.off('group_message', handler); };
-  }, [socket, selectedGroup, user]);
-
-  // Fetch messages when a group is selected
-  useEffect(() => {
-    if (selectedGroup) {
-      api.get(`/messages/group/${selectedGroup}`)
-        .then(res => setMessages(res.data))
-        .catch(console.error);
-      const group = groups.find(g => g._id === selectedGroup || g.id === selectedGroup);
-      setCurrentGroup(group || null);
     }
-  }, [selectedGroup, groups]);
 
-  // When a group is selected, fetch its member user data
-  useEffect(() => {
-    if (currentGroup && currentGroup.members && currentGroup.members.length > 0) {
-      // members may be array of user IDs or user objects
-      const memberIds = currentGroup.members.map((m: any) => (typeof m === 'string' ? m : m._id || m.id));
-      // Filter users in state
-      const members = users.filter(u => memberIds.includes(u.id || u._id));
-      setGroupMembers(members);
+    // Load selected ringtone
+    const savedRingtone = localStorage.getItem('kinap-selected-ringtone');
+    if (savedRingtone) {
+      setSelectedRingtone(savedRingtone);
+    }
+
+    // Load theme preference
+    const savedTheme = localStorage.getItem('kinap-theme');
+    if (savedTheme) {
+      setCurrentTheme(savedTheme);
+    }
+
+    // Load starred messages
+    const savedStarredMessages = localStorage.getItem('kinap-starred-messages');
+    if (savedStarredMessages) {
+      try {
+        const parsedStarredMessages = JSON.parse(savedStarredMessages);
+        setStarredMessages(parsedStarredMessages);
+      } catch (error) {
+        console.error('Error loading starred messages:', error);
+      }
+    }
+
+    // Load chat groups with messages
+    const savedGroups = localStorage.getItem('kinap-chat-groups');
+    if (savedGroups) {
+      try {
+        const parsedGroups = JSON.parse(savedGroups);
+        // Convert date strings back to Date objects
+        const groupsWithDates = parsedGroups.map((group: any) => ({
+          ...group,
+          lastMessageTime: new Date(group.lastMessageTime),
+          messages: group.messages.map((msg: any) => ({
+            ...msg,
+            timestamp: new Date(msg.timestamp)
+          }))
+        }));
+        setGroups(groupsWithDates);
+      } catch (error) {
+        console.error('Error loading chat groups:', error);
+      }
     } else {
-      setGroupMembers([]);
+      setGroups(demoGroups);
     }
-  }, [currentGroup, users]);
-
-  // Message status icons
-  const getMessageStatusIcon = (status: string, isOwn: boolean) => {
-    if (!isOwn) return null;
-    
-    switch (status) {
-      case 'sending':
-        return <div className="w-3 h-3 border border-gray-400 border-t-transparent rounded-full animate-spin" />;
-      case 'sent':
-        return <Check className="w-3 h-3 text-gray-400" />;
-      case 'delivered':
-        return <CheckCheck className="w-3 h-3 text-gray-400" />;
-      case 'read':
-        return <CheckCheck className="w-3 h-3 text-green-500" />;
-      default:
-        return null;
-    }
-  };
-
-  // Voice message component
-  const VoiceMessage = ({ message }: { message: ChatMessage }) => {
-    const [isPlaying, setIsPlaying] = useState(false);
-
-    return (
-      <div className="flex items-center gap-3 p-3 bg-gray-100 rounded-lg max-w-xs">
-        <button
-          onClick={() => setIsPlaying(!isPlaying)}
-          className="w-8 h-8 bg-kenya-red text-white rounded-full flex items-center justify-center hover:bg-kenya-green transition-colors"
-        >
-          {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-        </button>
-        <div className="flex-1">
-          <div className="flex items-center gap-1 mb-1">
-            <Volume2 className="w-3 h-3 text-gray-500" />
-            <div className="flex-1 h-1 bg-gray-300 rounded-full">
-              <div className="w-1/3 h-full bg-kenya-red rounded-full"></div>
-            </div>
-          </div>
-          <div className="text-xs text-gray-500">{message.duration}</div>
-        </div>
-      </div>
-    );
-  };
-
-  // File message component
-  const FileMessage = ({ message }: { message: ChatMessage }) => (
-    <div className="flex items-center gap-3 p-3 bg-gray-100 rounded-lg max-w-xs">
-      <div className="w-10 h-10 bg-kenya-red text-white rounded-lg flex items-center justify-center">
-        <File className="w-5 h-5" />
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-gray-900 truncate">{message.mediaUrl}</p>
-        <p className="text-xs text-gray-500">{message.fileSize}</p>
-      </div>
-      <button className="p-1 hover:bg-gray-200 rounded">
-        <Download className="w-4 h-4 text-gray-500" />
-      </button>
-    </div>
-  );
-
-  // Message reactions
-  const MessageReactions = ({ reactions }: { reactions: { emoji: string; users: string[] }[] }) => (
-    <div className="flex flex-wrap gap-1 mt-1">
-      {reactions.map((reaction, index) => (
-        <button
-          key={reaction.emoji + index}
-          className="flex items-center gap-1 px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded-full text-xs transition-colors"
-        >
-          <span>{reaction.emoji}</span>
-          <span className="text-gray-600">{reaction.users.length}</span>
-        </button>
-      ))}
-    </div>
-  );
-
-  // Auto-scroll to bottom
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
-
-  // Set currentGroup when selectedGroup or groups change
-  useEffect(() => {
-    if (selectedGroup) {
-      const group = groups.find(g => g._id === selectedGroup || g.id === selectedGroup);
-      setCurrentGroup(group || null);
-    }
-  }, [selectedGroup, groups]);
-
-  // Clear unread count only when selectedGroup changes
-  useEffect(() => {
-    if (selectedGroup) {
-      setGroups(prev =>
-        prev.map(g =>
-          g._id === selectedGroup || g.id === selectedGroup
-            ? { ...g, unreadCount: 0 }
-            : g
-        )
-      );
-    }
-  }, [selectedGroup]);
-
-  // Format time helper
-  const formatTime = useCallback((date: Date) => {
-    const now = new Date();
-    const dateObj = date ? new Date(date) : null;
-    const diff = dateObj ? now.getTime() - dateObj.getTime() : 0;
-    const minutes = Math.floor(diff / 60000);
-    const hours = Math.floor(diff / 3600000);
-    const days = Math.floor(diff / 86400000);
-
-    if (!dateObj) return '';
-    if (minutes < 1) return 'now';
-    if (minutes < 60) return `${minutes}m`;
-    if (hours < 24) return `${hours}h`;
-    if (days < 7) return `${days}d`;
-    return dateObj.toLocaleDateString();
   }, []);
 
-  // Send group message
-  const handleSendMessage = useCallback(() => {
-    if (!newMessage.trim() || !currentGroup || !socket || !user) return;
-    const userId = user.id || user._id;
-    if (!userId) {
-      console.log('User object missing id and _id for group_message:', user);
-      return;
-    }
-    const msg = {
-      sender: userId,
-      groupId: currentGroup._id || currentGroup.id,
-      members: currentGroup.members,
-      content: newMessage,
-      type: 'text',
-    };
-    // Optimistically update UI
-    setMessages(prev => [...prev, { ...msg, isOwn: true, userName: user.name, userAvatar: user.avatar, timestamp: new Date() }]);
-    console.log('Emitting group_message:', msg);
-    socket.emit('group_message', msg);
-    setNewMessage('');
-    setReplyingTo(null);
-  }, [newMessage, currentGroup, socket, user, setMessages, setNewMessage, setReplyingTo]);
+  // Save settings to localStorage whenever they change
+  useEffect(() => {
+    setIsSaving(true);
+    localStorage.setItem('kinap-chat-settings', JSON.stringify(settings));
+    setTimeout(() => setIsSaving(false), 500);
+  }, [settings]);
 
-  // Handle file upload
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file || !currentGroup) return;
+  // Save selected ringtone to localStorage
+  useEffect(() => {
+    setIsSaving(true);
+    localStorage.setItem('kinap-selected-ringtone', selectedRingtone);
+    setTimeout(() => setIsSaving(false), 500);
+  }, [selectedRingtone]);
+
+  // Save theme to localStorage and apply it
+  useEffect(() => {
+    setIsSaving(true);
+    localStorage.setItem('kinap-theme', currentTheme);
+    
+    // Apply theme to document
+    const root = document.documentElement;
+    if (currentTheme === 'dark' || (currentTheme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+      root.classList.add('dark');
+    } else {
+      root.classList.remove('dark');
+    }
+    
+    setTimeout(() => setIsSaving(false), 500);
+  }, [currentTheme]);
+
+  // Save starred messages to localStorage whenever they change
+  useEffect(() => {
+    setIsSaving(true);
+    localStorage.setItem('kinap-starred-messages', JSON.stringify(starredMessages));
+    setTimeout(() => setIsSaving(false), 500);
+  }, [starredMessages]);
+
+  // Save chat groups to localStorage whenever they change
+  useEffect(() => {
+    setIsSaving(true);
+    localStorage.setItem('kinap-chat-groups', JSON.stringify(groups));
+    setTimeout(() => setIsSaving(false), 500);
+  }, [groups]);
+
+  // Click outside handler for menu
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        const target = event.target as HTMLElement;
+        // Don't close if clicking on the dropdown menu itself
+        if (!target.closest('.menu-dropdown')) {
+          setShowMainMenu(false);
+        }
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Functions
+  const handleSendMessage = () => {
+    if (!newMessage.trim() || !selectedGroup) return;
+
+    const processedMessage = settings.replaceTextWithEmoji 
+      ? newMessage.replace(/:\/\)/g, '😊').replace(/lol/g, '😂')
+      : newMessage;
 
     const message: ChatMessage = {
       id: Date.now().toString(),
-      userId: currentUser.id,
-      userName: currentUser.name,
-      userAvatar: currentUser.avatar,
-      message: `Shared ${file.name}`,
+      userId: activeUser.id,
+      userName: activeUser.name,
+      userAvatar: activeUser.avatar,
+      message: processedMessage,
       timestamp: new Date(),
-      isOwn: true,
-      messageType: file.type.startsWith('image/') ? 'image' : 'file',
-      status: 'sending',
-      mediaUrl: file.name,
-      fileSize: `${(file.size / 1024 / 1024).toFixed(1)} MB`
+      messageType: 'text',
+      status: 'sent',
+      content: processedMessage
     };
 
     setGroups(prev => prev.map(group => 
-      group._id === currentGroup._id || group.id === currentGroup.id
-        ? { 
-            ...group, 
-            messages: [...group.messages, message],
-            lastMessage: `📎 ${file.name}`,
-            lastMessageTime: new Date()
-          }
+      group.id === selectedGroup.id 
+        ? { ...group, messages: [...group.messages, message] }
         : group
     ));
+
+    setSelectedGroup(prev => prev ? { ...prev, messages: [...prev.messages, message] } : null);
+    setNewMessage('');
+
+    // Show typing indicator
+    if (settings.typingIndicators) {
+      setTypingUsers(prev => [...prev, 'demo-user']);
+      setTimeout(() => {
+        setTypingUsers(prev => prev.filter(id => id !== 'demo-user'));
+      }, 2000);
+    }
+
+    // Play outgoing sound
+    if (settings.outgoingSounds) {
+      playRingtone('notification');
+    }
+
+    // Update read receipts
+    if (settings.readReceipts) {
+      setTimeout(() => {
+        setGroups(prev => prev.map(group => 
+          group.id === selectedGroup.id 
+            ? { ...group, messages: group.messages.map(msg => 
+                msg.id === message.id ? { ...msg, status: 'read' } : msg
+              )}
+            : group
+        ));
+      }, 1000);
+    }
   };
 
-  // Filter groups
+  const handleTyping = () => {
+    if (!selectedGroup || !settings.typingIndicators) return;
+    
+    if (!typingUsers.includes(activeUser.id)) {
+      setTypingUsers(prev => [...prev, activeUser.id]);
+    }
+    
+    setTimeout(() => {
+      setTypingUsers(prev => prev.filter(id => id !== activeUser.id));
+    }, 3000);
+  };
+
+  const toggleStarMessage = (message: ChatMessage) => {
+    if (starredMessages.find(m => m.id === message.id)) {
+      setStarredMessages(prev => prev.filter(m => m.id !== message.id));
+    } else {
+      setStarredMessages(prev => [...prev, message]);
+    }
+  };
+
+  const joinGroup = (category: string) => {
+    const existingGroup = groups.find(g => g.category === category);
+    if (existingGroup) {
+      setSelectedGroup(existingGroup);
+      setShowSettings(false);
+      return;
+    }
+    
+    const newGroupData: ChatGroup = {
+      id: Date.now().toString(),
+      name: category,
+      description: `${category} community group`,
+      avatar: 'https://via.placeholder.com/40',
+      members: 1,
+      lastMessage: 'Welcome to the group!',
+      lastMessageTime: new Date(),
+      unreadCount: 0,
+      messages: [],
+      admins: [activeUser.id],
+      type: 'group',
+      category: category
+    };
+    
+    setGroups(prev => [...prev, newGroupData]);
+    setSelectedGroup(newGroupData);
+    setShowSettings(false);
+  };
+
+  const toggleSetting = (setting: keyof typeof settings) => {
+    setSettings(prev => ({
+      ...prev,
+      [setting]: !prev[setting]
+    }));
+  };
+
+  const handleThemeSelect = (theme: string) => {
+    setCurrentTheme(theme);
+    setShowThemeModal(false);
+  };
+
+  const playRingtone = (ringtoneId: string) => {
+    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    
+    oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+    gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+    
+    oscillator.start(audioContext.currentTime);
+    oscillator.stop(audioContext.currentTime + 0.3);
+  };
+
+  const handleCreateGroup = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newGroup.name || !newGroup.category) return;
+
+    const groupData: ChatGroup = {
+      id: Date.now().toString(),
+      name: newGroup.name,
+      description: newGroup.description,
+      avatar: 'https://via.placeholder.com/40',
+      members: 1,
+      lastMessage: 'Group created',
+      lastMessageTime: new Date(),
+      unreadCount: 0,
+      messages: [],
+      admins: [activeUser.id],
+      type: 'group',
+      category: newGroup.category
+    };
+
+    setGroups(prev => [...prev, groupData]);
+    setSelectedGroup(groupData);
+    setShowCreateGroup(false);
+    setNewGroup({ name: '', description: '', category: '' });
+  };
+
   const filteredGroups = groups.filter(group =>
     group.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     group.description.toLowerCase().includes(searchQuery.toLowerCase())
-  ).sort((a, b) => {
-    if (a.isPinned && !b.isPinned) return -1;
-    if (!a.isPinned && b.isPinned) return 1;
-    const aTime = a.lastMessageTime ? new Date(a.lastMessageTime).getTime() : 0;
-    const bTime = b.lastMessageTime ? new Date(b.lastMessageTime).getTime() : 0;
-    return bTime - aTime;
-  });
+  );
 
-  // Create group handler
-  const handleCreateGroup = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const res = await api.post('/groups/create', {
-        ...newGroup,
-        admins: [user.id],
-        createdBy: user.id,
-        avatar: '',
-      });
-      setGroups(prev => [...prev, res.data]);
-      setShowCreateGroup(false);
-      setNewGroup({ name: '', description: '', members: [] });
-      setSelectedGroup(res.data._id || res.data.id);
-    } catch (err) {
-      alert('Failed to create group');
-    }
-  };
-
-  // Fetch private messages
-  const [selectedUser, setSelectedUser] = useState<string>('');
-  const [privateMessages, setPrivateMessages] = useState<ChatMessage[]>([]);
-  useEffect(() => {
-    if (selectedUser && user) {
-      api.get(`/messages/private/${user.id}?otherUserId=${selectedUser}`)
-        .then(res => setPrivateMessages(res.data))
-        .catch(console.error);
-    }
-  }, [selectedUser, user]);
-
-  // Send private message
-  const sendPrivateMessage = (msg: string) => {
-    if (!socket || !user || !selectedUser || !msg.trim()) return;
-    const userId = user.id || user._id;
-    if (!userId) {
-      console.log('User object missing id and _id for private_message:', user);
-      return;
-    }
-    const message = { sender: userId, recipient: selectedUser, content: msg, type: 'text' };
-    console.log('Emitting private_message:', message);
-    socket.emit('private_message', message);
-    setPrivateMessages(prev => [...prev, { ...message, isOwn: true, userName: user.name, userAvatar: user.avatar, timestamp: new Date() }]);
-  };
-
-  // Listen for real-time private messages
-  useEffect(() => {
-    if (!socket) return;
-    const handler = (msg: any) => {
-      if (msg.sender === selectedUser || msg.sender === user?.id) {
-        setPrivateMessages(prev => [...prev, { ...msg, isOwn: msg.sender === user?.id }]);
-      }
-    };
-    socket.on('private_message', handler);
-    return () => { socket.off('private_message', handler); };
-  }, [socket, selectedUser, user]);
-
-  const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value, type, options } = e.target;
-    if (name === 'interests' && type === 'select-multiple') {
-      setProfileForm(f => ({ ...f, interests: Array.from(options).filter(o => o.selected).map(o => o.value) }));
-    } else {
-      setProfileForm(f => ({ ...f, [name]: value }));
-    }
-  };
-
-  const handleProfileSave = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      await api.put(`/users/${user?.id || user?._id}`, profileForm);
-      setShowSettings(false);
-      window.dispatchEvent(new Event('authUpdated'));
-    } catch (err) {
-      alert('Failed to update profile');
-    }
-  };
+  const filteredSettings = CHAT_SETTINGS.filter(setting =>
+    setting.name.toLowerCase().includes(settingsSearchQuery.toLowerCase())
+  );
 
   return (
-    <div className="min-h-screen bg-gray-50 w-full overflow-x-hidden">
-      <div className="max-w-7xl mx-auto px-2 sm:px-4 py-6 sm:py-8 w-full">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-kenya-black mb-4">
-            KiNaP Digital Community Hub 💬
-          </h1>
-          <p className="text-gray-600 max-w-2xl">
-            Connect with fellow students, mentors, and industry professionals. Share knowledge, 
-            collaborate on projects, and build your digital career network.
-          </p>
+    <div className="h-screen bg-gray-100 dark:bg-gray-900 flex flex-col">
+      {/* Header */}
+      <div className="bg-ajira-primary dark:bg-ajira-primary flex items-center justify-between p-4 shadow-sm">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+            className="p-2 rounded-lg hover:bg-white/10 transition-colors"
+          >
+            {sidebarCollapsed ? (
+              <ChevronRight className="w-5 h-5 text-white" />
+            ) : (
+              <ChevronLeft className="w-5 h-5 text-white" />
+            )}
+          </button>
+          <h1 className="text-white font-semibold text-lg">Community Hub</h1>
         </div>
-
-        {/* WhatsApp Integration Section */}
-        <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-xl p-4 sm:p-6 mb-8 text-white w-full">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4 w-full">
-            <div className="flex items-center space-x-4">
-              <div className="bg-white/20 p-3 rounded-lg">
-                <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.570-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.890-5.335 11.893-11.893A11.821 11.821 0 0020.485 3.515"/>
-                </svg>
-              </div>
-              <div>
-                <h3 className="text-xl font-bold">Connect via WhatsApp</h3>
-                <p className="text-green-100">
-                  Get instant support, join exclusive groups, and receive real-time updates
-                </p>
-              </div>
-            </div>
-            <div className="space-y-3">
-              <a
-                href="https://wa.me/254712345678?text=Hi%20KiNaP%20Ajira!%20I%27d%20like%20to%20join%20the%20community%20and%20learn%20about%20digital%20skills%20training."
-                target="_blank"
-                rel="noopener noreferrer"
-                className="bg-white text-green-600 px-6 py-3 rounded-lg font-semibold hover:bg-green-50 transition-colors flex items-center space-x-2"
-              >
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.570-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.890-5.335 11.893-11.893A11.821 11.821 0 0020.485 3.515"/>
-                </svg>
-                <span>Chat with Us</span>
-              </a>
-              <div className="text-sm text-green-100">
-                <p>📱 +254 712 345 678</p>
-                <p>⏰ Available 24/7</p>
-              </div>
-            </div>
+        
+        <div className="flex items-center gap-2">
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Search messages..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="px-3 py-2 rounded-lg bg-white/10 text-white placeholder-white/70 text-sm w-48 focus:outline-none focus:ring-2 focus:ring-white/20"
+            />
           </div>
           
-          {/* WhatsApp Groups */}
-          <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 w-full">
-            <div className="bg-white/10 rounded-lg p-4">
-              <h4 className="font-semibold mb-2">🎓 Study Groups</h4>
-              <p className="text-sm text-green-100">Join subject-specific study groups and collaborative learning sessions</p>
-              <a 
-                href="https://chat.whatsapp.com/studygroups"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-block mt-2 text-xs bg-white/20 px-3 py-1 rounded-full hover:bg-white/30 transition-colors"
-              >
-                Join Groups
-              </a>
+          <div className="relative">
+            <button
+              ref={menuRef}
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowMainMenu(!showMainMenu);
+              }}
+              className="p-2 rounded-lg hover:bg-white/10 transition-colors"
+            >
+              <MoreVertical className="w-5 h-5 text-white" />
+            </button>
+            
+            {/* Main Menu Dropdown */}
+            {showMainMenu && (
+              <div className="menu-dropdown absolute right-0 top-full mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-[100] animate-in slide-in-from-top-2 duration-200">
+                <button
+                  onClick={() => {
+                    setShowStarredMessages(true);
+                    setShowMainMenu(false);
+                  }}
+                  className="w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-900 dark:text-white font-medium rounded-t-lg"
+                >
+                  Starred messages
+                </button>
+                <button
+                  onClick={() => {
+                    setShowMainMenu(false);
+                  }}
+                  className="w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-900 dark:text-white font-medium"
+                >
+                  Select chats
+                </button>
+                <button
+                  onClick={() => {
+                    setShowSettings(true);
+                    setShowMainMenu(false);
+                  }}
+                  className="w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-900 dark:text-white font-medium"
+                >
+                  Settings
+                </button>
+                <button
+                  onClick={() => {
+                    setShowMainMenu(false);
+                  }}
+                  className="w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-900 dark:text-white font-medium rounded-b-lg"
+                >
+                  Log out
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Sidebar */}
+        <div className={`${sidebarCollapsed || showSettings ? 'hidden' : 'flex'} lg:flex flex-col w-80 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 absolute lg:relative z-10 h-full`}>
+          {/* Sidebar Header */}
+          <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Chats</h2>
             </div>
-            <div className="bg-white/10 rounded-lg p-4">
-              <h4 className="font-semibold mb-2">💼 Job Alerts</h4>
-              <p className="text-sm text-green-100">Get instant notifications about job opportunities and freelance gigs</p>
-              <a 
-                href="https://chat.whatsapp.com/jobalerts"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-block mt-2 text-xs bg-white/20 px-3 py-1 rounded-full hover:bg-white/30 transition-colors"
-              >
-                Subscribe
-              </a>
+            <div className="mt-3">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search or start new chat"
+                  className="w-full pl-10 pr-4 py-2 bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ajira-primary"
+                />
+              </div>
             </div>
-            <div className="bg-white/10 rounded-lg p-4">
-              <h4 className="font-semibold mb-2">🚀 Project Teams</h4>
-              <p className="text-sm text-green-100">Find teammates for hackathons, competitions, and startup projects</p>
-              <a 
-                href="https://chat.whatsapp.com/projectteams"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-block mt-2 text-xs bg-white/20 px-3 py-1 rounded-full hover:bg-white/30 transition-colors"
+          </div>
+
+          {/* Groups List */}
+          <div className="flex-1 overflow-y-auto">
+            {filteredGroups.map((group) => (
+              <div
+                key={group.id}
+                onClick={() => {
+                  setSelectedGroup(group);
+                  setShowStarredMessages(false);
+                  if (window.innerWidth < 1024) {
+                    setSidebarCollapsed(true);
+                  }
+                }}
+                className={`p-4 border-b border-gray-100 dark:border-gray-700 cursor-pointer transition-colors ${
+                  selectedGroup?.id === group.id
+                    ? 'bg-ajira-primary/10 dark:bg-ajira-primary/20'
+                    : 'hover:bg-gray-50 dark:hover:bg-gray-700'
+                }`}
               >
-                Find Teams
-              </a>
+                <div className="flex items-center justify-between">
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-medium text-gray-900 dark:text-white truncate">{group.name}</h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 truncate">
+                      {group.messages.length > 0
+                        ? group.messages[group.messages.length - 1].content
+                        : 'No messages yet'}
+                    </p>
+                  </div>
+                  <div className="text-xs text-gray-600 dark:text-gray-400 font-medium ml-2">
+                    {group.messages.length > 0
+                      ? new Date(group.messages[group.messages.length - 1].timestamp).toLocaleTimeString([], {
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })
+                      : ''}
+                  </div>
+                </div>
+                <div className="flex items-center justify-between mt-1">
+                  <span className="text-xs text-gray-600 dark:text-gray-400 font-medium">
+                    {group.members} members
+                  </span>
+                  {group.unreadCount > 0 && (
+                    <span className="bg-ajira-primary text-white text-xs px-2 py-1 rounded-full">
+                      {group.unreadCount}
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* User Profile */}
+          <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex-shrink-0">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-ajira-primary rounded-full flex items-center justify-center">
+                <span className="text-white font-semibold text-sm">D</span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="font-medium text-gray-900 dark:text-white truncate">Demo User</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400 truncate">Online</p>
+              </div>
             </div>
+          </div>
+
+          {/* New Chat Button */}
+          <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex-shrink-0">
+            <button
+              onClick={() => setShowCreateGroup(true)}
+              className="w-full bg-ajira-primary text-white p-3 rounded-full hover:bg-ajira-primary/90 transition-colors flex items-center justify-center"
+            >
+              <Plus className="w-5 h-5" />
+            </button>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-lg overflow-hidden h-[calc(100vh-300px)] w-full">
-          <div className="flex flex-col md:flex-row h-full w-full">
-            {/* Sidebar */}
-            <div className={`${sidebarCollapsed ? 'w-16' : 'w-64 sm:w-80'} border-r border-gray-200 flex flex-col transition-all duration-300 bg-gray-50`}>
-              {/* Header */}
-              <div className="p-4 border-b border-gray-200 bg-white">
-                <div className="flex items-center justify-between">
-                  {!sidebarCollapsed && (
-                    <h2 className="text-lg font-semibold text-gray-900">Community Groups</h2>
+        {/* Settings Sidebar */}
+        {showSettings && (
+          <div className="flex flex-col w-80 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 absolute lg:relative z-10 h-full">
+            {/* Settings Header */}
+            <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+              <div className="flex items-center justify-between">
+                <button
+                  onClick={() => setShowSettings(false)}
+                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                >
+                  <ChevronLeft className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                </button>
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Settings</h2>
+                <div className="w-10"></div>
+              </div>
+              <div className="mt-3">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Search settings"
+                    value={settingsSearchQuery}
+                    onChange={(e) => setSettingsSearchQuery(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-ajira-primary"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Settings Categories */}
+            <div className="flex-1 overflow-y-auto">
+              <div className="p-4">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-12 h-12 bg-ajira-primary rounded-full flex items-center justify-center">
+                    <span className="text-white font-semibold text-lg">D</span>
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-gray-900 dark:text-white">Demo User</h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 italic">„Füchte dich nicht, denn ich bin mit dir..."</p>
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  {SETTINGS_CATEGORIES.map((category) => (
+                    <button
+                      key={category.id}
+                      onClick={() => setSelectedSetting(category.id)}
+                      className={`w-full flex items-center gap-3 p-3 rounded-lg transition-colors ${
+                        selectedSetting === category.id
+                          ? 'bg-ajira-primary/10 text-ajira-primary'
+                          : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-900 dark:text-white'
+                      }`}
+                    >
+                      <category.icon className="w-5 h-5" />
+                      <div className="flex-1 text-left">
+                        <div className="font-medium">{category.name}</div>
+                        <div className="text-sm text-gray-600 dark:text-gray-400">{category.description}</div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Settings Content */}
+        {showSettings && (
+          <div className="flex-1 bg-gray-50 dark:bg-gray-900">
+            <div className="p-6">
+              {selectedSetting === 'chats' && (
+                <>
+                  <div className="flex items-center gap-3 mb-6">
+                    <Settings className="w-6 h-6 text-gray-600 dark:text-gray-400" />
+                    <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Chat Settings</h2>
+                  </div>
+
+                  <div className="space-y-1">
+                    {filteredSettings.map((setting) => (
+                      <div
+                        key={setting.id}
+                        className="flex items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                        onClick={() => {
+                          if (setting.id === 'theme') {
+                            setShowThemeModal(true);
+                          } else if (setting.id === 'notifications') {
+                            setSelectedSetting('notifications');
+                          }
+                        }}
+                      >
+                        <div className="flex-1">
+                          <div className="font-medium text-gray-900 dark:text-white">{setting.name}</div>
+                          {setting.description && (
+                            <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">{setting.description}</div>
+                          )}
+                          {setting.id === 'theme' ? (
+                            <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">{currentTheme === 'system' ? 'System default' : currentTheme === 'light' ? 'Light' : 'Dark'}</div>
+                          ) : setting.value && (
+                            <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">{setting.value}</div>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {setting.toggle ? (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleSetting(setting.id as keyof typeof settings);
+                              }}
+                              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                                (setting.id === 'spell_check' ? settings.spellCheck : settings.replaceTextWithEmoji)
+                                  ? 'bg-ajira-primary'
+                                  : 'bg-gray-300 dark:bg-gray-600'
+                              }`}
+                            >
+                              <span
+                                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                  (setting.id === 'spell_check' ? settings.spellCheck : settings.replaceTextWithEmoji) ? 'translate-x-6' : 'translate-x-1'
+                                }`}
+                              />
+                            </button>
+                          ) : (
+                            setting.hasArrow && <ArrowRight className="w-5 h-5 text-gray-400" />
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Chat Area */}
+        <div className={`${showSettings ? 'hidden' : 'flex'} lg:flex flex-1 flex-col bg-gray-50 dark:bg-gray-900 ${sidebarCollapsed ? 'block' : 'hidden lg:block'}`}>
+          {selectedGroup ? (
+            <>
+              {/* Chat Header */}
+              <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  {window.innerWidth < 1024 && (
+                    <button
+                      onClick={() => setSidebarCollapsed(false)}
+                      className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                    >
+                      <ChevronLeft className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                    </button>
                   )}
-                  <button
-                    onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-                    className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-                  >
-                    {sidebarCollapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
+                  <div>
+                    <h2 className="font-semibold text-gray-900 dark:text-white">{selectedGroup.name}</h2>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">{selectedGroup.members} members</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+                    <Search className="w-5 h-5 text-gray-500" />
+                  </button>
+                  <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+                    <MoreVertical className="w-5 h-5 text-gray-500" />
                   </button>
                 </div>
               </div>
 
-              {/* Groups List */}
-              <div className="flex-1 overflow-y-auto">
-                {/* Direct Messages Section */}
-                <div className="mb-4">
-                  <h3 className="text-sm font-semibold text-gray-700 mb-2">Direct Messages</h3>
-                  <ul>
-                    {users.map(u => (
-                      <li key={u.id || u._id}>
-                        <button onClick={() => setSelectedUser(u.id || u._id)} className={`w-full text-left px-2 py-1 rounded ${selectedUser === (u.id || u._id) ? 'bg-blue-100' : ''}`}>{u.name || u.username} {u.id === user?.id && '(You)'}</button>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-
-                {filteredGroups.map((group) => (
+              {/* Messages */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                {selectedGroup.messages.map((message, index) => (
                   <div
-                    key={group._id || group.id}
-                    onClick={() => setSelectedGroup(group._id || group.id)}
-                    className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors relative ${
-                      selectedGroup === (group._id || group.id) ? 'bg-kenya-green bg-opacity-10 border-r-4 border-r-kenya-green' : ''
-                    }`}
+                    key={index}
+                    className={`flex ${message.userId === activeUser.id ? 'justify-end' : 'justify-start'}`}
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="relative">
-                        <img
-                          src={group.avatar}
-                          alt={group.name}
-                          className="w-12 h-12 rounded-full object-cover"
-                        />
-                        {group.isOnline && (
-                          <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
-                        )}
-                        {group.unreadCount > 0 && (
-                          <div className="absolute -top-1 -right-1 w-5 h-5 bg-kenya-red text-white text-xs rounded-full flex items-center justify-center font-medium">
-                            {group.unreadCount > 9 ? '9+' : group.unreadCount}
-                          </div>
-                        )}
-                      </div>
-                      
-                      {!sidebarCollapsed && (
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <h3 className="font-semibold text-gray-900 truncate">{group.name}</h3>
-                              {group.isPinned && <Pin className="w-3 h-3 text-gray-400" />}
-                              {group.isMuted && <Settings className="w-3 h-3 text-gray-400" />}
-                            </div>
-                            <span className="text-xs text-gray-500">{formatTime(group.lastMessageTime)}</span>
-                          </div>
-                          
-                          <div className="flex items-center gap-1">
-                            {group.isTyping && group.typingUsers && group.typingUsers.length > 0 && (
-                              <div className="flex items-center gap-1 text-kenya-green text-sm">
-                                <div className="flex gap-1">
-                                  <div className="w-1 h-1 bg-kenya-green rounded-full animate-bounce"></div>
-                                  <div className="w-1 h-1 bg-kenya-green rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
-                                  <div className="w-1 h-1 bg-kenya-green rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
-                                </div>
-                                <span>{group.typingUsers[0]} is typing...</span>
-                              </div>
-                            )}
-                            {!group.isTyping && (
-                              <p className="text-sm text-gray-600 truncate">{group.lastMessage}</p>
-                            )}
-                          </div>
-                          
-                          <div className="flex items-center justify-between mt-1">
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs text-gray-500">{Array.isArray(group.members) ? group.members.length : 0} members</span>
-                              {group.type === 'channel' && <Hash className="w-3 h-3 text-gray-400" />}
-                            </div>
-                          </div>
+                    <div
+                      className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
+                        message.userId === activeUser.id
+                          ? 'bg-ajira-primary text-white'
+                          : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-700'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-sm font-medium">
+                          {message.userId === activeUser.id ? 'You' : message.userName}
+                        </span>
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs opacity-80">
+                            {new Date(message.timestamp).toLocaleTimeString([], {
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </span>
+                          {message.userId === activeUser.id && settings.readReceipts && (
+                            <span className="text-xs">
+                              {message.status === 'read' ? '✓✓' : '✓'}
+                            </span>
+                          )}
                         </div>
-                      )}
+                      </div>
+                      <p className="text-sm">{message.content}</p>
+                      <button
+                        onClick={() => toggleStarMessage(message)}
+                        className="mt-1 text-xs opacity-70 hover:opacity-100 transition-opacity"
+                      >
+                        {starredMessages.some(sm => sm.id === message.id) ? '★' : '☆'}
+                      </button>
                     </div>
                   </div>
                 ))}
+                
+                {/* Typing indicator */}
+                {typingUsers.length > 0 && settings.typingIndicators && (
+                  <div className="flex justify-start">
+                    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-4 py-2">
+                      <div className="flex items-center gap-1">
+                        <span className="text-sm text-gray-600 dark:text-gray-400">Someone is typing</span>
+                        <div className="flex gap-1">
+                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
-              {/* Bottom Actions */}
-              {!sidebarCollapsed && (
-                <div className="p-4 border-t border-gray-200 bg-gray-50">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <img
-                        src={currentUser.avatar}
-                        alt={currentUser.name}
-                        className="w-8 h-8 rounded-full object-cover"
-                      />
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">{currentUser.name}</p>
-                        <p className="text-xs text-gray-500">{currentUser.status}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button className="p-2 hover:bg-gray-200 rounded-lg transition-colors" onClick={() => setShowSettings(true)}>
-                        <Settings className="w-4 h-4 text-gray-500" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Main Chat Area */}
-            <div className="flex-1 flex flex-col w-full">
-              {currentGroup ? (
-                <>
-                  {/* Chat Header */}
-                  <div className="bg-white border-b border-gray-200 p-4 shadow-sm">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="relative">
-                          <img
-                            src={currentGroup.avatar}
-                            alt={currentGroup.name}
-                            className="w-10 h-10 rounded-full object-cover"
-                          />
-                          {currentGroup.isOnline && (
-                            <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
-                          )}
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <h2 className="font-semibold text-gray-900">{currentGroup.name}</h2>
-                            {currentGroup.type === 'channel' && <Hash className="w-4 h-4 text-gray-500" />}
-                          </div>
-                          <div className="flex items-center gap-2 text-sm text-gray-500">
-                            <span>{groupMembers.length} member{groupMembers.length !== 1 ? 's' : ''}</span>
-                            <span>•</span>
-                            <span>{currentGroup.description}</span>
-                          </div>
-                          {/* Show member avatars */}
-                          <div className="flex -space-x-2 mt-1">
-                            {groupMembers.slice(0, 5).map(member => (
-                              <img
-                                key={member.id || member._id}
-                                src={member.avatar || member.photoURL || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(member.name || member.fullname || 'User')}
-                                alt={member.name || member.fullname || 'User'}
-                                className="w-7 h-7 rounded-full border-2 border-white shadow"
-                                title={member.name || member.fullname || 'User'}
-                              />
-                            ))}
-                            {groupMembers.length > 5 && (
-                              <span className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center text-xs text-gray-600 border-2 border-white">+{groupMembers.length - 5}</span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-                          <Search className="w-5 h-5 text-gray-500" />
-                        </button>
-                        <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-                          <Info className="w-5 h-5 text-gray-500" />
-                        </button>
-                        <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-                          <MoreVertical className="w-5 h-5 text-gray-500" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Messages Area */}
-                  <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
-                    {messages.map((message, index) => {
-                      if (message.type === 'system' || message.messageType === 'system') {
-                        return (
-                          <div key={message.id || index} className="flex justify-center my-2">
-                            <div className="bg-gray-200 text-gray-700 text-xs px-4 py-2 rounded-full shadow-sm">
-                              {message.content || message.message}
-                            </div>
-                          </div>
-                        );
-                      }
-                      const showAvatar = index === 0 || messages[index - 1].userId !== message.userId;
-
-                      return (
-                        <div key={message.id || index}>
-                          <div className={`flex gap-3 ${message.isOwn ? 'justify-end' : 'justify-start'} group`}>
-                            {!message.isOwn && showAvatar && (
-                              <img
-                                src={message.userAvatar}
-                                alt={message.userName}
-                                className="w-8 h-8 rounded-full object-cover"
-                              />
-                            )}
-                            {!message.isOwn && !showAvatar && <div className="w-8"></div>}
-                            
-                            <div className={`max-w-xs lg:max-w-md ${message.isOwn ? 'order-1' : ''}`}>
-                              {!message.isOwn && showAvatar && (
-                                <p className="text-sm font-medium text-gray-900 mb-1">{message.userName}</p>
-                              )}
-                              
-                              {/* Reply indicator */}
-                              {message.replyTo && (
-                                <div className="mb-2 p-2 bg-gray-200 rounded-lg border-l-2 border-kenya-green">
-                                  <p className="text-xs text-gray-600">Replying to message</p>
-                                </div>
-                              )}
-                              
-                              <div
-                                className={`rounded-lg px-4 py-2 relative ${
-                                  message.isOwn
-                                    ? 'bg-kenya-red text-white'
-                                    : 'bg-white text-gray-900 border border-gray-200'
-                                }`}
-                              >
-                                {/* Message content */}
-                                {message.messageType === 'text' && (
-                                  <p className="text-sm">{message.message}</p>
-                                )}
-                                
-                                {message.messageType === 'voice' && (
-                                  <VoiceMessage message={message} />
-                                )}
-                                
-                                {message.messageType === 'file' && (
-                                  <FileMessage message={message} />
-                                )}
-                                
-                                {message.messageType === 'image' && (
-                                  <div className="max-w-xs">
-                                    <img
-                                      src={message.mediaUrl}
-                                      alt="Shared image"
-                                      className="rounded-lg max-w-full h-auto"
-                                    />
-                                    {message.message && message.message !== `Shared ${message.mediaUrl}` && (
-                                      <p className="text-sm mt-2">{message.message}</p>
-                                    )}
-                                  </div>
-                                )}
-
-                                {/* Message status and time */}
-                                <div className={`flex items-center justify-between mt-1 gap-2 ${
-                                  message.isOwn ? 'text-white/70' : 'text-gray-500'
-                                }`}>
-                                  <div className="flex items-center gap-1 text-xs">
-                                    {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                    {message.isEdited && <span>(edited)</span>}
-                                  </div>
-                                  {getMessageStatusIcon(message.status, message.isOwn || false)}
-                                </div>
-                              </div>
-
-                              {/* Message reactions */}
-                              {message.reactions && message.reactions.length > 0 && (
-                                <MessageReactions reactions={message.reactions} />
-                              )}
-                            </div>
-                            
-                            {message.isOwn && showAvatar && (
-                              <img
-                                src={message.userAvatar}
-                                alt={message.userName}
-                                className="w-8 h-8 rounded-full object-cover order-2"
-                              />
-                            )}
-                            {message.isOwn && !showAvatar && <div className="w-8 order-2"></div>}
-                          </div>
-                        </div>
-                      );
-                    })}
-                    <div ref={messagesEndRef} />
-                  </div>
-
-                  {/* Reply indicator */}
-                  {replyingTo && (
-                    <div className="px-4 py-2 bg-gray-100 border-t border-gray-200">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Reply className="w-4 h-4 text-gray-500" />
-                          <span className="text-sm text-gray-600">
-                            Replying to {replyingTo.userName}: {replyingTo.message.substring(0, 50)}...
-                          </span>
-                        </div>
-                        <button
-                          onClick={() => setReplyingTo(null)}
-                          className="p-1 hover:bg-gray-200 rounded"
-                        >
-                          <X className="w-4 h-4 text-gray-500" />
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Message Input */}
-                  <div className="bg-white border-t border-gray-200 p-4">
-                    <div className="flex items-end gap-3">
-                      {/* Media picker */}
-                      <div className="relative">
-                        <button
-                          onClick={() => setShowMediaPicker(!showMediaPicker)}
-                          className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-                        >
-                          <Plus className="w-5 h-5" />
-                        </button>
-                        
-                        {showMediaPicker && (
-                          <div className="absolute bottom-full left-0 mb-2 bg-white border border-gray-200 rounded-lg shadow-lg p-2 flex flex-col gap-2">
-                            <button
-                              onClick={() => {
-                                fileInputRef.current?.click();
-                                setShowMediaPicker(false);
-                              }}
-                              className="flex items-center gap-2 px-3 py-2 hover:bg-gray-100 rounded-lg text-sm"
-                            >
-                              <Image className="w-4 h-4 text-blue-500" />
-                              Photo
-                            </button>
-                            <button
-                              onClick={() => {
-                                fileInputRef.current?.click();
-                                setShowMediaPicker(false);
-                              }}
-                              className="flex items-center gap-2 px-3 py-2 hover:bg-gray-100 rounded-lg text-sm"
-                            >
-                              <File className="w-4 h-4 text-purple-500" />
-                              Document
-                            </button>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Message input */}
-                      <div className="flex-1 relative">
-                        <input
-                          ref={messageInputRef}
-                          type="text"
-                          value={newMessage}
-                          onChange={(e) => setNewMessage(e.target.value)}
-                          placeholder={`Message ${currentGroup.name}...`}
-                          className="w-full px-4 py-3 bg-gray-100 rounded-full focus:outline-none focus:ring-2 focus:ring-kenya-red border-0 pr-12"
-                          onKeyPress={(e) => {
-                            if (e.key === 'Enter' && !e.shiftKey) {
-                              e.preventDefault();
-                              handleSendMessage();
-                            }
-                          }}
-                        />
-                        <button className="absolute right-3 top-1/2 transform -translate-y-1/2 p-1 text-gray-500 hover:text-gray-700">
-                          <Smile className="w-5 h-5" />
-                        </button>
-                      </div>
-
-                      {/* Voice message */}
-                      <button
-                        onMouseDown={() => setIsRecording(true)}
-                        onMouseUp={() => setIsRecording(false)}
-                        onMouseLeave={() => setIsRecording(false)}
-                        className={`p-3 rounded-full transition-colors ${
-                          isRecording 
-                            ? 'bg-red-500 text-white' 
-                            : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-                        }`}
-                      >
-                        <Mic className="w-5 h-5" />
-                      </button>
-
-                      {/* Send button */}
-                      <button
-                        onClick={handleSendMessage}
-                        disabled={!newMessage.trim()}
-                        className="p-3 bg-kenya-red text-white rounded-full hover:bg-kenya-green disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                      >
-                        <Send className="w-5 h-5" />
-                      </button>
-                    </div>
-
-                    {/* Recording indicator */}
-                    {isRecording && (
-                      <div className="mt-2 flex items-center gap-2 text-red-500">
-                        <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-                        <span className="text-sm">Recording voice message...</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Hidden file input */}
+              {/* Message Input */}
+              <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4">
+                <div className="flex items-center gap-2">
                   <input
-                    ref={fileInputRef}
-                    type="file"
-                    onChange={handleFileUpload}
-                    className="hidden"
-                    accept="image/*,application/pdf,.doc,.docx,.txt"
+                    type="text"
+                    value={newMessage}
+                    onChange={(e) => {
+                      setNewMessage(e.target.value);
+                      if (settings.typingIndicators) {
+                        handleTyping();
+                      }
+                    }}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter' && settings.enterToSend) {
+                        handleSendMessage();
+                      }
+                    }}
+                    placeholder={settings.enterToSend ? "Type a message (Enter to send)" : "Type a message"}
+                    spellCheck={settings.spellCheck}
+                    className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-ajira-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
                   />
-                </>
-              ) : (
-                <div className="flex-1 flex items-center justify-center">
-                  <div className="text-center">
-                    <MessageCircle className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                    <h3 className="text-xl font-semibold text-gray-600 mb-2">Karibu Mazungumzo Hub</h3>
-                    <p className="text-gray-500 max-w-md">
-                      Select a conversation to start chatting with the KiNaP Ajira Digital community. 
-                      Connect, learn, and grow together! 🚀
-                    </p>
-                  </div>
+                  <button
+                    onClick={handleSendMessage}
+                    className="px-4 py-2 bg-ajira-primary text-white rounded-lg hover:bg-ajira-primary/90 transition-colors"
+                  >
+                    Send
+                  </button>
                 </div>
-              )}
+              </div>
+            </>
+          ) : (
+            <div className="flex-1 flex items-center justify-center">
+              <div className="text-center">
+                <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Welcome to Community Hub</h3>
+                <p className="text-gray-600 dark:text-gray-400">Select a group to start chatting</p>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Theme Selection Modal */}
+      {showThemeModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-96 max-w-[90vw]">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Theme</h3>
+            <div className="space-y-2">
+              <button
+                onClick={() => handleThemeSelect('light')}
+                className={`w-full flex items-center justify-between p-3 rounded-lg border transition-colors ${
+                  currentTheme === 'light'
+                    ? 'border-ajira-primary bg-ajira-primary/10'
+                    : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'
+                }`}
+              >
+                <span className="text-gray-900 dark:text-white">Light</span>
+                {currentTheme === 'light' && (
+                  <div className="w-4 h-4 bg-ajira-primary rounded-full flex items-center justify-center">
+                    <div className="w-2 h-2 bg-white rounded-full"></div>
+                  </div>
+                )}
+              </button>
+              
+              <button
+                onClick={() => handleThemeSelect('dark')}
+                className={`w-full flex items-center justify-between p-3 rounded-lg border transition-colors ${
+                  currentTheme === 'dark'
+                    ? 'border-ajira-primary bg-ajira-primary/10'
+                    : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'
+                }`}
+              >
+                <span className="text-gray-900 dark:text-white">Dark</span>
+                {currentTheme === 'dark' && (
+                  <div className="w-4 h-4 bg-ajira-primary rounded-full flex items-center justify-center">
+                    <div className="w-2 h-2 bg-white rounded-full"></div>
+                  </div>
+                )}
+              </button>
+              
+              <button
+                onClick={() => handleThemeSelect('system')}
+                className={`w-full flex items-center justify-between p-3 rounded-lg border transition-colors ${
+                  currentTheme === 'system'
+                    ? 'border-ajira-primary bg-ajira-primary/10'
+                    : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'
+                }`}
+              >
+                <span className="text-gray-900 dark:text-white">System default</span>
+                {currentTheme === 'system' && (
+                  <div className="w-4 h-4 bg-ajira-primary rounded-full flex items-center justify-center">
+                    <div className="w-2 h-2 bg-white rounded-full"></div>
+                  </div>
+                )}
+              </button>
+            </div>
+            <div className="flex justify-end gap-2 mt-4">
+              <button
+                onClick={() => setShowThemeModal(false)}
+                className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => setShowThemeModal(false)}
+                className="px-4 py-2 bg-ajira-primary text-white rounded-lg hover:bg-ajira-primary/90 transition-colors"
+              >
+                OK
+              </button>
             </div>
           </div>
         </div>
+      )}
 
-        {/* Create Group Modal */}
-        <Modal isOpen={showCreateGroup} onRequestClose={() => setShowCreateGroup(false)} ariaHideApp={false}>
-          <form onSubmit={handleCreateGroup} className="p-4">
-            <h2 className="text-lg font-bold mb-2">Create Group</h2>
-            <input className="w-full border rounded px-2 py-1 mb-2" placeholder="Group Name" value={newGroup.name} onChange={e => setNewGroup(g => ({ ...g, name: e.target.value }))} required />
-            <input className="w-full border rounded px-2 py-1 mb-2" placeholder="Description" value={newGroup.description} onChange={e => setNewGroup(g => ({ ...g, description: e.target.value }))} />
-            <div className="mb-2">
-              <label className="block text-sm mb-1">Members</label>
-              <select multiple className="w-full border rounded" value={newGroup.members} onChange={e => setNewGroup(g => ({ ...g, members: Array.from(e.target.selectedOptions, o => o.value) }))}>
-                {users.map(u => (
-                  <option key={u.id || u._id} value={u.id || u._id}>{u.name || u.username}</option>
-                ))}
-              </select>
-      </div>
-            <div className="flex gap-2">
-              <button type="submit" className="bg-blue-600 text-white px-4 py-1 rounded">Create</button>
-              <button type="button" className="bg-gray-300 px-4 py-1 rounded" onClick={() => setShowCreateGroup(false)}>Cancel</button>
-            </div>
-          </form>
-        </Modal>
-
-        {/* Edit Profile Modal */}
-        <Modal isOpen={showSettings} onRequestClose={() => setShowSettings(false)} ariaHideApp={false}>
-          <form onSubmit={handleProfileSave} className="p-4 max-w-md mx-auto">
-            <h2 className="text-lg font-bold mb-2">Edit Profile</h2>
-            <input className="w-full border rounded px-2 py-1 mb-2" name="name" placeholder="Full Name" value={profileForm.name} onChange={handleProfileChange} required />
-            <input className="w-full border rounded px-2 py-1 mb-2" name="avatar" placeholder="Avatar URL" value={profileForm.avatar} onChange={handleProfileChange} />
-            <label className="block text-sm mb-1">Interests</label>
-            <select multiple className="w-full border rounded mb-2" name="interests" value={profileForm.interests} onChange={handleProfileChange}>
-              {INTEREST_OPTIONS.map(opt => (
-                <option key={opt} value={opt}>{opt}</option>
-              ))}
-            </select>
-            <div className="flex gap-2">
-              <button type="submit" className="bg-blue-600 text-white px-4 py-1 rounded">Save</button>
-              <button type="button" className="bg-gray-300 px-4 py-1 rounded" onClick={() => setShowSettings(false)}>Cancel</button>
-            </div>
-          </form>
-        </Modal>
-      </div>
-      {/* Floating Chatbot widget at bottom right */}
-      <Chatbot />
+      {/* Create Group Modal */}
+      {showCreateGroup && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-96 max-w-[90vw]">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Create New Group</h3>
+            <form onSubmit={handleCreateGroup} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Group Name</label>
+                <input
+                  type="text"
+                  value={newGroup.name}
+                  onChange={(e) => setNewGroup(prev => ({ ...prev, name: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-ajira-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
+                <input
+                  type="text"
+                  value={newGroup.description}
+                  onChange={(e) => setNewGroup(prev => ({ ...prev, description: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-ajira-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Category</label>
+                <select
+                  value={newGroup.category}
+                  onChange={(e) => setNewGroup(prev => ({ ...prev, category: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-ajira-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  required
+                >
+                  <option value="">Select a category</option>
+                  {GROUP_CATEGORIES.map(category => (
+                    <option key={category} value={category}>{category}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowCreateGroup(false)}
+                  className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-ajira-primary text-white rounded-lg hover:bg-ajira-primary/90 transition-colors"
+                >
+                  Create Group
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

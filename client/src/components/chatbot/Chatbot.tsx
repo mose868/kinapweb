@@ -123,7 +123,7 @@ const Chatbot: React.FC = () => {
             <Bot className="w-4 h-4" />
           </div>
           <div>
-            <h3 className="font-semibold text-sm">Kinap AI</h3>
+            <h3 className="font-semibold text-sm">Kinap Ajira Assistant</h3>
             <p className="text-xs opacity-90">Online</p>
           </div>
         </div>

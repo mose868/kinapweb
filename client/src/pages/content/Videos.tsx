@@ -26,7 +26,10 @@ import {
   Star,
   Bookmark,
   Plus,
-  UploadCloud
+  UploadCloud,
+  Flag,
+  Copy,
+  ExternalLink
 } from 'lucide-react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import onlineWorkVideos from '../../../../online_work_videos.json';
@@ -86,6 +89,10 @@ const Videos: React.FC = () => {
   const [ytPlayer, setYtPlayer] = useState<any>(null);
   const [isPlaying, setIsPlaying] = useState(true);
 
+  // Video options dropdown state
+  const [openVideoOptions, setOpenVideoOptions] = useState<number | null>(null);
+  const videoOptionsRef = useRef<HTMLDivElement>(null);
+
   // Load likes/dislikes/comments from localStorage
   useEffect(() => {
     setLikes(JSON.parse(localStorage.getItem('videoLikes') || '{}'))
@@ -103,6 +110,52 @@ const Videos: React.FC = () => {
   useEffect(() => {
     localStorage.setItem('videoComments', JSON.stringify(comments))
   }, [comments])
+
+  // Click outside handler for video options dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (videoOptionsRef.current && !videoOptionsRef.current.contains(event.target as Node)) {
+        setOpenVideoOptions(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  // Video options handlers
+  const handleVideoOptionsClick = (videoId: number, event: React.MouseEvent) => {
+    event.stopPropagation();
+    setOpenVideoOptions(openVideoOptions === videoId ? null : videoId);
+  };
+
+  const handleVideoOption = (action: string, video: any) => {
+    switch (action) {
+      case 'save':
+        setToast('Video saved to playlist!');
+        break;
+      case 'share':
+        handleShare(video.videoUrl);
+        break;
+      case 'download':
+        handleDownload(video);
+        break;
+      case 'report':
+        setToast('Report submitted!');
+        break;
+      case 'copy-link':
+        navigator.clipboard.writeText(video.videoUrl);
+        setToast('Link copied to clipboard!');
+        break;
+      case 'open-external':
+        window.open(video.videoUrl, '_blank');
+        break;
+    }
+    setOpenVideoOptions(null);
+    setTimeout(() => setToast(null), 2000);
+  };
 
   // Like handler
   const handleLike = (id: number) => {
