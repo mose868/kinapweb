@@ -10,7 +10,23 @@ const TEMP_MAIL_DOMAINS = [
   'tempmail', 'mailinator', '10minutemail', 'guerrillamail', 'yopmail', 'dispostable', 'maildrop', 'fakeinbox', 'trashmail', 'getnada', 'sharklasers', 'spamgourmet', 'mailnesia', 'mintemail', 'throwawaymail', 'mailcatch', 'spambox', 'mailnull', 'mytempemail', 'tempail', 'moakt', 'emailondeck', 'mail-temp', 'inboxkitten', 'mailsac', 'mailpoof', 'mail.tm', 'temp-mail', 'tempinbox', 'mail7', 'easytrashmail', 'mailbox52', 'spambog', 'spam4.me', 'dropmail', 'mailcatch.com', 'mailnesia.com', 'yopmail.com', 'mailinator.com', '10minutemail.com', 'guerrillamail.com', 'dispostable.com', 'getnada.com', 'sharklasers.com', 'spamgourmet.com', 'maildrop.cc', 'fakeinbox.com', 'trashmail.com', 'mintemail.com', 'throwawaymail.com', 'mytempemail.com', 'moakt.com', 'emailondeck.com', 'mail-temp.com', 'inboxkitten.com', 'mailsac.com', 'mailpoof.com', 'mail.tm', 'temp-mail.org', 'tempinbox.com', 'mail7.io', 'easytrashmail.com', 'mailbox52.com', 'spambog.com', 'spam4.me', 'dropmail.me'
 ];
 
-const BASEURL='https://a4a6-197-136-138-2.ngrok-free.app/api'
+const INTEREST_OPTIONS = [
+  'Web Development',
+  'Mobile App Development',
+  'Digital Marketing',
+  'Data Science',
+  'Content Creation',
+  'Graphic Design',
+  'Cybersecurity',
+  'E-commerce',
+  'Freelancing',
+  'UI/UX Design',
+  'Blockchain',
+  'Cloud Computing',
+  'Other'
+];
+
+const BASEURL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 
 interface FormData {
   email: string
@@ -27,6 +43,7 @@ interface FormData {
   experienceLevel?: string
   preferredLearningMode?: string
   otherInfo?: string
+  interests?: string[]
 }
 
 const AuthPage = () => {
@@ -51,6 +68,7 @@ const AuthPage = () => {
     experienceLevel: '',
     preferredLearningMode: '',
     otherInfo: '',
+    interests: [],
   })
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
@@ -58,6 +76,9 @@ const AuthPage = () => {
   const [showReset, setShowReset] = useState(false)
   const [resetEmail, setResetEmail] = useState('')
   const [showResend, setShowResend] = useState(false)
+  const [showVerification, setShowVerification] = useState(false)
+  const [verificationCode, setVerificationCode] = useState('')
+  const [registeredEmail, setRegisteredEmail] = useState('')
 
   // Helper function to detect temp mail - MUST BE BEFORE useMutation
   const isTempMail = (email: string) => {
@@ -82,6 +103,7 @@ const AuthPage = () => {
       email: formData.email,
       phone: formData.phoneNumber,
       password: formData.password,
+      interests: Array.isArray(formData.interests) ? formData.interests : [],
     }
 
     try {
@@ -99,15 +121,62 @@ const AuthPage = () => {
       // Notify of auth update so nav can refresh if we ever auto-login at signup later
       window.dispatchEvent(new Event('authUpdated'))
       
-      // Switch to sign in mode after successful registration
-      setIsSignUp(false)
-      setInfo('Registration successful! Please sign in with your credentials.')
+      // Show verification form after successful registration
+      setRegisteredEmail(formData.email)
+      setShowVerification(true)
+      setInfo('Registration successful! Please check your email for the verification code.')
       setError('')
     } catch (error: any) {
       if (error.response?.data?.message) {
         throw new Error(error.response.data.message)
       }
       throw new Error('Registration failed')
+    }
+  })
+
+  // Verify code mutation
+  const verifyCodeMutation = useMutation(async () => {
+    try {
+      const response = await axios.post(`${BASEURL}/students/verify-code`, {
+        email: registeredEmail,
+        code: verificationCode,
+      }, {
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      })
+
+      setInfo('Account verified successfully! Sign in to complete your profile.')
+      setShowVerification(false)
+      setIsSignUp(false)
+      setError('')
+      setVerificationCode('')
+    } catch (error: any) {
+      if (error.response?.data?.message) {
+        throw new Error(error.response.data.message)
+      }
+      throw new Error('Verification failed')
+    }
+  })
+
+  // Resend code mutation
+  const resendCodeMutation = useMutation(async () => {
+    try {
+      const response = await axios.post(`${BASEURL}/students/resend-code`, {
+        email: registeredEmail,
+      }, {
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      })
+
+      setInfo('Verification code resent! Please check your email.')
+      setError('')
+    } catch (error: any) {
+      if (error.response?.data?.message) {
+        throw new Error(error.response.data.message)
+      }
+      throw new Error('Failed to resend code')
     }
   })
 
@@ -146,8 +215,16 @@ const AuthPage = () => {
       window.dispatchEvent(new Event('authUpdated'))
       
       // Navigate to profile page after login
-      navigate('/')
+      navigate('/profile')
     } catch (error: any) {
+      // If account not verified, show verification form
+      if (error.response?.data?.message?.includes('not verified')) {
+        setRegisteredEmail(formData.email)
+        setShowVerification(true)
+        setError('')
+        setInfo('Please verify your account. Check your email for the verification code.')
+        return
+      }
       if (error.response?.data?.message) {
         throw new Error(error.response.data.message)
       }
@@ -170,8 +247,12 @@ const AuthPage = () => {
 
   // Event handlers
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target
-    setFormData(prev => ({ ...prev, [name]: value }))
+    const { name, value, type, multiple, options } = e.target as any;
+    if (name === 'interests' && multiple) {
+      setFormData(prev => ({ ...prev, interests: Array.from(options).filter((o: any) => o.selected).map((o: any) => o.value) }));
+    } else {
+      setFormData(prev => ({ ...prev, [name]: value }));
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -197,6 +278,29 @@ const AuthPage = () => {
     setError('Password reset functionality is not available yet.');
   }
 
+  const handleVerifyCode = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError('')
+    if (!verificationCode.trim()) {
+      setError('Please enter the verification code.')
+      return
+    }
+    try {
+      await verifyCodeMutation.mutateAsync()
+    } catch (err: any) {
+      setError(err.message || 'Verification failed. Please try again.')
+    }
+  }
+
+  const handleResendCode = async () => {
+    setError('')
+    try {
+      await resendCodeMutation.mutateAsync()
+    } catch (err: any) {
+      setError(err.message || 'Failed to resend code. Please try again.')
+    }
+  }
+
   const handleResendVerification = () => {
     setError('Email verification is not required for this login method.')
   }
@@ -208,18 +312,28 @@ const AuthPage = () => {
           <img src="/logo.jpeg" alt="KiNaP Ajira Club" className="h-16 w-auto drop-shadow-lg rounded-lg" />
         </div>
         <h2 className="mt-6 text-center text-3xl font-bold text-kenya-black">
-          {isSignUp ? 'Join KiNaP Ajira Digital Club' : 'Welcome back to KiNaP Ajira'}
+          {showVerification ? 'Verify Your Account' : isSignUp ? 'Join KiNaP Ajira Digital Club' : 'Welcome back to KiNaP Ajira'}
         </h2>
         <p className="mt-2 text-center text-sm text-gray-600">
-          {isSignUp ? 'Start your digital transformation journey' : 'Continue your digital journey'}{' '}
+          {showVerification ? 'Enter the code sent to your email' : isSignUp ? 'Start your digital transformation journey' : 'Continue your digital journey'}{' '}
           <br />
-          {isSignUp ? 'Already a member?' : "New to Ajira Digital?"}{' '}
+          {showVerification ? '' : isSignUp ? 'Already a member?' : "New to Ajira Digital?"}{' '}
+          {!showVerification && (
           <button
-            onClick={() => { setIsSignUp(!isSignUp); setError(''); setInfo(''); setShowResend(false) }}
+            onClick={() => { 
+              setIsSignUp(!isSignUp); 
+              setError(''); 
+              setInfo(''); 
+              setShowResend(false); 
+              setShowVerification(false); 
+              setVerificationCode(''); 
+              setRegisteredEmail('') 
+            }}
             className="font-medium text-kenya-red hover:text-kenya-green transition-colors"
           >
             {isSignUp ? 'Sign in here' : 'Join the club'}
           </button>
+        )}
         </p>
       </div>
 
@@ -229,7 +343,22 @@ const AuthPage = () => {
           {error && (
             <div className="mb-4 bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg flex items-start">
               <AlertCircle className="w-5 h-5 mr-2 mt-0.5 flex-shrink-0" />
-              <p className="text-sm">{error}</p>
+              <div className="flex-1">
+                <p className="text-sm">{error}</p>
+                {error.includes('not verified') && !showVerification && (
+                  <button
+                    onClick={() => {
+                      setRegisteredEmail(formData.email)
+                      setShowVerification(true)
+                      setError('')
+                      setInfo('Please check your email for the verification code.')
+                    }}
+                    className="mt-2 text-sm text-red-700 hover:text-red-800 underline"
+                  >
+                    Enter verification code now
+                  </button>
+                )}
+              </div>
             </div>
           )}
           {info && (
@@ -273,6 +402,73 @@ const AuthPage = () => {
               >
                 Back to Sign In
               </button>
+            </form>
+          ) : showVerification ? (
+            <form onSubmit={handleVerifyCode} className="space-y-6">
+              <div>
+                <h3 className="text-lg font-medium text-gray-900 mb-4">
+                  Verify Your Email
+                </h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  We've sent a 6-digit verification code to <strong>{registeredEmail}</strong>
+                </p>
+                <label htmlFor="verificationCode" className="block text-sm font-medium text-gray-700">
+                  Verification Code
+                </label>
+                <div className="mt-1">
+                  <input
+                    id="verificationCode"
+                    name="verificationCode"
+                    type="text"
+                    maxLength={6}
+                    required
+                    value={verificationCode}
+                    onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, ''))}
+                    placeholder="Enter 6-digit code"
+                    className="appearance-none block w-full px-4 py-2 text-center text-2xl tracking-widest border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-ajira-accent/50 focus:border-transparent"
+                  />
+                </div>
+              </div>
+              <div>
+                <button
+                  type="submit"
+                  disabled={verifyCodeMutation.isLoading}
+                  className="w-full flex justify-center py-2 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-gradient-to-r from-kenya-red to-kenya-green hover:from-kenya-green hover:to-kenya-red focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-kenya-red disabled:opacity-50 transition-all duration-300"
+                >
+                  {verifyCodeMutation.isLoading ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                      Verifying...
+                    </>
+                  ) : (
+                    'Verify Code'
+                  )}
+                </button>
+              </div>
+              <div className="text-center">
+                <p className="text-sm text-gray-600">
+                  Didn't receive the code?{' '}
+                  <button
+                    type="button"
+                    onClick={handleResendCode}
+                    disabled={resendCodeMutation.isLoading}
+                    className="text-ajira-accent hover:text-ajira-accent/80 font-medium disabled:opacity-50"
+                  >
+                    {resendCodeMutation.isLoading ? 'Sending...' : 'Resend Code'}
+                  </button>
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowVerification(false)
+                    setIsSignUp(true)
+                    setVerificationCode('')
+                  }}
+                  className="mt-2 text-sm text-gray-500 hover:text-gray-700"
+                >
+                  Back to Sign Up
+                </button>
+              </div>
             </form>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-6">
@@ -394,7 +590,8 @@ const AuthPage = () => {
                     </select>
                   </div>
 
-                  <div>
+                  {/* Remove the skills input and only use the interests dropdown */}
+                  {/* <div>
                     <label htmlFor="skills" className="block text-sm font-medium text-gray-700">
                       Digital Skills & Interests
                     </label>
@@ -411,8 +608,30 @@ const AuthPage = () => {
                       />
                       <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
                     </div>
-                  </div>
+                  </div> */}
                 </>
+              )}
+
+              {isSignUp && (
+                <div>
+                  <label htmlFor="interests" className="block text-sm font-medium text-gray-700">
+                    What are your main digital interests? (Select all that apply)
+                  </label>
+                  <select
+                    id="interests"
+                    name="interests"
+                    multiple
+                    value={formData.interests}
+                    onChange={handleChange}
+                    className="mt-1 block w-full pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-2 focus:ring-ajira-accent/50 focus:border-transparent sm:text-sm rounded-lg"
+                    required
+                  >
+                    {INTEREST_OPTIONS.map(opt => (
+                      <option key={opt} value={opt}>{opt}</option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-500 mt-1">Hold Ctrl (Windows) or Cmd (Mac) to select multiple.</p>
+                </div>
               )}
 
               {/* Common Fields */}
@@ -467,6 +686,20 @@ const AuthPage = () => {
                     className="text-xs text-ajira-accent hover:underline mt-1 float-right"
                   >
                     Forgot password?
+                  </button>
+                )}
+                {!isSignUp && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRegisteredEmail(formData.email)
+                      setShowVerification(true)
+                      setError('')
+                      setInfo('Please check your email for the verification code.')
+                    }}
+                    className="text-xs text-ajira-accent hover:underline mt-1 block"
+                  >
+                    Need to verify your account?
                   </button>
                 )}
               </div>

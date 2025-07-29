@@ -4,13 +4,14 @@ const jwt = require('jsonwebtoken');
 const Student = require('../models/Student');
 const crypto = require('crypto');
 const transporter = require('../config/email');
+const Group = require('../models/Group');
 
 const router = express.Router();
 
 // Register student
 router.post('/register-student', async (req, res) => {
   try {
-    const { fullname, idNo, course, year, skills, experience, email, phone, password } = req.body;
+    const { fullname, idNo, course, year, skills, experience, email, phone, password, interests } = req.body;
 
     if (!fullname || !email || !password) {
       return res.status(400).json({ message: 'Please provide required fields' });
@@ -21,18 +22,37 @@ router.post('/register-student', async (req, res) => {
       return res.status(400).json({ message: 'Email already registered' });
     }
 
+    const safeInterests = Array.isArray(interests) ? interests : [];
+    const safeSkills = typeof skills === 'string' ? skills : '';
+
     const student = await Student.create({
       fullname,
       idNo,
       course,
       year,
-      skills,
+      skills: safeSkills,
       experience,
       email,
       phone,
       password,
       isVerified: false,
+      interests: safeInterests,
     });
+
+    // Auto-join interest groups
+    if (safeInterests.length > 0) {
+      for (const interest of safeInterests) {
+        let group = await Group.findOne({ name: interest });
+        if (!group) {
+          group = await Group.create({ name: interest, members: [student._id], admins: [student._id], description: `${interest} group`, createdBy: student._id });
+        } else {
+          if (!group.members.includes(student._id)) {
+            group.members.push(student._id);
+            await group.save();
+          }
+        }
+      }
+    }
 
     // Generate verification code (6 digit)
     const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
@@ -202,7 +222,7 @@ router.post('/update-profile', async (req, res) => {
     
     const student = await Student.findOneAndUpdate(
       { email },
-      { ...updateData, updatedAt: new Date() },
+      { $set: { ...updateData, updatedAt: new Date() } },
       { new: true }
     ).select('-password');
     

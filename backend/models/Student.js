@@ -15,6 +15,7 @@ const studentSchema = new mongoose.Schema(
     isVerified: { type: Boolean, default: false },
     verificationCode: { type: String },
     verificationCodeExpires: { type: Date },
+    interests: [{ type: String }],
     // Additional profile fields (not collected during signup)
     bio: { type: String },
     location: { type: String },

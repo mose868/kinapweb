@@ -33,10 +33,29 @@ import Contact from './pages/about/Contact';
 import PrivacyPolicy from './pages/legal/PrivacyPolicy';
 import Terms from './pages/legal/Terms';
 import BecomeSeller from './pages/BecomeSeller';
-import MediaUpload from './pages/MediaUpload';
+import HistoryPage from './pages/content/HistoryPage';
+import ShortsPage from './pages/content/ShortsPage';
+import PlaylistsPage from './pages/content/PlaylistsPage';
+import SubscriptionsPage from './pages/content/SubscriptionsPage';
+import WatchLaterPage from './pages/content/WatchLaterPage';
+import LikedVideosPage from './pages/content/LikedVideosPage';
+import YourVideosPage from './pages/content/YourVideosPage';
 
 // Import admin pages
 import AdminDashboard from './pages/admin/AdminDashboard';
+import AboutUsAdmin from './pages/admin/AboutUsAdmin';
+import TeamAdmin from './pages/admin/TeamAdmin';
+import UpdatesAdmin from './pages/admin/UpdatesAdmin';
+import FAQAdmin from './pages/admin/FAQAdmin';
+import ContactAdmin from './pages/admin/ContactAdmin';
+import TrainingAdmin from './pages/admin/TrainingAdmin';
+import MentorshipAdmin from './pages/admin/MentorshipAdmin';
+import EventsAdmin from './pages/admin/EventsAdmin';
+import MentorApplicationsAdmin from './pages/admin/MentorApplicationsAdmin';
+
+// Import mentorship-specific pages
+import ApplyAsMentor from './pages/mentorship/ApplyAsMentor';
+import MentorDashboard from './pages/mentorship/MentorDashboard';
 
 export interface RouteConfig {
   path: string;
@@ -150,6 +169,22 @@ export const routes: RouteConfig[] = [
     )
   },
   {
+    path: '/mentorship/apply',
+    element: (
+      <Layout>
+        <ApplyAsMentor />
+      </Layout>
+    )
+  },
+  {
+    path: '/mentor/dashboard',
+    element: (
+      <Layout>
+        <MentorDashboard />
+      </Layout>
+    )
+  },
+  {
     path: '/faq',
     element: (
       <Layout>
@@ -165,16 +200,7 @@ export const routes: RouteConfig[] = [
       </Layout>
     )
   },
-  {
-    path: '/media-upload',
-    element: (
-      <Layout>
-        <ProtectedRoute>
-          <MediaUpload />
-        </ProtectedRoute>
-      </Layout>
-    )
-  },
+
   {
     path: '/become-seller',
     element: (
@@ -287,10 +313,146 @@ export const routes: RouteConfig[] = [
     )
   },
   {
+    path: '/history',
+    element: (
+      <Layout>
+        <HistoryPage />
+      </Layout>
+    )
+  },
+  {
+    path: '/shorts',
+    element: (
+      <Layout>
+        <ShortsPage />
+      </Layout>
+    )
+  },
+  {
+    path: '/playlists',
+    element: (
+      <Layout>
+        <PlaylistsPage />
+      </Layout>
+    )
+  },
+  {
+    path: '/subscriptions',
+    element: (
+      <Layout>
+        <SubscriptionsPage />
+      </Layout>
+    )
+  },
+  {
+    path: '/watch-later',
+    element: (
+      <Layout>
+        <WatchLaterPage />
+      </Layout>
+    )
+  },
+  {
+    path: '/liked-videos',
+    element: (
+      <Layout>
+        <LikedVideosPage />
+      </Layout>
+    )
+  },
+  {
+    path: '/your-videos',
+    element: (
+      <Layout>
+        <YourVideosPage />
+      </Layout>
+    )
+  },
+  {
     path: '/admin',
     element: (
       <ProtectedRoute requiredRole="admin">
         <AdminDashboard />
+      </ProtectedRoute>
+    )
+  },
+  {
+    path: '/admin/about-us',
+    element: (
+      <ProtectedRoute requiredRole="admin">
+        <AboutUsAdmin />
+      </ProtectedRoute>
+    )
+  },
+  {
+    path: '/admin/team',
+    element: (
+      <ProtectedRoute requiredRole="admin">
+        <TeamAdmin />
+      </ProtectedRoute>
+    )
+  },
+  {
+    path: '/admin/updates',
+    element: (
+      <ProtectedRoute requiredRole="admin">
+        <UpdatesAdmin />
+      </ProtectedRoute>
+    )
+  },
+  {
+    path: '/admin/faq',
+    element: (
+      <ProtectedRoute requiredRole="admin">
+        <FAQAdmin />
+      </ProtectedRoute>
+    )
+  },
+  {
+    path: '/admin/contact',
+    element: (
+      <ProtectedRoute requiredRole="admin">
+        <ContactAdmin />
+      </ProtectedRoute>
+    )
+  },
+  {
+    path: '/admin/training',
+    element: (
+      <ProtectedRoute requiredRole="admin">
+        <TrainingAdmin />
+      </ProtectedRoute>
+    )
+  },
+  {
+    path: '/admin/mentorship',
+    element: (
+      <ProtectedRoute requiredRole="admin">
+        <MentorshipAdmin />
+      </ProtectedRoute>
+    )
+  },
+  {
+    path: '/admin/events',
+    element: (
+      <ProtectedRoute requiredRole="admin">
+        <EventsAdmin />
+      </ProtectedRoute>
+    )
+  },
+  {
+    path: '/admin/mentor-applications',
+    element: (
+      <ProtectedRoute requiredRole="admin">
+        <MentorApplicationsAdmin />
+      </ProtectedRoute>
+    )
+  },
+  {
+    path: '/profile',
+    element: (
+      <ProtectedRoute>
+        <ProfilePage />
       </ProtectedRoute>
     )
   }

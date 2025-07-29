@@ -92,11 +92,11 @@ const AmbassadorPage = () => {
   ]
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 w-full overflow-x-hidden">
       {/* Hero Section */}
-      <section className="bg-gradient-to-br from-ajira-primary via-ajira-primary-dark to-ajira-accent py-20">
-        <div className="container-custom">
-          <div className="max-w-4xl mx-auto text-center">
+      <section className="bg-gradient-to-br from-ajira-primary via-ajira-primary-dark to-ajira-accent py-12 sm:py-20 w-full">
+        <div className="container-custom px-2 sm:px-4 w-full">
+          <div className="max-w-4xl mx-auto text-center w-full">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -114,10 +114,10 @@ const AmbassadorPage = () => {
                 Join our elite community of student leaders and help shape the future of digital skills at Kiambu National Polytechnic.
               </p>
               <div className="flex flex-wrap justify-center gap-4">
-                <button className="bg-white text-ajira-primary px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors">
+                <button className="bg-white text-ajira-primary px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors w-full sm:w-auto">
                   Apply Now
                 </button>
-                <button className="border-2 border-white text-white px-8 py-3 rounded-lg font-semibold hover:bg-white hover:text-ajira-primary transition-colors">
+                <button className="border-2 border-white text-white px-8 py-3 rounded-lg font-semibold hover:bg-white hover:text-ajira-primary transition-colors w-full sm:w-auto">
                   Learn More
                 </button>
               </div>
@@ -128,8 +128,8 @@ const AmbassadorPage = () => {
 
       {/* Navigation Tabs */}
       <section className="bg-white border-b">
-        <div className="container-custom">
-          <div className="flex flex-wrap justify-center space-x-8">
+        <div className="container-custom px-2 sm:px-4 w-full">
+          <div className="flex flex-wrap justify-center gap-4 sm:gap-8 w-full">
             {[
               { id: 'overview', label: 'Overview' },
               { id: 'benefits', label: 'Benefits' },
@@ -154,7 +154,7 @@ const AmbassadorPage = () => {
 
       {/* Content Sections */}
       <section className="py-16">
-        <div className="container-custom">
+        <div className="container-custom px-2 sm:px-4 w-full">
           {/* Overview Tab */}
           {activeTab === 'overview' && (
             <motion.div
@@ -173,6 +173,7 @@ const AmbassadorPage = () => {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
+                {/* Responsive grid: 1 col on mobile, 2 on md+ */}
                 <div className="bg-white rounded-lg shadow-lg p-8">
                   <Target className="w-12 h-12 text-ajira-accent mb-4" />
                   <h3 className="text-xl font-bold text-ajira-primary mb-3">Our Mission</h3>
@@ -220,6 +221,7 @@ const AmbassadorPage = () => {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {/* Responsive grid: 1 col on mobile, 2 on md+ */}
                 {ambassadorBenefits.map((benefit, index) => (
                   <motion.div
                     key={index}

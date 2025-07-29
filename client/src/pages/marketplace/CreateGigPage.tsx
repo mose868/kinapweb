@@ -2,7 +2,17 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMutation } from 'react-query'
 import { useAuth } from '../../contexts/AuthContext'
-import type { Gig, GigPackage } from '../../types/marketplace'
+import type { Gig } from '../../api/marketplace'
+
+type GigPackage = {
+  name: 'basic' | 'standard' | 'premium';
+  title: string;
+  description?: string;
+  price: number;
+  deliveryTime: number;
+  revisions: number;
+  features: string[];
+};
 import { Upload, X, Plus, AlertCircle } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 

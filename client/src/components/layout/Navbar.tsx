@@ -20,6 +20,7 @@ const Navbar = () => {
   const searchRef = useRef<HTMLDivElement>(null);
   const userDropdownRef = useRef<HTMLDivElement>(null);
   const notificationRef = useRef<HTMLDivElement>(null);
+  const dropdownRefs = useRef<(HTMLDivElement | null)[]>([]);
   const navigate = useNavigate();
   const { user, logout } = useAuth();
 
@@ -91,7 +92,6 @@ const Navbar = () => {
     
     // Services
     { title: 'Become Seller', description: 'Start offering digital services', url: '/become-seller', category: 'Services' },
-    { title: 'Media Upload', description: 'Share your content', url: '/media-upload', category: 'Services' },
     
     // Account
     { title: 'Orders', description: 'View your orders and transactions', url: '/orders', category: 'Account' },
@@ -144,8 +144,7 @@ const Navbar = () => {
       icon: Briefcase,
       items: [
         { label: 'Marketplace', to: '/marketplace', icon: Briefcase, description: 'Digital services hub' },
-        { label: 'Become a Seller', to: '/become-seller', icon: UserCheck, description: 'Offer your skills' },
-        { label: 'Content Creation', to: '/media-upload', icon: MessageCircle, description: 'Share your work' }
+        { label: 'Become a Seller', to: '/become-seller', icon: UserCheck, description: 'Offer your skills' }
       ]
     }
   ];
@@ -196,10 +195,6 @@ const Navbar = () => {
         setActiveDropdown(null);
         setMobileMenuOpen(false);
       }
-      // Close profile dropdown when clicking outside
-      if (!(event.target as Element).closest('.profile-dropdown')) {
-        setProfileDropdown(false);
-      }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
@@ -247,8 +242,19 @@ const Navbar = () => {
     }
   };
 
-  const handleDropdownToggle = (dropdownId: string) => {
-    setActiveDropdown(activeDropdown === dropdownId ? null : dropdownId);
+  const handleDropdownToggle = (dropdownId: string, index?: number) => {
+    if (activeDropdown === dropdownId) {
+      setActiveDropdown(null);
+    } else {
+      setActiveDropdown(dropdownId);
+      // Focus first menu item after opening
+      setTimeout(() => {
+        if (dropdownRefs.current[index ?? 0]) {
+          const firstLink = dropdownRefs.current[index ?? 0].querySelector('a, button');
+          if (firstLink) (firstLink as HTMLElement).focus();
+        }
+      }, 50);
+    }
   };
 
   const closeAllDropdowns = () => {
@@ -259,58 +265,116 @@ const Navbar = () => {
   };
 
   return (
-    <nav className="bg-white shadow-lg border-b border-gray-200 sticky top-0 z-50 backdrop-blur-sm">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+    <nav className="bg-white shadow-lg border-b border-gray-200 sticky top-0 z-50 backdrop-blur-sm w-full">
+      <div className="max-w-7xl mx-auto w-full px-2 sm:px-4 lg:px-8">
+        <div className="flex flex-wrap items-center justify-between min-h-16 w-full gap-y-2">
           {/* Logo with Professional KiNaP Branding */}
-          <div className="flex-shrink-0 flex items-center">
-            <Link to="/" className="flex items-center group">
+          <div className="flex-shrink-0 flex items-center w-full sm:w-auto mb-2 sm:mb-0 min-w-0">
+            <Link to="/" className="flex items-center group" aria-label="Home">
               <img 
                 src="/logo.jpeg" 
                 alt="KiNaP Ajira Club Logo" 
-                className="h-10 w-auto drop-shadow-md rounded-md"
+                className="h-10 w-auto drop-shadow-md rounded-md min-w-10"
                 onError={(e) => { e.currentTarget.style.display = 'none'; }}
               />
-              <div className="ml-3 flex flex-col">
-                <span className="text-lg font-bold text-gray-900 group-hover:text-kenya-red transition-colors leading-tight">
+              <div className="ml-3 flex flex-col min-w-0">
+                <span
+                  className="text-lg font-bold leading-tight truncate transition-colors duration-700"
+                  style={{
+                    animation: 'kinapColorCycle 3s infinite',
+                    WebkitAnimation: 'kinapColorCycle 3s infinite',
+                  }}
+                >
                   KiNaP Ajira Club
                 </span>
-                <span className="text-xs text-kenya-green leading-tight font-medium">
+                <span className="text-xs text-kenya-green leading-tight font-medium truncate">
                   Digital Skills Hub
           </span>
               </div>
         </Link>
           </div>
-          
           {/* Navigation Links with Professional Styling */}
-          <div className="hidden lg:flex items-center space-x-1">
-            {dropdownMenus.map((menu) => (
-              <div key={menu.id} className="relative">
+          <div className="hidden lg:flex items-center space-x-1 w-full lg:w-auto min-w-0">
+            {dropdownMenus.map((menu, index) => (
+              <div key={menu.id} className="relative flex-shrink-0">
                 <button
-                  onClick={() => handleDropdownToggle(menu.id)}
-                  className={`flex items-center px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
+                  onMouseEnter={() => {
+                    if (window.innerWidth >= 1024) handleDropdownToggle(menu.id, index);
+                  }}
+                  onMouseLeave={() => {
+                    /* Only close on leave if not focused/clicked */
+                  }}
+                  onClick={() => handleDropdownToggle(menu.id, index)}
+                  className={`flex items-center px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 min-w-0 truncate ${
                     activeDropdown === menu.id
                       ? 'text-kenya-red bg-kenya-green/10 shadow-sm'
                       : 'text-gray-700 hover:text-kenya-red hover:bg-gray-50'
                   }`}
+                  aria-label={menu.label}
+                  aria-haspopup="true"
+                  aria-expanded={activeDropdown === menu.id}
+                  aria-controls={`dropdown-menu-${menu.id}`}
+                  tabIndex={0}
+                  onKeyDown={e => {
+                    if (e.key === 'ArrowDown' && activeDropdown === menu.id) {
+                      const firstLink = dropdownRefs.current[index]?.querySelector('a, button');
+                      if (firstLink) (firstLink as HTMLElement).focus();
+                    }
+                  }}
                 >
-                  <menu.icon className="w-4 h-4 mr-2" />
-                  {menu.label}
-                  <ChevronDown className={`w-3 h-3 ml-1 transition-transform ${activeDropdown === menu.id ? 'rotate-180' : ''}`} />
+                  <menu.icon className="w-4 h-4 mr-2 flex-shrink-0" />
+                  <span className="truncate">{menu.label}</span>
+                  <ChevronDown className={`w-3 h-3 ml-1 transition-transform flex-shrink-0 ${activeDropdown === menu.id ? 'rotate-180' : ''}`} />
                 </button>
                 {activeDropdown === menu.id && (
-                  <div className="absolute left-0 mt-2 w-64 bg-white rounded-lg shadow-xl border border-gray-200 py-2 z-50 animate-in slide-in-from-top-2 duration-200">
-                    {menu.items.map((item, index) => (
+                  <div
+                    onMouseEnter={() => {
+                      if (window.innerWidth >= 1024) setActiveDropdown(menu.id);
+                    }}
+                    // Remove onMouseLeave to allow click selection
+                    id={`dropdown-menu-${menu.id}`}
+                    ref={el => (dropdownRefs.current[index] = el)}
+                    className="absolute left-0 mt-2 w-[370px] bg-white rounded-2xl shadow-2xl border border-gray-200 py-4 z-[9999] animate-in slide-in-from-top-2 duration-200 focus:outline-none"
+                    role="menu"
+                    aria-label={menu.label}
+                    tabIndex={-1}
+                    onKeyDown={e => {
+                      const links = Array.from(dropdownRefs.current[index]?.querySelectorAll('a, button') || []);
+                      const current = document.activeElement;
+                      const idx = links.indexOf(current as HTMLElement);
+                      if (e.key === 'ArrowDown') {
+                        e.preventDefault();
+                        const next = links[(idx + 1) % links.length];
+                        if (next) (next as HTMLElement).focus();
+                      } else if (e.key === 'ArrowUp') {
+                        e.preventDefault();
+                        const prev = links[(idx - 1 + links.length) % links.length];
+                        if (prev) (prev as HTMLElement).focus();
+                      } else if (e.key === 'Escape') {
+                        setActiveDropdown(null);
+                        (dropdownRefs.current[index]?.previousElementSibling as HTMLElement)?.focus();
+                      }
+                    }}
+                  >
+                    {menu.items.map((item, itemIdx) => (
                       <Link
-                        key={index}
+                        key={itemIdx}
                         to={item.to}
-                        className="flex items-start px-4 py-3 text-sm text-gray-700 hover:bg-kenya-green/5 hover:text-kenya-black transition-colors"
+                        className="flex items-center gap-4 px-6 py-5 hover:bg-gray-50 transition-colors rounded-xl mb-2 last:mb-0"
                         onClick={closeAllDropdowns}
+                        tabIndex={0}
+                        role="menuitem"
+                        aria-label={item.label}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            closeAllDropdowns();
+                          }
+                        }}
                       >
-                        <item.icon className="w-4 h-4 mt-0.5 mr-3 text-kenya-green flex-shrink-0" />
-                        <div className="flex-1">
-                          <div className="font-medium text-gray-900">{item.label}</div>
-                          <div className="text-xs text-gray-500 mt-0.5">{item.description}</div>
+                        <item.icon className="w-7 h-7 text-ajira-accent flex-shrink-0" />
+                        <div className="flex flex-col">
+                          <span className="text-base font-semibold text-gray-900 mb-1">{item.label}</span>
+                          <span className="text-sm text-gray-500">{item.description}</span>
                         </div>
                       </Link>
                     ))}
@@ -321,8 +385,8 @@ const Navbar = () => {
             </div>
           
           {/* Professional Search Bar */}
-          <div className="hidden md:flex items-center mx-6 flex-1 max-w-md">
-            <div ref={searchRef} className="relative w-full">
+          <div className="hidden md:flex items-center mx-6 flex-1 max-w-md w-full min-w-0">
+            <div ref={searchRef} className="relative w-full min-w-0">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <input
@@ -376,7 +440,7 @@ const Navbar = () => {
           </div>
           
           {/* Enhanced User Section with Separate Auth Buttons */}
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-4 w-full lg:w-auto justify-end min-w-0">
             {user ? (
               <div className="flex items-center space-x-3">
                 {/* Enhanced Notifications with Dropdown */}
@@ -384,6 +448,7 @@ const Navbar = () => {
                   <button
                     onClick={() => setNotificationDropdownOpen(!notificationDropdownOpen)}
                     className="relative p-2 text-gray-600 hover:text-kenya-red hover:bg-gray-50 rounded-lg transition-colors group"
+                    aria-label="Notifications"
                   >
                     <Bell className="h-5 w-5 group-hover:animate-pulse" />
                     {unreadCount > 0 && (
@@ -397,7 +462,7 @@ const Navbar = () => {
 
                   {/* Notification Dropdown */}
                   {notificationDropdownOpen && (
-                    <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden z-50 max-h-96">
+                    <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden z-[9999] max-h-96">
                       {/* Header */}
                       <div className="px-4 py-3 bg-gradient-to-r from-kenya-green/10 to-kenya-red/10 border-b border-gray-100">
                         <div className="flex items-center justify-between">
@@ -478,6 +543,7 @@ const Navbar = () => {
                   <button
                     onClick={() => setUserDropdownOpen(!userDropdownOpen)}
                     className="flex items-center space-x-2 p-2 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors group"
+                    aria-label="User profile"
                   >
                     {/* Profile Picture */}
                     <div className="relative">
@@ -508,7 +574,7 @@ const Navbar = () => {
                   </button>
                   
                   {userDropdownOpen && (
-                    <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-2xl border border-gray-200 py-2 z-50 overflow-hidden">
+                    <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-2xl border border-gray-200 py-2 z-[9999] overflow-hidden">
                       {/* User Info Header */}
                       <div className="px-4 py-3 bg-gradient-to-r from-kenya-green/10 to-kenya-red/10 border-b border-gray-100">
                         <div className="flex items-center gap-3">
@@ -588,6 +654,7 @@ const Navbar = () => {
                 <Link
                   to="/auth"
                   className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-kenya-red border border-gray-300 rounded-lg hover:border-kenya-red transition-all duration-200"
+                  aria-label="Sign in"
                 >
                   Sign In
                 </Link>
@@ -596,6 +663,7 @@ const Navbar = () => {
                 <Link
                   to="/auth?mode=register"
                   className="bg-gradient-to-r from-kenya-red to-kenya-green hover:from-kenya-green hover:to-kenya-red text-white px-6 py-2 rounded-lg text-sm font-medium shadow-md hover:shadow-lg transition-all duration-200 hover:scale-105"
+                  aria-label="Join now"
                 >
                   Join Now
                 </Link>
@@ -604,10 +672,11 @@ const Navbar = () => {
       </div>
       
           {/* Mobile Menu Button */}
-          <div className="lg:hidden ml-4">
+          <div className="lg:hidden ml-4 w-full flex justify-end min-w-0">
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="p-2 rounded-lg text-gray-600 hover:text-kenya-red hover:bg-gray-50 transition-colors"
+              aria-label="Open mobile menu"
             >
               <Menu className="h-6 w-6" />
             </button>
@@ -616,7 +685,7 @@ const Navbar = () => {
       </div>
       {/* Enhanced Mobile Menu with better animations */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-t border-kenya-green/10 bg-white shadow-xl animate-in slide-in-from-top duration-300">
+        <div className="lg:hidden border-t border-kenya-green/10 bg-white shadow-xl animate-in slide-in-from-top duration-300 z-[9999]">
           <div className="px-4 pt-4 pb-6 space-y-4">
             {/* Mobile Navigation Links */}
             <div className="space-y-3">

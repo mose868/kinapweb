@@ -1,6 +1,11 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Search, MoreVertical, Send, Smile, Hash, MessageCircle, Settings, ChevronLeft, ChevronRight, Mic, Image, File, Plus, CheckCheck, Check, Volume2, Play, Pause, Download, Reply, X, Pin, Info } from 'lucide-react';
+import { io, Socket } from 'socket.io-client';
 import { useAuth } from '../../contexts/AuthContext';
+import CommunityChat from '../../components/community/CommunityChat';
+import Chatbot from '../../components/chatbot/Chatbot';
+import { api } from '../../config/api';
+import Modal from 'react-modal';
 
 // Enhanced interfaces
 interface ChatMessage {
@@ -11,7 +16,7 @@ interface ChatMessage {
   message: string;
   timestamp: Date;
   isOwn?: boolean;
-  messageType: 'text' | 'image' | 'file' | 'voice' | 'video';
+  messageType: 'text' | 'image' | 'file' | 'voice' | 'video' | 'system';
   status: 'sending' | 'sent' | 'delivered' | 'read';
   replyTo?: string;
   mediaUrl?: string;
@@ -19,6 +24,8 @@ interface ChatMessage {
   duration?: string;
   isEdited?: boolean;
   reactions?: { emoji: string; users: string[] }[];
+  type?: 'system'; // Added for system messages
+  content?: string; // Added for system messages
 }
 
 interface ChatGroup {
@@ -41,20 +48,51 @@ interface ChatGroup {
   typingUsers?: string[];
 }
 
+const INTEREST_OPTIONS = [
+  'Web Development',
+  'Mobile App Development',
+  'Digital Marketing',
+  'Data Science',
+  'Content Creation',
+  'Graphic Design',
+  'Cybersecurity',
+  'E-commerce',
+  'Freelancing',
+  'UI/UX Design',
+  'Blockchain',
+  'Cloud Computing',
+  'Other'
+];
+
+const SOCKET_URL = 'http://localhost:5000';
+
 const CommunityPage = () => {
   const { user } = useAuth();
+  const [groups, setGroups] = useState<ChatGroup[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
   const [selectedGroup, setSelectedGroup] = useState<string>('');
   const [currentGroup, setCurrentGroup] = useState<ChatGroup | null>(null);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [searchQuery] = useState('');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [showMediaPicker, setShowMediaPicker] = useState(false);
   const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
+  const [showCreateGroup, setShowCreateGroup] = useState(false);
+  const [newGroup, setNewGroup] = useState({ name: '', description: '', members: [] });
+  const [showSettings, setShowSettings] = useState(false);
+  const [profileForm, setProfileForm] = useState({
+    name: user?.name || user?.fullname || '',
+    avatar: user?.avatar || user?.photoURL || '',
+    interests: user?.interests || [],
+  });
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messageInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [socket, setSocket] = useState<Socket | null>(null);
+  const [groupMembers, setGroupMembers] = useState<any[]>([]);
 
   // Current user data
   const currentUser = {
@@ -65,694 +103,69 @@ const CommunityPage = () => {
     status: 'Online'
   };
 
-  // Enhanced demo groups with realistic Kenyan content
-  const demoGroups: ChatGroup[] = [
-    {
-      id: 'tech-wizards',
-      name: 'Tech Wizards KE 🇰🇪',
-      description: 'Kenyan developers sharing code, opportunities & tech trends',
-      avatar: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=100&h=100&fit=crop&crop=face',
-      members: 1247,
-      lastMessage: 'Grace: Just landed a remote job at $3000/month! 🎉',
-      lastMessageTime: new Date(Date.now() - 5 * 60 * 1000),
-      unreadCount: 3,
-      isOnline: true,
-      isPinned: true,
-      isMuted: false,
-      isArchived: false,
-      admins: ['admin1', 'admin2'],
-      type: 'group',
-      isTyping: false,
-      typingUsers: [],
-      messages: [
-        {
-          id: '1',
-          userId: 'user1',
-          userName: 'Kevin Mwangi',
-          userAvatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=50&h=50&fit=crop&crop=face',
-          message: 'Mambo vipi wasee! Anyone working on Flutter projects hii 2025?',
-          timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000),
-          messageType: 'text',
-          status: 'read',
-          reactions: [{ emoji: '👍', users: ['user2', 'user3'] }]
-        },
-        {
-          id: '2',
-          userId: 'user2',
-          userName: 'Grace Wanjiku',
-          userAvatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=50&h=50&fit=crop&crop=face',
-          message: 'Poa Kevin! Niko na React Native project, lakini Flutter pia ni poa. Unaeza share resources?',
-          timestamp: new Date(Date.now() - 1.5 * 60 * 60 * 1000),
-          messageType: 'text',
-          status: 'read',
-          replyTo: '1'
-        },
-        {
-          id: '3',
-          userId: 'user3',
-          userName: 'James Kamau',
-          userAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=50&h=50&fit=crop&crop=face',
-          message: 'Check out this job posting - Senior Dev role, KSh 250K+',
-          timestamp: new Date(Date.now() - 1 * 60 * 60 * 1000),
-          messageType: 'file',
-          status: 'read',
-          mediaUrl: 'job-posting.pdf',
-          fileSize: '2.4 MB'
-        },
-        {
-          id: '4',
-          userId: 'user2',
-          userName: 'Grace Wanjiku',
-          userAvatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=50&h=50&fit=crop&crop=face',
-          message: 'Just landed a remote job at $3000/month! Thanks to this community 🙏',
-          timestamp: new Date(Date.now() - 5 * 60 * 1000),
-          messageType: 'text',
-          status: 'read',
-          reactions: [
-            { emoji: '🎉', users: ['user1', 'user3', 'user4', 'user5'] },
-            { emoji: '👏', users: ['user6', 'user7'] }
-          ]
-        }
-      ]
-    },
-    // AJIRA DIGITAL TRAINING MODULES GROUPS
-    {
-      id: 'web-dev-mastery',
-      name: 'Web Development Mastery 💻',
-      description: 'HTML, CSS, JavaScript, React & Full-Stack Development',
-      avatar: 'https://images.unsplash.com/photo-1547658719-da2b51169166?w=100&h=100&fit=crop&crop=face',
-      members: 856,
-      lastMessage: 'Peter: Check out this React tutorial for beginners',
-      lastMessageTime: new Date(Date.now() - 10 * 60 * 1000),
-      unreadCount: 5,
-      isOnline: true,
-      isPinned: false,
-      isMuted: false,
-      isArchived: false,
-      admins: ['web-admin'],
-      type: 'group',
-      messages: []
-    },
-    {
-      id: 'mobile-app-dev',
-      name: 'Mobile App Development 📱',
-      description: 'Flutter, React Native, Android & iOS Development',
-      avatar: 'https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?w=100&h=100&fit=crop&crop=face',
-      members: 624,
-      lastMessage: 'Sarah: Flutter vs React Native - which is better?',
-      lastMessageTime: new Date(Date.now() - 25 * 60 * 1000),
-      unreadCount: 2,
-      isOnline: true,
-      isPinned: false,
-      isMuted: false,
-      isArchived: false,
-      admins: ['mobile-admin'],
-      type: 'group',
-      messages: []
-    },
-    {
-      id: 'digital-marketing-hub',
-      name: 'Digital Marketing Hub 📈',
-      description: 'SEO, Social Media, Content Marketing & Google Ads',
-      avatar: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=100&h=100&fit=crop&crop=face',
-      members: 934,
-      lastMessage: 'Mark: Just earned KSh 50K from one social media campaign!',
-      lastMessageTime: new Date(Date.now() - 45 * 60 * 1000),
-      unreadCount: 8,
-      isOnline: true,
-      isPinned: false,
-      isMuted: false,
-      isArchived: false,
-      admins: ['marketing-admin'],
-      type: 'group',
-      messages: []
-    },
-    {
-      id: 'data-science-analytics',
-      name: 'Data Science & Analytics 📊',
-      description: 'Python, R, Machine Learning, AI & Data Visualization',
-      avatar: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=100&h=100&fit=crop&crop=face',
-      members: 567,
-      lastMessage: 'Dr. Wanjiku: Free Python for Data Science course link',
-      lastMessageTime: new Date(Date.now() - 1 * 60 * 60 * 1000),
-      unreadCount: 12,
-      isOnline: true,
-      isPinned: false,
-      isMuted: false,
-      isArchived: false,
-      admins: ['data-admin'],
-      type: 'group',
-      messages: []
-    },
-    {
-      id: 'graphic-design-studio',
-      name: 'Graphic Design Studio 🎨',
-      description: 'Photoshop, Illustrator, Canva & Brand Design',
-      avatar: 'https://images.unsplash.com/photo-1561070791-2526d30994b5?w=100&h=100&fit=crop&crop=face',
-      members: 789,
-      lastMessage: 'Creative Mary: Logo design tips for beginners',
-      lastMessageTime: new Date(Date.now() - 30 * 60 * 1000),
-      unreadCount: 4,
-      isOnline: true,
-      isPinned: false,
-      isMuted: false,
-      isArchived: false,
-      admins: ['design-admin'],
-      type: 'group',
-      messages: []
-    },
-    {
-      id: 'ui-ux-designers',
-      name: 'UI/UX Designers Hub 🎯',
-      description: 'Figma, Adobe XD, User Research & Design Thinking',
-      avatar: 'https://images.unsplash.com/photo-1586717791821-3f44a563fa4c?w=100&h=100&fit=crop&crop=face',
-      members: 445,
-      lastMessage: 'Design Pro: Figma to code workflow tutorial',
-      lastMessageTime: new Date(Date.now() - 20 * 60 * 1000),
-      unreadCount: 6,
-      isOnline: true,
-      isPinned: false,
-      isMuted: false,
-      isArchived: false,
-      admins: ['ux-admin'],
-      type: 'group',
-      messages: []
-    },
-    {
-      id: 'content-creators',
-      name: 'Content Creators Network 📝',
-      description: 'Copywriting, Video Creation, Blogging & YouTube',
-      avatar: 'https://images.unsplash.com/photo-1542435503-956c469947f6?w=100&h=100&fit=crop&crop=face',
-      members: 723,
-      lastMessage: 'Content King: How I made KSh 100K from YouTube',
-      lastMessageTime: new Date(Date.now() - 35 * 60 * 1000),
-      unreadCount: 9,
-      isOnline: true,
-      isPinned: false,
-      isMuted: false,
-      isArchived: false,
-      admins: ['content-admin'],
-      type: 'group',
-      messages: []
-    },
-    {
-      id: 'cybersecurity-experts',
-      name: 'Cybersecurity Experts 🔒',
-      description: 'Ethical Hacking, Network Security & IT Security',
-      avatar: 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=100&h=100&fit=crop&crop=face',
-      members: 398,
-      lastMessage: 'SecureGuy: Latest cybersecurity threats to watch',
-      lastMessageTime: new Date(Date.now() - 50 * 60 * 1000),
-      unreadCount: 3,
-      isOnline: true,
-      isPinned: false,
-      isMuted: false,
-      isArchived: false,
-      admins: ['security-admin'],
-      type: 'group',
-      messages: []
-    },
-    {
-      id: 'blockchain-crypto',
-      name: 'Blockchain & Crypto 🪙',
-      description: 'Smart Contracts, DeFi, NFTs & Cryptocurrency',
-      avatar: 'https://images.unsplash.com/photo-1639762681485-074b7f938ba0?w=100&h=100&fit=crop&crop=face',
-      members: 512,
-      lastMessage: 'CryptoKev: Building my first DApp tutorial',
-      lastMessageTime: new Date(Date.now() - 1.5 * 60 * 60 * 1000),
-      unreadCount: 7,
-      isOnline: true,
-      isPinned: false,
-      isMuted: false,
-      isArchived: false,
-      admins: ['crypto-admin'],
-      type: 'group',
-      messages: []
-    },
-    {
-      id: 'e-commerce-masters',
-      name: 'E-commerce Masters 🛒',
-      description: 'Shopify, WooCommerce, Dropshipping & Online Stores',
-      avatar: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=100&h=100&fit=crop&crop=face',
-      members: 667,
-      lastMessage: 'ShopGuru: Made KSh 200K last month dropshipping',
-      lastMessageTime: new Date(Date.now() - 40 * 60 * 1000),
-      unreadCount: 11,
-      isOnline: true,
-      isPinned: false,
-      isMuted: false,
-      isArchived: false,
-      admins: ['ecommerce-admin'],
-      type: 'group',
-      messages: []
-    },
-    // FREELANCING & BUSINESS GROUPS
-    {
-      id: 'freelance-masters',
-      name: 'Freelance Masters 💰',
-      description: 'Kenyan freelancers sharing gigs, tips & success stories',
-      avatar: 'https://images.unsplash.com/photo-1556761175-b413da4baf72?w=100&h=100&fit=crop&crop=face',
-      members: 892,
-      lastMessage: 'Peter: Voice message (0:45)',
-      lastMessageTime: new Date(Date.now() - 15 * 60 * 1000),
-      unreadCount: 7,
-      isOnline: true,
-      isPinned: false,
-      isMuted: false,
-      isArchived: false,
-      admins: ['admin3'],
-      type: 'group',
-      isTyping: true,
-      typingUsers: ['Mary Njeri'],
-      messages: [
-        {
-          id: '1',
-          userId: 'user4',
-          userName: 'Peter Ochieng',
-          userAvatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=50&h=50&fit=crop&crop=face',
-          message: 'Wasee, nimemaliza project ya web design - client from US. $2000! 🔥',
-          timestamp: new Date(Date.now() - 30 * 60 * 1000),
-          messageType: 'text',
-          status: 'read'
-        },
-        {
-          id: '2',
-          userId: 'user5',
-          userName: 'Mary Njeri',
-          userAvatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=50&h=50&fit=crop&crop=face',
-          message: 'Congratulations Peter! Uliget wapi hio client?',
-          timestamp: new Date(Date.now() - 25 * 60 * 1000),
-          messageType: 'text',
-          status: 'read'
-        },
-        {
-          id: '3',
-          userId: 'user4',
-          userName: 'Peter Ochieng',
-          userAvatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=50&h=50&fit=crop&crop=face',
-          message: 'LinkedIn actually! Let me explain...',
-          timestamp: new Date(Date.now() - 20 * 60 * 1000),
-          messageType: 'voice',
-          status: 'read',
-          duration: '2:34'
-        }
-      ]
-    },
-    {
-      id: 'upwork-fiverr-pros',
-      name: 'Upwork & Fiverr Pros ⭐',
-      description: 'Platform strategies, client acquisition & profile optimization',
-      avatar: 'https://images.unsplash.com/photo-1553484771-047a44eee27a?w=100&h=100&fit=crop&crop=face',
-      members: 634,
-      lastMessage: 'TopRated: How I became Fiverr Pro in 6 months',
-      lastMessageTime: new Date(Date.now() - 2 * 60 * 60 * 1000),
-      unreadCount: 15,
-      isOnline: true,
-      isPinned: false,
-      isMuted: false,
-      isArchived: false,
-      admins: ['platform-admin'],
-      type: 'group',
-      messages: []
-    },
-    {
-      id: 'remote-workers-ke',
-      name: 'Remote Workers KE 🌍',
-      description: 'Remote job opportunities and work-from-home tips',
-      avatar: 'https://images.unsplash.com/photo-1521791136064-7986c2920216?w=100&h=100&fit=crop&crop=face',
-      members: 1156,
-      lastMessage: 'RemotePro: 10 companies hiring Kenyans remotely',
-      lastMessageTime: new Date(Date.now() - 55 * 60 * 1000),
-      unreadCount: 22,
-      isOnline: true,
-      isPinned: true,
-      isMuted: false,
-      isArchived: false,
-      admins: ['remote-admin'],
-      type: 'group',
-      messages: []
-    },
-    {
-      id: 'startup-founders',
-      name: 'Startup Founders Kenya 🚀',
-      description: 'Tech entrepreneurs, funding & business development',
-      avatar: 'https://images.unsplash.com/photo-1559136555-9303baea8ebd?w=100&h=100&fit=crop&crop=face',
-      members: 423,
-      lastMessage: 'StartupCEO: Just raised $50K seed funding! AMA',
-      lastMessageTime: new Date(Date.now() - 3 * 60 * 60 * 1000),
-      unreadCount: 18,
-      isOnline: true,
-      isPinned: false,
-      isMuted: false,
-      isArchived: false,
-      admins: ['startup-admin'],
-      type: 'group',
-      messages: []
-    },
-    // SKILL-SPECIFIC GROUPS
-    {
-      id: 'python-programmers',
-      name: 'Python Programmers 🐍',
-      description: 'Django, Flask, Data Science & Python Development',
-      avatar: 'https://images.unsplash.com/photo-1526379095098-d400fd0bf935?w=100&h=100&fit=crop&crop=face',
-      members: 578,
-      lastMessage: 'PythonGuru: Django REST API tutorial for beginners',
-      lastMessageTime: new Date(Date.now() - 1.2 * 60 * 60 * 1000),
-      unreadCount: 8,
-      isOnline: true,
-      isPinned: false,
-      isMuted: false,
-      isArchived: false,
-      admins: ['python-admin'],
-      type: 'group',
-      messages: []
-    },
-    {
-      id: 'javascript-devs',
-      name: 'JavaScript Developers ⚡',
-      description: 'React, Node.js, Vue, Angular & Modern JavaScript',
-      avatar: 'https://images.unsplash.com/photo-1579468118864-1b9ea3c0db4a?w=100&h=100&fit=crop&crop=face',
-      members: 721,
-      lastMessage: 'JSNinja: ES6+ features you should know in 2025',
-      lastMessageTime: new Date(Date.now() - 45 * 60 * 1000),
-      unreadCount: 6,
-      isOnline: true,
-      isPinned: false,
-      isMuted: false,
-      isArchived: false,
-      admins: ['js-admin'],
-      type: 'group',
-      messages: []
-    },
-    {
-      id: 'video-editors',
-      name: 'Video Editors Studio 🎬',
-      description: 'DaVinci Resolve, Premiere Pro & Video Production',
-      avatar: 'https://images.unsplash.com/photo-1574717024653-61fd2cf4d44d?w=100&h=100&fit=crop&crop=face',
-      members: 456,
-      lastMessage: 'VideoMaster: Color grading tutorial for African skin tones',
-      lastMessageTime: new Date(Date.now() - 2.5 * 60 * 60 * 1000),
-      unreadCount: 4,
-      isOnline: true,
-      isPinned: false,
-      isMuted: false,
-      isArchived: false,
-      admins: ['video-admin'],
-      type: 'group',
-      messages: []
-    },
-    {
-      id: 'wordpress-developers',
-      name: 'WordPress Developers 📝',
-      description: 'Theme development, plugins & WordPress business',
-      avatar: 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=100&h=100&fit=crop&crop=face',
-      members: 623,
-      lastMessage: 'WPExpert: Custom theme development from scratch',
-      lastMessageTime: new Date(Date.now() - 1.8 * 60 * 60 * 1000),
-      unreadCount: 9,
-      isOnline: true,
-      isPinned: false,
-      isMuted: false,
-      isArchived: false,
-      admins: ['wp-admin'],
-      type: 'group',
-      messages: []
-    },
-    // LEARNING & CERTIFICATION GROUPS
-    {
-      id: 'aws-cloud-practitioners',
-      name: 'AWS Cloud Practitioners ☁️',
-      description: 'Amazon Web Services certification & cloud computing',
-      avatar: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=100&h=100&fit=crop&crop=face',
-      members: 387,
-      lastMessage: 'CloudMaster: Passed AWS Solutions Architect exam!',
-      lastMessageTime: new Date(Date.now() - 4 * 60 * 60 * 1000),
-      unreadCount: 12,
-      isOnline: true,
-      isPinned: false,
-      isMuted: false,
-      isArchived: false,
-      admins: ['aws-admin'],
-      type: 'group',
-      messages: []
-    },
-    {
-      id: 'google-certified',
-      name: 'Google Certified Pros 🎓',
-      description: 'Google Ads, Analytics, Cloud & Digital Marketing certs',
-      avatar: 'https://images.unsplash.com/photo-1573804633927-bfcbcd909acd?w=100&h=100&fit=crop&crop=face',
-      members: 534,
-      lastMessage: 'GooglePro: Free Google Skillshop courses list',
-      lastMessageTime: new Date(Date.now() - 3.5 * 60 * 60 * 1000),
-      unreadCount: 7,
-      isOnline: true,
-      isPinned: false,
-      isMuted: false,
-      isArchived: false,
-      admins: ['google-admin'],
-      type: 'group',
-      messages: []
-    },
-    {
-      id: 'microsoft-certified',
-      name: 'Microsoft Certified 💼',
-      description: 'Azure, Office 365, Power Platform & MS certifications',
-      avatar: 'https://images.unsplash.com/photo-1611224923853-80b023f02d71?w=100&h=100&fit=crop&crop=face',
-      members: 445,
-      lastMessage: 'MSExpert: Power BI dashboard tutorial',
-      lastMessageTime: new Date(Date.now() - 5 * 60 * 60 * 1000),
-      unreadCount: 5,
-      isOnline: true,
-      isPinned: false,
-      isMuted: false,
-      isArchived: false,
-      admins: ['ms-admin'],
-      type: 'group',
-      messages: []
-    },
-    // CAREER & NETWORKING GROUPS
-    {
-      id: 'tech-interviews',
-      name: 'Tech Interview Prep 💡',
-      description: 'Coding challenges, interview tips & job preparation',
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=face',
-      members: 678,
-      lastMessage: 'InterviewAce: Common React interview questions',
-      lastMessageTime: new Date(Date.now() - 2.2 * 60 * 60 * 1000),
-      unreadCount: 14,
-      isOnline: true,
-      isPinned: false,
-      isMuted: false,
-      isArchived: false,
-      admins: ['interview-admin'],
-      type: 'group',
-      messages: []
-    },
-    {
-      id: 'women-in-tech-ke',
-      name: 'Women in Tech KE 👩‍💻',
-      description: 'Supporting women in technology careers',
-      avatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=100&h=100&fit=crop&crop=face',
-      members: 456,
-      lastMessage: 'TechQueen: Mentorship program for female developers',
-      lastMessageTime: new Date(Date.now() - 1.5 * 60 * 60 * 1000),
-      unreadCount: 8,
-      isOnline: true,
-      isPinned: false,
-      isMuted: false,
-      isArchived: false,
-      admins: ['women-admin'],
-      type: 'group',
-      messages: []
-    },
-    {
-      id: 'students-developers',
-      name: 'Student Developers 🎓',
-      description: 'University & college students learning programming',
-      avatar: 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=100&h=100&fit=crop&crop=face',
-      members: 892,
-      lastMessage: 'StudentDev: Final year project ideas for CS students',
-      lastMessageTime: new Date(Date.now() - 3 * 60 * 60 * 1000),
-      unreadCount: 19,
-      isOnline: true,
-      isPinned: false,
-      isMuted: false,
-      isArchived: false,
-      admins: ['student-admin'],
-      type: 'group',
-      messages: []
-    },
-    // INDUSTRY-SPECIFIC GROUPS
-    {
-      id: 'fintech-kenya',
-      name: 'FinTech Kenya 💳',
-      description: 'Mobile money, banking APIs & financial technology',
-      avatar: 'https://images.unsplash.com/photo-1563013544-824ae1b704d3?w=100&h=100&fit=crop&crop=face',
-      members: 423,
-      lastMessage: 'FintechDev: M-Pesa API integration tutorial',
-      lastMessageTime: new Date(Date.now() - 4.5 * 60 * 60 * 1000),
-      unreadCount: 6,
-      isOnline: true,
-      isPinned: false,
-      isMuted: false,
-      isArchived: false,
-      admins: ['fintech-admin'],
-      type: 'group',
-      messages: []
-    },
-    {
-      id: 'agritech-solutions',
-      name: 'AgriTech Solutions 🌾',
-      description: 'Technology solutions for agriculture & farming',
-      avatar: 'https://images.unsplash.com/photo-1574943320219-553eb213f72d?w=100&h=100&fit=crop&crop=face',
-      members: 267,
-      lastMessage: 'AgriDev: IoT sensors for smart farming',
-      lastMessageTime: new Date(Date.now() - 6 * 60 * 60 * 1000),
-      unreadCount: 3,
-      isOnline: true,
-      isPinned: false,
-      isMuted: false,
-      isArchived: false,
-      admins: ['agri-admin'],
-      type: 'group',
-      messages: []
-    },
-    {
-      id: 'healthtech-innovators',
-      name: 'HealthTech Innovators 🏥',
-      description: 'Healthcare technology & medical app development',
-      avatar: 'https://images.unsplash.com/photo-1559757148-5c350d0d3c56?w=100&h=100&fit=crop&crop=face',
-      members: 345,
-      lastMessage: 'HealthDev: HIPAA compliance for health apps',
-      lastMessageTime: new Date(Date.now() - 7 * 60 * 60 * 1000),
-      unreadCount: 4,
-      isOnline: true,
-      isPinned: false,
-      isMuted: false,
-      isArchived: false,
-      admins: ['health-admin'],
-      type: 'group',
-      messages: []
-    },
-    // RESOURCES & LEARNING
-    {
-      id: 'free-resources',
-      name: 'Free Learning Resources 📚',
-      description: 'Free courses, tutorials, books & learning materials',
-      avatar: 'https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=100&h=100&fit=crop&crop=face',
-      members: 1234,
-      lastMessage: 'ResourceGuru: 100+ free programming books collection',
-      lastMessageTime: new Date(Date.now() - 4 * 60 * 60 * 1000),
-      unreadCount: 25,
-      isOnline: true,
-      isPinned: true,
-      isMuted: false,
-      isArchived: false,
-      admins: ['resource-admin'],
-      type: 'group',
-      messages: []
-    },
-    {
-      id: 'coding-challenges',
-      name: 'Daily Coding Challenges 🧩',
-      description: 'LeetCode, HackerRank & programming problem solving',
-      avatar: 'https://images.unsplash.com/photo-1515879218367-8466d910aaa4?w=100&h=100&fit=crop&crop=face',
-      members: 567,
-      lastMessage: 'CodeChallenger: Today\'s problem: Two Sum variations',
-      lastMessageTime: new Date(Date.now() - 8 * 60 * 60 * 1000),
-      unreadCount: 12,
-      isOnline: true,
-      isPinned: false,
-      isMuted: false,
-      isArchived: false,
-      admins: ['challenge-admin'],
-      type: 'group',
-      messages: []
-    },
-    {
-      id: 'open-source-contributors',
-      name: 'Open Source Contributors 🌐',
-      description: 'GitHub projects, open source contributions & collaboration',
-      avatar: 'https://images.unsplash.com/photo-1618477247222-acbdb0e159b3?w=100&h=100&fit=crop&crop=face',
-      members: 456,
-      lastMessage: 'OSContributor: Hacktoberfest 2025 projects list',
-      lastMessageTime: new Date(Date.now() - 5 * 60 * 60 * 1000),
-      unreadCount: 9,
-      isOnline: true,
-      isPinned: false,
-      isMuted: false,
-      isArchived: false,
-      admins: ['os-admin'],
-      type: 'group',
-      messages: []
-    },
-    // OFFICIAL GROUPS
-    {
-      id: 'kinap-official',
-      name: 'KiNaP Official 📢',
-      description: 'Official updates & announcements',
-      avatar: '/logo.jpeg',
-      members: 3456,
-      lastMessage: 'Admin: New Digital Skills Bootcamp Feb 15th',
-      lastMessageTime: new Date(Date.now() - 2 * 60 * 60 * 1000),
-      unreadCount: 1,
-      isOnline: true,
-      isPinned: true,
-      isMuted: false,
-      isArchived: false,
-      admins: ['admin1'],
-      type: 'channel',
-      messages: [
-        {
-          id: '1',
-          userId: 'admin1',
-          userName: 'KiNaP Admin',
-          userAvatar: '/logo.jpeg',
-          message: '🎉 New Digital Skills Bootcamp starting February 15th, 2025. Registration open!',
-          timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000),
-          messageType: 'text',
-          status: 'read',
-          reactions: [{ emoji: '🔥', users: ['user1', 'user2'] }]
-        }
-      ]
-    },
-    {
-      id: 'alumni-network',
-      name: 'KiNaP Alumni Network 🎓',
-      description: 'Connect with KiNaP graduates and success stories',
-      avatar: 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=100&h=100&fit=crop&crop=face',
-      members: 2134,
-      lastMessage: 'Alumni: Class of 2020 reunion planning',
-      lastMessageTime: new Date(Date.now() - 6 * 60 * 60 * 1000),
-      unreadCount: 16,
-      isOnline: true,
-      isPinned: false,
-      isMuted: false,
-      isArchived: false,
-      admins: ['alumni-admin'],
-      type: 'group',
-      messages: []
-    },
-    {
-      id: 'mentorship-program',
-      name: 'Mentorship Program 🤝',
-      description: 'Connect mentors with mentees for career guidance',
-      avatar: 'https://images.unsplash.com/photo-1521737604893-d14cc237f11d?w=100&h=100&fit=crop&crop=face',
-      members: 789,
-      lastMessage: 'MentorLead: New mentor-mentee matching session',
-      lastMessageTime: new Date(Date.now() - 9 * 60 * 60 * 1000),
-      unreadCount: 11,
-      isOnline: true,
-      isPinned: false,
-      isMuted: false,
-      isArchived: false,
-      admins: ['mentor-admin'],
-      type: 'group',
-      messages: []
-    }
-  ];
+  // Fetch groups and users on mount
+  useEffect(() => {
+    api.get('/groups').then(res => setGroups(res.data)).catch(console.error);
+    api.get('/users').then(res => setUsers(res.data)).catch(console.error);
+  }, []);
 
-  const [groups, setGroups] = useState<ChatGroup[]>(demoGroups);
+  // Connect to Socket.IO on mount
+  useEffect(() => {
+    const s = io(SOCKET_URL, { transports: ['websocket'] });
+    setSocket(s);
+    return () => { s.disconnect(); };
+  }, []);
+
+  // Join all groups when groups/user are loaded
+  useEffect(() => {
+    if (socket && user && groups.length > 0) {
+      const userId = user.id || user._id;
+      if (!userId) {
+        console.log('User object missing id and _id for join:', user);
+        return;
+      }
+      groups.forEach(g => {
+        console.log('Emitting join for group:', g.id || g._id, 'with userId:', userId);
+        socket.emit('join', userId); // Optionally, join group rooms if implemented
+      });
+    }
+  }, [socket, user, groups]);
+
+  // Listen for real-time group messages
+  useEffect(() => {
+    if (!socket) return;
+    const handler = (msg: any) => {
+      if (msg.groupId === selectedGroup) {
+        setMessages(prev => [...prev, { ...msg, isOwn: msg.sender === user?.id }]);
+      }
+    };
+    socket.on('group_message', handler);
+    return () => { socket.off('group_message', handler); };
+  }, [socket, selectedGroup, user]);
+
+  // Fetch messages when a group is selected
+  useEffect(() => {
+    if (selectedGroup) {
+      api.get(`/messages/group/${selectedGroup}`)
+        .then(res => setMessages(res.data))
+        .catch(console.error);
+      const group = groups.find(g => g._id === selectedGroup || g.id === selectedGroup);
+      setCurrentGroup(group || null);
+    }
+  }, [selectedGroup, groups]);
+
+  // When a group is selected, fetch its member user data
+  useEffect(() => {
+    if (currentGroup && currentGroup.members && currentGroup.members.length > 0) {
+      // members may be array of user IDs or user objects
+      const memberIds = currentGroup.members.map((m: any) => (typeof m === 'string' ? m : m._id || m.id));
+      // Filter users in state
+      const members = users.filter(u => memberIds.includes(u.id || u._id));
+      setGroupMembers(members);
+    } else {
+      setGroupMembers([]);
+    }
+  }, [currentGroup, users]);
 
   // Message status icons
   const getMessageStatusIcon = (status: string, isOwn: boolean) => {
@@ -818,7 +231,7 @@ const CommunityPage = () => {
     <div className="flex flex-wrap gap-1 mt-1">
       {reactions.map((reaction, index) => (
         <button
-          key={index}
+          key={reaction.emoji + index}
           className="flex items-center gap-1 px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded-full text-xs transition-colors"
         >
           <span>{reaction.emoji}</span>
@@ -831,82 +244,68 @@ const CommunityPage = () => {
   // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [currentGroup?.messages]);
+  }, [messages]);
 
-  // Update current group
+  // Set currentGroup when selectedGroup or groups change
   useEffect(() => {
     if (selectedGroup) {
-      const group = groups.find(g => g.id === selectedGroup);
+      const group = groups.find(g => g._id === selectedGroup || g.id === selectedGroup);
       setCurrentGroup(group || null);
-      
-      if (group) {
-        setGroups(prev => prev.map(g => 
-          g.id === selectedGroup ? { ...g, unreadCount: 0 } : g
-        ));
-      }
     }
   }, [selectedGroup, groups]);
+
+  // Clear unread count only when selectedGroup changes
+  useEffect(() => {
+    if (selectedGroup) {
+      setGroups(prev =>
+        prev.map(g =>
+          g._id === selectedGroup || g.id === selectedGroup
+            ? { ...g, unreadCount: 0 }
+            : g
+        )
+      );
+    }
+  }, [selectedGroup]);
 
   // Format time helper
   const formatTime = useCallback((date: Date) => {
     const now = new Date();
-    const diff = now.getTime() - date.getTime();
+    const dateObj = date ? new Date(date) : null;
+    const diff = dateObj ? now.getTime() - dateObj.getTime() : 0;
     const minutes = Math.floor(diff / 60000);
     const hours = Math.floor(diff / 3600000);
     const days = Math.floor(diff / 86400000);
 
+    if (!dateObj) return '';
     if (minutes < 1) return 'now';
     if (minutes < 60) return `${minutes}m`;
     if (hours < 24) return `${hours}h`;
     if (days < 7) return `${days}d`;
-    return date.toLocaleDateString();
+    return dateObj.toLocaleDateString();
   }, []);
 
-  // Send message function
+  // Send group message
   const handleSendMessage = useCallback(() => {
-    if (!newMessage.trim() || !currentGroup) return;
-
-    const message: ChatMessage = {
-      id: Date.now().toString(),
-      userId: currentUser.id,
-      userName: currentUser.name,
-      userAvatar: currentUser.avatar,
-      message: newMessage,
-      timestamp: new Date(),
-      isOwn: true,
-      messageType: 'text',
-      status: 'sending',
-      replyTo: replyingTo?.id
+    if (!newMessage.trim() || !currentGroup || !socket || !user) return;
+    const userId = user.id || user._id;
+    if (!userId) {
+      console.log('User object missing id and _id for group_message:', user);
+      return;
+    }
+    const msg = {
+      sender: userId,
+      groupId: currentGroup._id || currentGroup.id,
+      members: currentGroup.members,
+      content: newMessage,
+      type: 'text',
     };
-
-    setGroups(prev => prev.map(group => 
-      group.id === currentGroup.id
-        ? { 
-            ...group, 
-            messages: [...group.messages, message],
-            lastMessage: newMessage,
-            lastMessageTime: new Date()
-          }
-        : group
-    ));
-
+    // Optimistically update UI
+    setMessages(prev => [...prev, { ...msg, isOwn: true, userName: user.name, userAvatar: user.avatar, timestamp: new Date() }]);
+    console.log('Emitting group_message:', msg);
+    socket.emit('group_message', msg);
     setNewMessage('');
     setReplyingTo(null);
-
-    // Simulate delivery
-    setTimeout(() => {
-      setGroups(prev => prev.map(group => 
-        group.id === currentGroup.id
-          ? { 
-              ...group, 
-              messages: group.messages.map(msg => 
-                msg.id === message.id ? { ...msg, status: 'delivered' } : msg
-              )
-            }
-          : group
-      ));
-    }, 1000);
-  }, [newMessage, currentGroup, currentUser, replyingTo]);
+  }, [newMessage, currentGroup, socket, user, setMessages, setNewMessage, setReplyingTo]);
 
   // Handle file upload
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -928,7 +327,7 @@ const CommunityPage = () => {
     };
 
     setGroups(prev => prev.map(group => 
-      group.id === currentGroup.id
+      group._id === currentGroup._id || group.id === currentGroup.id
         ? { 
             ...group, 
             messages: [...group.messages, message],
@@ -946,12 +345,90 @@ const CommunityPage = () => {
   ).sort((a, b) => {
     if (a.isPinned && !b.isPinned) return -1;
     if (!a.isPinned && b.isPinned) return 1;
-    return b.lastMessageTime.getTime() - a.lastMessageTime.getTime();
+    const aTime = a.lastMessageTime ? new Date(a.lastMessageTime).getTime() : 0;
+    const bTime = b.lastMessageTime ? new Date(b.lastMessageTime).getTime() : 0;
+    return bTime - aTime;
   });
 
+  // Create group handler
+  const handleCreateGroup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await api.post('/groups/create', {
+        ...newGroup,
+        admins: [user.id],
+        createdBy: user.id,
+        avatar: '',
+      });
+      setGroups(prev => [...prev, res.data]);
+      setShowCreateGroup(false);
+      setNewGroup({ name: '', description: '', members: [] });
+      setSelectedGroup(res.data._id || res.data.id);
+    } catch (err) {
+      alert('Failed to create group');
+    }
+  };
+
+  // Fetch private messages
+  const [selectedUser, setSelectedUser] = useState<string>('');
+  const [privateMessages, setPrivateMessages] = useState<ChatMessage[]>([]);
+  useEffect(() => {
+    if (selectedUser && user) {
+      api.get(`/messages/private/${user.id}?otherUserId=${selectedUser}`)
+        .then(res => setPrivateMessages(res.data))
+        .catch(console.error);
+    }
+  }, [selectedUser, user]);
+
+  // Send private message
+  const sendPrivateMessage = (msg: string) => {
+    if (!socket || !user || !selectedUser || !msg.trim()) return;
+    const userId = user.id || user._id;
+    if (!userId) {
+      console.log('User object missing id and _id for private_message:', user);
+      return;
+    }
+    const message = { sender: userId, recipient: selectedUser, content: msg, type: 'text' };
+    console.log('Emitting private_message:', message);
+    socket.emit('private_message', message);
+    setPrivateMessages(prev => [...prev, { ...message, isOwn: true, userName: user.name, userAvatar: user.avatar, timestamp: new Date() }]);
+  };
+
+  // Listen for real-time private messages
+  useEffect(() => {
+    if (!socket) return;
+    const handler = (msg: any) => {
+      if (msg.sender === selectedUser || msg.sender === user?.id) {
+        setPrivateMessages(prev => [...prev, { ...msg, isOwn: msg.sender === user?.id }]);
+      }
+    };
+    socket.on('private_message', handler);
+    return () => { socket.off('private_message', handler); };
+  }, [socket, selectedUser, user]);
+
+  const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value, type, options } = e.target;
+    if (name === 'interests' && type === 'select-multiple') {
+      setProfileForm(f => ({ ...f, interests: Array.from(options).filter(o => o.selected).map(o => o.value) }));
+    } else {
+      setProfileForm(f => ({ ...f, [name]: value }));
+    }
+  };
+
+  const handleProfileSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await api.put(`/users/${user?.id || user?._id}`, profileForm);
+      setShowSettings(false);
+      window.dispatchEvent(new Event('authUpdated'));
+    } catch (err) {
+      alert('Failed to update profile');
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="min-h-screen bg-gray-50 w-full overflow-x-hidden">
+      <div className="max-w-7xl mx-auto px-2 sm:px-4 py-6 sm:py-8 w-full">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-kenya-black mb-4">
             KiNaP Digital Community Hub 💬
@@ -963,8 +440,8 @@ const CommunityPage = () => {
         </div>
 
         {/* WhatsApp Integration Section */}
-        <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-xl p-6 mb-8 text-white">
-          <div className="flex items-center justify-between">
+        <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-xl p-4 sm:p-6 mb-8 text-white w-full">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4 w-full">
             <div className="flex items-center space-x-4">
               <div className="bg-white/20 p-3 rounded-lg">
                 <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
@@ -998,7 +475,7 @@ const CommunityPage = () => {
           </div>
           
           {/* WhatsApp Groups */}
-          <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 w-full">
             <div className="bg-white/10 rounded-lg p-4">
               <h4 className="font-semibold mb-2">🎓 Study Groups</h4>
               <p className="text-sm text-green-100">Join subject-specific study groups and collaborative learning sessions</p>
@@ -1038,10 +515,10 @@ const CommunityPage = () => {
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-lg overflow-hidden h-[calc(100vh-300px)]">
-          <div className="flex h-full">
+        <div className="bg-white rounded-xl shadow-lg overflow-hidden h-[calc(100vh-300px)] w-full">
+          <div className="flex flex-col md:flex-row h-full w-full">
             {/* Sidebar */}
-            <div className={`${sidebarCollapsed ? 'w-16' : 'w-80'} border-r border-gray-200 flex flex-col transition-all duration-300 bg-gray-50`}>
+            <div className={`${sidebarCollapsed ? 'w-16' : 'w-64 sm:w-80'} border-r border-gray-200 flex flex-col transition-all duration-300 bg-gray-50`}>
               {/* Header */}
               <div className="p-4 border-b border-gray-200 bg-white">
                 <div className="flex items-center justify-between">
@@ -1059,12 +536,24 @@ const CommunityPage = () => {
 
               {/* Groups List */}
               <div className="flex-1 overflow-y-auto">
+                {/* Direct Messages Section */}
+                <div className="mb-4">
+                  <h3 className="text-sm font-semibold text-gray-700 mb-2">Direct Messages</h3>
+                  <ul>
+                    {users.map(u => (
+                      <li key={u.id || u._id}>
+                        <button onClick={() => setSelectedUser(u.id || u._id)} className={`w-full text-left px-2 py-1 rounded ${selectedUser === (u.id || u._id) ? 'bg-blue-100' : ''}`}>{u.name || u.username} {u.id === user?.id && '(You)'}</button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
                 {filteredGroups.map((group) => (
                   <div
-                    key={group.id}
-                    onClick={() => setSelectedGroup(group.id)}
+                    key={group._id || group.id}
+                    onClick={() => setSelectedGroup(group._id || group.id)}
                     className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors relative ${
-                      selectedGroup === group.id ? 'bg-kenya-green bg-opacity-10 border-r-4 border-r-kenya-green' : ''
+                      selectedGroup === (group._id || group.id) ? 'bg-kenya-green bg-opacity-10 border-r-4 border-r-kenya-green' : ''
                     }`}
                   >
                     <div className="flex items-center gap-3">
@@ -1113,7 +602,7 @@ const CommunityPage = () => {
                           
                           <div className="flex items-center justify-between mt-1">
                             <div className="flex items-center gap-2">
-                              <span className="text-xs text-gray-500">{group.members.toLocaleString()} members</span>
+                              <span className="text-xs text-gray-500">{Array.isArray(group.members) ? group.members.length : 0} members</span>
                               {group.type === 'channel' && <Hash className="w-3 h-3 text-gray-400" />}
                             </div>
                           </div>
@@ -1140,7 +629,7 @@ const CommunityPage = () => {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <button className="p-2 hover:bg-gray-200 rounded-lg transition-colors">
+                      <button className="p-2 hover:bg-gray-200 rounded-lg transition-colors" onClick={() => setShowSettings(true)}>
                         <Settings className="w-4 h-4 text-gray-500" />
                       </button>
                     </div>
@@ -1150,7 +639,7 @@ const CommunityPage = () => {
             </div>
 
             {/* Main Chat Area */}
-            <div className="flex-1 flex flex-col">
+            <div className="flex-1 flex flex-col w-full">
               {currentGroup ? (
                 <>
                   {/* Chat Header */}
@@ -1173,9 +662,24 @@ const CommunityPage = () => {
                             {currentGroup.type === 'channel' && <Hash className="w-4 h-4 text-gray-500" />}
                           </div>
                           <div className="flex items-center gap-2 text-sm text-gray-500">
-                            <span>{currentGroup.members.toLocaleString()} members</span>
+                            <span>{groupMembers.length} member{groupMembers.length !== 1 ? 's' : ''}</span>
                             <span>•</span>
                             <span>{currentGroup.description}</span>
+                          </div>
+                          {/* Show member avatars */}
+                          <div className="flex -space-x-2 mt-1">
+                            {groupMembers.slice(0, 5).map(member => (
+                              <img
+                                key={member.id || member._id}
+                                src={member.avatar || member.photoURL || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(member.name || member.fullname || 'User')}
+                                alt={member.name || member.fullname || 'User'}
+                                className="w-7 h-7 rounded-full border-2 border-white shadow"
+                                title={member.name || member.fullname || 'User'}
+                              />
+                            ))}
+                            {groupMembers.length > 5 && (
+                              <span className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center text-xs text-gray-600 border-2 border-white">+{groupMembers.length - 5}</span>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -1195,11 +699,20 @@ const CommunityPage = () => {
 
                   {/* Messages Area */}
                   <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
-                    {currentGroup.messages.map((message, index) => {
-                      const showAvatar = index === 0 || currentGroup.messages[index - 1].userId !== message.userId;
+                    {messages.map((message, index) => {
+                      if (message.type === 'system' || message.messageType === 'system') {
+                        return (
+                          <div key={message.id || index} className="flex justify-center my-2">
+                            <div className="bg-gray-200 text-gray-700 text-xs px-4 py-2 rounded-full shadow-sm">
+                              {message.content || message.message}
+                            </div>
+                          </div>
+                        );
+                      }
+                      const showAvatar = index === 0 || messages[index - 1].userId !== message.userId;
 
                       return (
-                        <div key={message.id}>
+                        <div key={message.id || index}>
                           <div className={`flex gap-3 ${message.isOwn ? 'justify-end' : 'justify-start'} group`}>
                             {!message.isOwn && showAvatar && (
                               <img
@@ -1424,7 +937,49 @@ const CommunityPage = () => {
             </div>
           </div>
         </div>
+
+        {/* Create Group Modal */}
+        <Modal isOpen={showCreateGroup} onRequestClose={() => setShowCreateGroup(false)} ariaHideApp={false}>
+          <form onSubmit={handleCreateGroup} className="p-4">
+            <h2 className="text-lg font-bold mb-2">Create Group</h2>
+            <input className="w-full border rounded px-2 py-1 mb-2" placeholder="Group Name" value={newGroup.name} onChange={e => setNewGroup(g => ({ ...g, name: e.target.value }))} required />
+            <input className="w-full border rounded px-2 py-1 mb-2" placeholder="Description" value={newGroup.description} onChange={e => setNewGroup(g => ({ ...g, description: e.target.value }))} />
+            <div className="mb-2">
+              <label className="block text-sm mb-1">Members</label>
+              <select multiple className="w-full border rounded" value={newGroup.members} onChange={e => setNewGroup(g => ({ ...g, members: Array.from(e.target.selectedOptions, o => o.value) }))}>
+                {users.map(u => (
+                  <option key={u.id || u._id} value={u.id || u._id}>{u.name || u.username}</option>
+                ))}
+              </select>
       </div>
+            <div className="flex gap-2">
+              <button type="submit" className="bg-blue-600 text-white px-4 py-1 rounded">Create</button>
+              <button type="button" className="bg-gray-300 px-4 py-1 rounded" onClick={() => setShowCreateGroup(false)}>Cancel</button>
+            </div>
+          </form>
+        </Modal>
+
+        {/* Edit Profile Modal */}
+        <Modal isOpen={showSettings} onRequestClose={() => setShowSettings(false)} ariaHideApp={false}>
+          <form onSubmit={handleProfileSave} className="p-4 max-w-md mx-auto">
+            <h2 className="text-lg font-bold mb-2">Edit Profile</h2>
+            <input className="w-full border rounded px-2 py-1 mb-2" name="name" placeholder="Full Name" value={profileForm.name} onChange={handleProfileChange} required />
+            <input className="w-full border rounded px-2 py-1 mb-2" name="avatar" placeholder="Avatar URL" value={profileForm.avatar} onChange={handleProfileChange} />
+            <label className="block text-sm mb-1">Interests</label>
+            <select multiple className="w-full border rounded mb-2" name="interests" value={profileForm.interests} onChange={handleProfileChange}>
+              {INTEREST_OPTIONS.map(opt => (
+                <option key={opt} value={opt}>{opt}</option>
+              ))}
+            </select>
+            <div className="flex gap-2">
+              <button type="submit" className="bg-blue-600 text-white px-4 py-1 rounded">Save</button>
+              <button type="button" className="bg-gray-300 px-4 py-1 rounded" onClick={() => setShowSettings(false)}>Cancel</button>
+            </div>
+          </form>
+        </Modal>
+      </div>
+      {/* Floating Chatbot widget at bottom right */}
+      <Chatbot />
     </div>
   );
 };

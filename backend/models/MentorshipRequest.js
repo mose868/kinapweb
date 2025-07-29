@@ -233,7 +233,6 @@ mentorshipRequestSchema.index({ status: 1, category: 1, createdAt: -1 });
 mentorshipRequestSchema.index({ 'location.coordinates': '2dsphere' }); // Geospatial
 mentorshipRequestSchema.index({ requestType: 1, urgency: 1, createdAt: -1 });
 mentorshipRequestSchema.index({ 'mentee.email': 1 });
-mentorshipRequestSchema.index({ requestId: 1 });
 mentorshipRequestSchema.index({ 'selectedMentor.mentorId': 1 });
 mentorshipRequestSchema.index({ priority: -1, createdAt: -1 });
 

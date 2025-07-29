@@ -1,16 +1,16 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from 'react-query'
 import { doc, getDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore'
 import { db, COLLECTIONS } from '../../config/firebase'
-import type { Gig, GigPackage, UserProfile } from '../../types/marketplace'
+import type { UserProfile } from '../../types/marketplace'
 import { Star, Clock, RefreshCw, CheckCircle, MessageCircle, Share2, Flag, Eye, ArrowLeft } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 // @ts-ignore
 import ImageGallery from 'react-image-gallery'
 import 'react-image-gallery/styles/css/image-gallery.css'
 import { toast } from 'react-hot-toast'
-import sampleGigs from '../../data/sampleGigs'
+import { fetchGigById, type Gig } from '../../api/marketplace'
 
 // Format price as KES
 function formatKES(amount: number) {
@@ -22,7 +22,7 @@ const GigDetailPage: React.FC = () => {
   const { user } = useAuth()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const [selectedPackage, setSelectedPackage] = useState<GigPackage['name']>('basic')
+  const [selectedPackage, setSelectedPackage] = useState<'basic' | 'standard' | 'premium'>('basic')
   const [requirements, setRequirements] = useState('')
 
   // Fetch gig details
@@ -30,23 +30,20 @@ const GigDetailPage: React.FC = () => {
     ['gig', gigId],
     async () => {
       if (!gigId) return null;
-      // Placeholder: return mock gig data
-      return sampleGigs.find(g => g.id === gigId) || null;
+      return await fetchGigById(gigId);
+    },
+    {
+      enabled: !!gigId,
+      retry: 3,
+      onError: (error) => {
+        console.error('Error fetching gig:', error);
+        toast.error('Failed to load gig details');
+      }
     }
   )
 
-  // Fetch seller details
-  const { data: seller } = useQuery(
-    ['seller', gig?.sellerId],
-    async () => {
-      if (!gig?.sellerId) return null;
-      // Placeholder: return mock seller data
-      return { id: gig.sellerId, displayName: gig.sellerName, photoURL: gig.sellerAvatar };
-    },
-    {
-      enabled: !!gig?.sellerId
-    }
-  )
+  // Seller details are included in the gig data
+  const seller = gig?.seller;
 
   // Create order mutation
   const createOrder = useMutation(

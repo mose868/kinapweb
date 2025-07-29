@@ -261,10 +261,10 @@ const StoryOfTheDay = () => {
         {/* Call to Action */}
         <div className="mt-6 text-center">
           <Link
-            to="/media-upload"
+            to="/become-seller"
             className="inline-flex items-center text-ajira-accent hover:text-ajira-accent/80"
           >
-            Share Your 2025 Success Story
+            Start Your Success Story
             <ArrowRight className="ml-2 w-4 h-4" />
           </Link>
         </div>

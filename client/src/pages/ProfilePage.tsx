@@ -22,6 +22,15 @@ import {
 } from 'lucide-react'
 import axios from 'axios'
 
+const BASEURL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
+
+// LinkedIn URL validation
+const validateLinkedInURL = (url: string): boolean => {
+  if (!url.trim()) return false
+  const linkedinPattern = /^https?:\/\/(www\.)?linkedin\.com\/in\/[a-zA-Z0-9-]+\/?$/
+  return linkedinPattern.test(url.trim())
+}
+
 interface ClubMemberProfile {
   displayName: string
   email: string
@@ -84,22 +93,36 @@ const ProfilePage = () => {
     const fetchProfile = async () => {
       if (!user?.email) return
       try {
-        const res = await axios.post('https://a4a6-197-136-138-2.ngrok-free.app/api/students/get-profile', { email: user.email }, {
+        const res = await axios.post(`${BASEURL}/students/get-profile`, { email: user.email }, {
           headers: { 'Content-Type': 'application/json' }
         })
         const profile = res.data
+        console.log('Loaded profile data:', profile)
+        console.log('PhotoURL from backend:', profile.photoURL)
+        console.log('All profile completion fields:')
+        console.log('- Bio:', profile.bio)
+        console.log('- Location:', profile.location) 
+        console.log('- Goals:', profile.ajiraGoals)
+        console.log('- LinkedIn:', profile.linkedinProfile)
+        console.log('- Photo:', !!profile.photoURL)
+        
         setFormData(prev => ({
           ...prev,
           displayName: profile.fullname || prev.displayName,
-          bio: profile.bio || prev.bio,
+          // Basic info from signup (read-only display)
           course: profile.course || prev.course,
           year: profile.year || prev.year,
-          skills: profile.skills ? profile.skills.split(',').map((s:string)=>s.trim()) : prev.skills,
+          skills: typeof profile.skills === 'string' ? profile.skills.split(',').map((s:string)=>s.trim()) : (profile.skills || prev.skills),
           experienceLevel: profile.experience || prev.experienceLevel,
-          ajiraGoals: profile.goals || prev.ajiraGoals,
           phoneNumber: profile.phone || prev.phoneNumber,
           idNumber: profile.idNo || prev.idNumber,
-          achievements: profile.achievements ? profile.achievements.split(',').map((a:string)=>a.trim()) : prev.achievements
+          // Additional profile fields (editable)
+          bio: profile.bio || prev.bio,
+          location: profile.location || prev.location,
+          ajiraGoals: profile.ajiraGoals || prev.ajiraGoals,
+          linkedinProfile: profile.linkedinProfile || prev.linkedinProfile,
+          photoURL: profile.photoURL || prev.photoURL,
+          lastActive: profile.lastActive || prev.lastActive
         }))
       } catch (err) {
         console.warn('Failed to load profile', err)
@@ -110,49 +133,28 @@ const ProfilePage = () => {
 
   // Calculate profile completion percentage
   const calculateProfileCompletion = () => {
-    const requiredFields = [
-      'displayName',
-      'bio',
-      'location',
-      'course',
-      'year',
-      'experienceLevel',
-      'ajiraGoals',
-      'preferredLearningMode',
-      'phoneNumber'
-    ]
-    
-    const arrayFields = ['skills', 'preferredPlatforms']
-    const optionalFields = ['linkedinProfile', 'githubProfile', 'portfolioUrl']
+    // Simplified completion check - only 4 essential fields
+    const essentialFields = ['bio', 'location', 'ajiraGoals', 'linkedinProfile']
     
     let completed = 0
-    let total = requiredFields.length + arrayFields.length + optionalFields.length + 1 // +1 for photo
+    let total = essentialFields.length + 1 // +1 for required photo
     
-    // Check required fields
-    requiredFields.forEach(field => {
+    // Check essential fields
+    essentialFields.forEach(field => {
       if (formData[field as keyof ClubMemberProfile] && 
           String(formData[field as keyof ClubMemberProfile]).trim() !== '') {
-        completed++
+        // Special validation for LinkedIn
+        if (field === 'linkedinProfile') {
+          if (validateLinkedInURL(String(formData[field as keyof ClubMemberProfile]))) {
+            completed++
+          }
+        } else {
+          completed++
+        }
       }
     })
     
-    // Check array fields
-    arrayFields.forEach(field => {
-      if (formData[field as keyof ClubMemberProfile] && 
-          (formData[field as keyof ClubMemberProfile] as string[]).length > 0) {
-        completed++
-      }
-    })
-    
-    // Check optional fields
-    optionalFields.forEach(field => {
-      if (formData[field as keyof ClubMemberProfile] && 
-          String(formData[field as keyof ClubMemberProfile]).trim() !== '') {
-        completed++
-      }
-    })
-    
-    // Check photo
+    // Check required photo
     if (formData.photoURL && formData.photoURL.trim() !== '') {
       completed++
     }
@@ -167,46 +169,155 @@ const ProfilePage = () => {
     if (!user || !e.target.files?.[0]) return
     try {
       const file = e.target.files[0]
-      // Simulate upload and set local URL
-      const photoURL = URL.createObjectURL(file)
-      setFormData(prev => ({ ...prev, photoURL }))
-      // No backend update
+      
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        alert('Image size must be less than 5MB')
+        return
+      }
+      
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        alert('Please select a valid image file')
+        return
+      }
+      
+      // Compress image before converting to base64
+      const compressedFile = await compressImage(file, 800, 800, 0.8)
+      
+      // Convert to base64
+      const reader = new FileReader()
+      reader.onload = async () => {
+        const base64 = reader.result as string
+        console.log('Base64 image size:', base64.length, 'characters')
+        setFormData(prev => ({ ...prev, photoURL: base64 }))
+        
+        // Save to MongoDB immediately
+        try {
+          console.log('Saving profile image to MongoDB...')
+          await axios.post(`${BASEURL}/students/update-profile`, {
+            email: user.email,
+            photoURL: base64
+          }, {
+            headers: { 'Content-Type': 'application/json' }
+          })
+          console.log('Profile image saved successfully!')
+          alert('Profile picture uploaded and saved!')
+        } catch (error) {
+          console.error('Failed to save profile image:', error)
+          alert('Failed to save profile picture. Please try again.')
+          // Reset the image if save failed
+          setFormData(prev => ({ ...prev, photoURL: '' }))
+        }
+      }
+      reader.readAsDataURL(compressedFile)
     } catch (error) {
       console.error('Error uploading profile image:', error)
     }
+  }
+
+  // Compress image helper function
+  const compressImage = (file: File, maxWidth: number, maxHeight: number, quality: number): Promise<File> => {
+    return new Promise((resolve) => {
+      const canvas = document.createElement('canvas')
+      const ctx = canvas.getContext('2d')!
+      const img = new Image()
+      
+      img.onload = () => {
+        // Calculate new dimensions
+        let { width, height } = img
+        
+        if (width > height) {
+          if (width > maxWidth) {
+            height = (height * maxWidth) / width
+            width = maxWidth
+          }
+        } else {
+          if (height > maxHeight) {
+            width = (width * maxHeight) / height
+            height = maxHeight
+          }
+        }
+        
+        canvas.width = width
+        canvas.height = height
+        
+        // Draw and compress
+        ctx.drawImage(img, 0, 0, width, height)
+        
+        canvas.toBlob((blob) => {
+          if (blob) {
+            const compressedFile = new File([blob], file.name, {
+              type: file.type,
+              lastModified: Date.now()
+            })
+            resolve(compressedFile)
+          } else {
+            resolve(file) // Fallback to original if compression fails
+          }
+        }, file.type, quality)
+      }
+      
+      img.src = URL.createObjectURL(file)
+    })
   }
 
   // Update profile mutation
   const updateProfileMutation = useMutation(async () => {
     if (!user?.email) return
     
-    // Prepare data for backend update
-    const updateData = {
-      fullname: formData.displayName,
-      bio: formData.bio,
-      course: formData.course,
-      year: formData.year,
-      skills: formData.skills.join(', '),
-      experience: formData.experienceLevel,
-      phone: formData.phoneNumber,
-      idNo: formData.idNumber,
-      goals: formData.ajiraGoals,
-      linkedin: formData.linkedinProfile || '',
-      mentoring: formData.mentorshipInterest,
-      freelancing: formData.availableForFreelance,
-      achievements: formData.achievements.join(', ')
+    // Validate required fields before submission
+    if (!formData.bio.trim()) {
+      throw new Error('Bio is required')
+    }
+    if (!formData.location.trim()) {
+      throw new Error('Location is required')
+    }
+    if (!formData.ajiraGoals.trim()) {
+      throw new Error('Digital goals are required')
+    }
+    if (!formData.linkedinProfile.trim()) {
+      throw new Error('LinkedIn profile is required')
+    }
+    if (!validateLinkedInURL(formData.linkedinProfile)) {
+      throw new Error('Please enter a valid LinkedIn profile URL (e.g., https://linkedin.com/in/yourname)')
+    }
+    if (!formData.photoURL.trim()) {
+      throw new Error('Profile picture is required. Please upload an image.')
     }
     
+    // Prepare data for backend update
+    const updateData = {
+      bio: formData.bio,
+      location: formData.location,
+      ajiraGoals: formData.ajiraGoals,
+      linkedinProfile: formData.linkedinProfile,
+      photoURL: formData.photoURL,
+      lastActive: new Date()
+    }
+    
+    console.log('Saving profile data to MongoDB:', updateData)
+    
     try {
-      await axios.post('https://a4a6-197-136-138-2.ngrok-free.app/api/students/update-profile', 
+      await axios.post(`${BASEURL}/students/update-profile`, 
         { email: user.email, ...updateData },
         { headers: { 'Content-Type': 'application/json' } }
       )
       
+      console.log('Profile data saved successfully!')
+      alert('Profile updated and saved to database!')
       setFormData(prev => ({ ...prev, lastActive: new Date().toISOString() }))
+      
+      // Show detailed success message with timestamp
+      const timestamp = new Date().toLocaleString()
+      setTimeout(() => {
+        alert(`✅ All profile data saved successfully at ${timestamp}!\n\n📊 Saved to MongoDB:\n• Bio\n• Location\n• Goals\n• LinkedIn\n• Profile Photo\n• Last Updated Time`)
+      }, 500)
+      
       setIsEditing(false)
     } catch (error) {
       console.error('Failed to update profile:', error)
+      alert('Failed to save profile data. Please try again.')
       throw new Error('Failed to update profile')
     }
   })
@@ -220,6 +331,16 @@ const ProfilePage = () => {
       setFormData(prev => ({ ...prev, [name]: checked }))
     } else {
       setFormData(prev => ({ ...prev, [name]: value }))
+      
+      // Validate LinkedIn URL in real-time
+      if (name === 'linkedinProfile' && value.trim()) {
+        if (!validateLinkedInURL(value)) {
+          // Show error styling but don't prevent typing
+          e.target.style.borderColor = '#ef4444'
+        } else {
+          e.target.style.borderColor = '#10b981'
+        }
+      }
     }
   }
 
@@ -266,22 +387,31 @@ const ProfilePage = () => {
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8">
+    <div className="max-w-6xl mx-auto px-2 sm:px-4 py-8 w-full overflow-x-hidden">
       {/* Profile Header */}
-      <div className="bg-white rounded-lg shadow-lg mb-8">
-        <div className="relative h-48 rounded-t-lg bg-gradient-to-r from-ajira-primary to-ajira-accent">
-          <div className="absolute -bottom-16 left-8">
+      <div className="bg-white rounded-lg shadow-lg mb-8 w-full">
+        <div className="relative h-48 rounded-t-lg bg-gradient-to-r from-ajira-primary to-ajira-accent w-full">
+          <div className="absolute -bottom-16 left-4 sm:left-8">
             <div className="relative">
+              {!formData.photoURL && (
+                <div className="absolute -top-2 -right-2 bg-red-500 text-white text-xs px-2 py-1 rounded-full">
+                  Required
+                </div>
+              )}
               <img
                 src={formData.photoURL || '/images/default-avatar.png'}
                 alt={formData.displayName}
-                className="w-32 h-32 rounded-full border-4 border-white object-cover"
+                className={`w-24 sm:w-32 h-24 sm:h-32 rounded-full border-4 object-cover ${
+                  formData.photoURL ? 'border-white' : 'border-red-300 border-dashed'
+                }`}
               />
               <label
                 htmlFor="profile-image"
-                className="absolute bottom-0 right-0 bg-white rounded-full p-2 shadow-lg cursor-pointer hover:bg-gray-50"
+                className={`absolute bottom-0 right-0 rounded-full p-2 shadow-lg cursor-pointer ${
+                  formData.photoURL ? 'bg-white hover:bg-gray-50' : 'bg-red-500 hover:bg-red-600 text-white'
+                }`}
               >
-                <Camera className="w-5 h-5 text-gray-600" />
+                <Camera className={`w-5 h-5 ${formData.photoURL ? 'text-gray-600' : 'text-white'}`} />
                 <input
                   type="file"
                   id="profile-image"
@@ -292,12 +422,11 @@ const ProfilePage = () => {
               </label>
             </div>
           </div>
-          
           {/* Profile Completion Badge */}
           <div className="absolute top-4 right-4">
             <div className="bg-white rounded-full p-4 shadow-lg">
-              <div className="relative w-16 h-16">
-                <svg className="w-16 h-16 transform -rotate-90" viewBox="0 0 36 36">
+              <div className="relative w-12 h-12 sm:w-16 sm:h-16">
+                <svg className="w-12 h-12 sm:w-16 sm:h-16 transform -rotate-90" viewBox="0 0 36 36">
                   <path
                     d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                     fill="none"
@@ -313,50 +442,61 @@ const ProfilePage = () => {
                   />
                 </svg>
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-sm font-bold text-gray-700">{profileCompletion}%</span>
+                  <span className="text-xs sm:text-sm font-bold text-gray-700">{profileCompletion}%</span>
                 </div>
               </div>
             </div>
           </div>
         </div>
-
-        <div className="pt-20 px-8 pb-8">
-          <div className="flex justify-between items-start mb-6">
-            <div>
-              <h1 className="text-3xl font-bold text-ajira-primary">
+        <div className="pt-20 px-2 sm:px-8 pb-8 w-full">
+          <div className="flex flex-col sm:flex-row justify-between items-start mb-6 w-full gap-4">
+            <div className="w-full">
+              <h1 className="text-2xl sm:text-3xl font-bold text-ajira-primary break-words">
                 {formData.displayName || 'Club Member'}
               </h1>
-              <p className="text-gray-600 flex items-center mt-1">
+              <p className="text-gray-600 flex items-center mt-1 break-all">
                 <Mail className="w-4 h-4 mr-2" />
                 {formData.email}
               </p>
+              {formData.phoneNumber && (
+                <p className="text-gray-600 flex items-center mt-1 break-all">
+                  <Phone className="w-4 h-4 mr-2" />
+                  {formData.phoneNumber}
+                </p>
+              )}
               {formData.location && (
-                <p className="text-gray-600 flex items-center mt-1">
+                <p className="text-gray-600 flex items-center mt-1 break-all">
                   <MapPin className="w-4 h-4 mr-2" />
                   {formData.location}
                 </p>
               )}
-              <div className="flex items-center mt-2 space-x-4">
+              <div className="flex flex-wrap items-center mt-2 gap-2">
                 {formData.course && (
-                  <span className="bg-ajira-primary/10 text-ajira-primary px-3 py-1 rounded-full text-sm">
+                  <span className="bg-ajira-primary/10 text-ajira-primary px-3 py-1 rounded-full text-xs sm:text-sm">
                     {formData.course}
                   </span>
                 )}
                 {formData.year && (
-                  <span className="bg-ajira-accent/10 text-ajira-accent px-3 py-1 rounded-full text-sm">
+                  <span className="bg-ajira-accent/10 text-ajira-accent px-3 py-1 rounded-full text-xs sm:text-sm">
                     {formData.year}
                   </span>
                 )}
                 {formData.experienceLevel && (
-                  <span className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm">
+                  <span className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-xs sm:text-sm">
                     {formData.experienceLevel}
                   </span>
                 )}
               </div>
+              {/* Basic Info Note */}
+              <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-xs sm:text-sm text-blue-800">
+                  <strong>Basic Info Complete:</strong> Your name, email, course, year, phone, skills, and experience were collected during signup. Now add: bio, location, goals, LinkedIn, and profile photo for 100%!
+                </p>
+              </div>
             </div>
             <button
               onClick={() => setIsEditing(!isEditing)}
-              className="flex items-center space-x-2 bg-ajira-accent text-white px-4 py-2 rounded-lg hover:bg-ajira-accent/90"
+              className="flex items-center space-x-2 bg-ajira-accent text-white px-4 py-2 rounded-lg hover:bg-ajira-accent/90 w-full sm:w-auto mt-4 sm:mt-0"
             >
               <Edit2 className="w-5 h-5" />
               <span>{isEditing ? 'Cancel' : 'Edit Profile'}</span>
@@ -369,11 +509,11 @@ const ProfilePage = () => {
               <div className="flex items-start">
                 <AlertCircle className="w-5 h-5 text-yellow-600 mr-3 mt-0.5" />
                 <div>
-                  <h3 className="text-sm font-medium text-yellow-800">
-                    Complete your profile to unlock all features
+                  <h3 className="text-xs sm:text-sm font-medium text-yellow-800">
+                    5 required fields to complete!
                   </h3>
-                  <p className="text-sm text-yellow-700 mt-1">
-                    Your profile is {profileCompletion}% complete. Add missing information to get better visibility and opportunities.
+                  <p className="text-xs sm:text-sm text-yellow-700 mt-1">
+                    Your profile is {profileCompletion}% complete. Required: bio, location, goals, valid LinkedIn URL, and profile photo.
                   </p>
                 </div>
               </div>
@@ -381,41 +521,41 @@ const ProfilePage = () => {
           )}
 
           {/* Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
-            <div className="text-center p-4 bg-gray-50 rounded-lg">
-              <div className="text-2xl font-bold text-ajira-primary">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 mb-8 w-full">
+            <div className="text-center p-2 sm:p-4 bg-gray-50 rounded-lg">
+              <div className="text-lg sm:text-2xl font-bold text-ajira-primary">
                 {formData.completedProjects}
               </div>
-              <p className="text-sm text-gray-600">Projects Completed</p>
+              <p className="text-xs sm:text-sm text-gray-600">Projects Completed</p>
             </div>
-            <div className="text-center p-4 bg-gray-50 rounded-lg">
-              <div className="text-2xl font-bold text-ajira-primary">
+            <div className="text-center p-2 sm:p-4 bg-gray-50 rounded-lg">
+              <div className="text-lg sm:text-2xl font-bold text-ajira-primary">
                 {formData.skills.length}
               </div>
-              <p className="text-sm text-gray-600">Skills Listed</p>
+              <p className="text-xs sm:text-sm text-gray-600">Skills Listed</p>
             </div>
-            <div className="text-center p-4 bg-gray-50 rounded-lg">
-              <div className="text-2xl font-bold text-ajira-primary">
+            <div className="text-center p-2 sm:p-4 bg-gray-50 rounded-lg">
+              <div className="text-lg sm:text-2xl font-bold text-ajira-primary">
                 {formData.achievements.length}
               </div>
-              <p className="text-sm text-gray-600">Achievements</p>
+              <p className="text-xs sm:text-sm text-gray-600">Achievements</p>
             </div>
-            <div className="text-center p-4 bg-gray-50 rounded-lg">
-              <div className="text-2xl font-bold text-ajira-primary">
+            <div className="text-center p-2 sm:p-4 bg-gray-50 rounded-lg">
+              <div className="text-lg sm:text-2xl font-bold text-ajira-primary">
                 {Math.floor((new Date().getTime() - new Date(formData.joinedDate).getTime()) / (1000 * 60 * 60 * 24))}
               </div>
-              <p className="text-sm text-gray-600">Days Active</p>
+              <p className="text-xs sm:text-sm text-gray-600">Days Active</p>
             </div>
           </div>
 
           {/* Tabs */}
-          <div className="border-b border-gray-200 mb-6">
-            <nav className="-mb-px flex space-x-8">
+          <div className="border-b border-gray-200 mb-6 overflow-x-auto">
+            <nav className="-mb-px flex space-x-4 sm:space-x-8 w-full">
               {['overview', 'skills', 'goals', 'platforms', 'portfolio'].map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
-                  className={`py-2 px-1 border-b-2 font-medium text-sm capitalize ${
+                  className={`py-2 px-1 border-b-2 font-medium text-xs sm:text-sm capitalize whitespace-nowrap ${
                     activeTab === tab
                       ? 'border-ajira-accent text-ajira-accent'
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -436,117 +576,18 @@ const ProfilePage = () => {
               }}
               className="space-y-8"
             >
-              {/* Basic Information */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Full Name *
-                  </label>
-                  <input
-                    type="text"
-                    name="displayName"
-                    value={formData.displayName}
-                    onChange={handleChange}
-                    required
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ajira-accent/50 focus:border-transparent"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Phone Number *
-                  </label>
-                  <input
-                    type="tel"
-                    name="phoneNumber"
-                    value={formData.phoneNumber}
-                    onChange={handleChange}
-                    required
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ajira-accent/50 focus:border-transparent"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Location *
-                  </label>
-                  <input
-                    type="text"
-                    name="location"
-                    value={formData.location}
-                    onChange={handleChange}
-                    required
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ajira-accent/50 focus:border-transparent"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Course *
-                  </label>
-                  <select
-                    name="course"
-                    value={formData.course}
-                    onChange={handleChange}
-                    required
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ajira-accent/50 focus:border-transparent"
-                  >
-                    <option value="">Select your course</option>
-                    <option value="Computer Science">Computer Science</option>
-                    <option value="Building Tech">Building Tech</option>
-                    <option value="Hospitality">Hospitality</option>
-                    <option value="Human Resource">Human Resource</option>
-                    <option value="Civil Engineering">Civil Engineering</option>
-                    <option value="Business Management">Business Management</option>
-                    <option value="IT">IT</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Year/Level *
-                  </label>
-                  <select
-                    name="year"
-                    value={formData.year}
-                    onChange={handleChange}
-                    required
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ajira-accent/50 focus:border-transparent"
-                  >
-                    <option value="">Select your year</option>
-                    <option value="1st Year">1st Year</option>
-                    <option value="2nd Year">2nd Year</option>
-                    <option value="3rd Year">3rd Year</option>
-                    <option value="4th Year">4th Year</option>
-                    <option value="Graduate">Graduate</option>
-                    <option value="Alumni">Alumni</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Experience Level *
-                  </label>
-                  <select
-                    name="experienceLevel"
-                    value={formData.experienceLevel}
-                    onChange={handleChange}
-                    required
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ajira-accent/50 focus:border-transparent"
-                  >
-                    <option value="">Select experience level</option>
-                    <option value="Beginner">Beginner</option>
-                    <option value="Intermediate">Intermediate</option>
-                    <option value="Advanced">Advanced</option>
-                    <option value="Expert">Expert</option>
-                  </select>
-                </div>
+              {/* Simple Profile Completion */}
+              <div className="mb-6">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">Complete Your Profile</h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  Just 4 simple fields to complete your profile and unlock all features!
+                </p>
               </div>
-
+              
               {/* Bio */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Bio *
+                  Tell us about yourself *
                 </label>
                 <textarea
                   name="bio"
@@ -554,108 +595,65 @@ const ProfilePage = () => {
                   onChange={handleChange}
                   rows={4}
                   required
-                  placeholder="Tell us about yourself, your interests in digital work, and what you hope to achieve..."
+                  placeholder="Briefly describe yourself, your interests, and what you hope to achieve..."
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ajira-accent/50 focus:border-transparent"
                 />
               </div>
 
-              {/* Skills */}
+              {/* Location */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Digital Skills *
+                  Where are you located? *
                 </label>
                 <input
                   type="text"
-                  value={formData.skills.join(', ')}
-                  onChange={(e) => handleArrayChange(e.target.value, 'skills')}
-                  placeholder="e.g., Web Development, Graphic Design, Digital Marketing"
+                  name="location"
+                  value={formData.location}
+                  onChange={handleChange}
+                  required
+                  placeholder="e.g., Nairobi, Kenya"
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ajira-accent/50 focus:border-transparent"
                 />
-                <p className="text-sm text-gray-500 mt-1">Separate skills with commas</p>
               </div>
 
-            
-
-              {/* Goals and Learning */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Ajira Goals *
-                  </label>
-                  <textarea
-                    name="ajiraGoals"
-                    value={formData.ajiraGoals}
-                    onChange={handleChange}
-                    rows={3}
-                    required
-                    placeholder="What do you want to achieve through Ajira Digital?"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ajira-accent/50 focus:border-transparent"
-                  />
-                </div>
-
-              
-              </div>
-
-              {/* Professional Links */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    LinkedIn Profile
-                  </label>
-                  <input
-                    type="url"
-                    name="linkedinProfile"
-                    value={formData.linkedinProfile}
-                    onChange={handleChange}
-                    placeholder="https://linkedin.com/in/yourprofile"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ajira-accent/50 focus:border-transparent"
-                  />
-                </div>
-
-              </div>
-
-              {/* Preferences */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="flex items-center space-x-3">
-                  <input
-                    type="checkbox"
-                    name="mentorshipInterest"
-                    checked={formData.mentorshipInterest}
-                    onChange={handleChange}
-                    className="w-5 h-5 text-ajira-accent"
-                  />
-                  <label className="text-sm font-medium text-gray-700">
-                    Interested in mentoring other members
-                  </label>
-                </div>
-
-                <div className="flex items-center space-x-3">
-                  <input
-                    type="checkbox"
-                    name="availableForFreelance"
-                    checked={formData.availableForFreelance}
-                    onChange={handleChange}
-                    className="w-5 h-5 text-ajira-accent"
-                  />
-                  <label className="text-sm font-medium text-gray-700">
-                    Available for freelance projects
-                  </label>
-                </div>
-              </div>
-
-              {/* Achievements */}
+              {/* Goals */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Achievements & Certifications
+                  What are your digital goals? *
                 </label>
-                <input
-                  type="text"
-                  value={formData.achievements.join(', ')}
-                  onChange={(e) => handleArrayChange(e.target.value, 'achievements')}
-                  placeholder="e.g., Google Digital Marketing Certificate, Completed React Course"
+                <textarea
+                  name="ajiraGoals"
+                  value={formData.ajiraGoals}
+                  onChange={handleChange}
+                  rows={3}
+                  required
+                  placeholder="What do you want to achieve? (e.g., Learn new skills, find freelance work, start a business)"
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ajira-accent/50 focus:border-transparent"
                 />
-                <p className="text-sm text-gray-500 mt-1">Separate achievements with commas</p>
+              </div>
+
+              {/* LinkedIn (Optional) */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  LinkedIn Profile *
+                </label>
+                <input
+                  type="url"
+                  name="linkedinProfile"
+                  value={formData.linkedinProfile}
+                  onChange={handleChange}
+                  required
+                  placeholder="https://linkedin.com/in/yourname"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ajira-accent/50 focus:border-transparent"
+                />
+                <p className="text-sm text-gray-500 mt-1">
+                  Must be a valid LinkedIn profile URL (e.g., https://linkedin.com/in/yourname)
+                </p>
+                {formData.linkedinProfile && !validateLinkedInURL(formData.linkedinProfile) && (
+                  <p className="text-sm text-red-600 mt-1">
+                    Please enter a valid LinkedIn URL
+                  </p>
+                )}
               </div>
 
               {/* Save Button */}
@@ -699,6 +697,56 @@ const ProfilePage = () => {
                     <p className="text-gray-600 leading-relaxed">
                       {formData.bio || 'No bio provided yet. Click "Edit Profile" to add your story!'}
                     </p>
+                  </div>
+
+                  {/* Ajira Goals */}
+                  <div>
+                    <h4 className="font-semibold text-gray-700 mb-3 flex items-center">
+                      <Target className="w-5 h-5 mr-2" />
+                      Digital Goals
+                    </h4>
+                    <p className="text-gray-600 leading-relaxed">
+                      {formData.ajiraGoals || 'No goals specified yet. Click "Edit Profile" to add your goals!'}
+                    </p>
+                  </div>
+
+                  {/* LinkedIn Profile */}
+                  {formData.linkedinProfile && (
+                    <div>
+                      <h4 className="font-semibold text-gray-700 mb-3 flex items-center">
+                        <Globe className="w-5 h-5 mr-2" />
+                        Professional Links
+                      </h4>
+                      <div className="space-y-2">
+                        <a 
+                          href={formData.linkedinProfile} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center text-ajira-primary hover:text-ajira-accent"
+                        >
+                          <Globe className="w-4 h-4 mr-2" />
+                          LinkedIn Profile
+                        </a>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Skills from Signup */}
+                  <div>
+                    <h4 className="font-semibold text-gray-700 mb-3 flex items-center">
+                      <Code className="w-5 h-5 mr-2" />
+                      Digital Skills
+                    </h4>
+                    <div className="flex flex-wrap gap-2">
+                      {formData.skills.length > 0 ? formData.skills.map((skill, index) => (
+                        <span key={index} className="bg-ajira-primary/10 text-ajira-primary px-3 py-1 rounded-full text-sm">
+                          {skill}
+                        </span>
+                      )) : (
+                        <span className="text-gray-500 text-sm">No skills listed</span>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-2">Skills collected during signup</p>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

@@ -48,6 +48,9 @@ const ShowcasePage = () => {
     journey: string;
     portfolioLinks: { title: string; url: string }[];
     socialLinks: { platform: string; url: string }[];
+    availability: 'available' | 'busy' | 'not_available';
+    location: string;
+    languages: string[];
   }>({
     name: '',
     avatar: '',
@@ -57,6 +60,9 @@ const ShowcasePage = () => {
     journey: '',
     portfolioLinks: [],
     socialLinks: [],
+    availability: '',
+    location: '',
+    languages: [],
   });
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -67,19 +73,106 @@ const ShowcasePage = () => {
   const [chatOpen, setChatOpen] = useState(false);
   const [chatInput, setChatInput] = useState('');
 
-  // Fetch all profiles
+  // --- All hooks must be called unconditionally ---
+  // Fetch all profiles (replace with real backend API call)
   const { data: allProfiles, isLoading, error } = useQuery(
     ['showcaseProfiles'],
     async () => {
-      // Placeholder for the removed firebase/firestore import
+      // TODO: Replace with real backend API call, e.g.:
+      // const res = await api.get('/showcase/profiles');
+      // return res.data;
+      return [];
+    },
+    { enabled: true }
+  );
+
+  // Fetch connections for current user (replace with real backend API call)
+  const { data: connections } = useQuery(
+    ['showcaseConnections', user?.uid],
+    async () => {
+      // TODO: Replace with real backend API call
       return [];
     },
     { enabled: !!user }
   );
 
-  // If loading, show loading state
+  // Create or update profile mutation (replace with real backend API call)
+  const saveProfileMutation = useMutation(
+    async (form: typeof profileForm) => {
+      let avatarUrl = form.avatar;
+      if (imageFile) {
+        setUploading(true);
+        // For now, just use a local preview; for real upload, send to backend or S3
+        avatarUrl = URL.createObjectURL(imageFile);
+        setUploading(false);
+      }
+      // Call backend API to save profile
+      const userId = user.id || user._id;
+      const res = await fetch('/showcase/profiles', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...form,
+          avatar: avatarUrl,
+          userId,
+        }),
+      });
+      if (!res.ok) throw new Error('Failed to save profile');
+      return res.json();
+    },
+    {
+      onSuccess: () => {
+        setEditMode(false);
+        setImageFile(null);
+        setImagePreview(null);
+        queryClient.invalidateQueries(['showcaseProfiles']);
+      },
+    }
+  );
+
+  // Connect mutation (replace with real backend API call)
+  const connectMutation = useMutation(
+    async (toUserId: string) => {
+      // TODO: Call backend to connect
+    },
+    {
+      onSuccess: () => queryClient.invalidateQueries(['showcaseConnections', user?.uid]),
+    }
+  );
+
+  // Messaging: fetch messages between user and chatUser (replace with real backend API call)
+  const { data: chatMessages, refetch: refetchMessages } = useQuery(
+    ['showcaseMessages', user?.uid, chatUser?.userId],
+    async () => {
+      if (!user || !chatUser) return [];
+      // TODO: Replace with real backend API call
+      return [];
+    },
+    { enabled: !!user && !!chatUser }
+  );
+
+  // Send message mutation (replace with real backend API call)
+  const sendMessageMutation = useMutation(
+    async (content: string) => {
+      if (!user || !chatUser) return;
+      // TODO: Call backend to send message
+    },
+    {
+      onSuccess: () => {
+        setChatInput('');
+        refetchMessages();
+      },
+    }
+  );
+
+  // --- End of hooks ---
+
   if (isLoading || authLoading) {
     return <LoadingState message="Loading profiles" description="Please wait while we fetch the showcase profiles" />
+  }
+
+  if (error) {
+    return <div className="text-center py-12 text-red-500">Error loading profiles.</div>;
   }
 
   // If user is not available, show demo mode
@@ -122,9 +215,9 @@ const ShowcasePage = () => {
       }
     ];
     return (
-      <div className="max-w-5xl mx-auto px-4 py-8">
+      <div className="max-w-5xl mx-auto px-2 sm:px-4 py-8 w-full overflow-x-hidden">
         <h1 className="text-3xl font-bold mb-6">Showcase Profiles (Demo)</h1>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-8 w-full">
           {demoProfiles.map(profile => (
             <div key={profile.id} className="bg-white rounded-lg shadow p-6 flex flex-col items-center">
               <img src={profile.avatar} alt={profile.name} className="w-24 h-24 rounded-full mb-4" />
@@ -154,77 +247,6 @@ const ShowcasePage = () => {
   const myProfile = allProfiles?.find((p) => (p as ShowcaseProfile).userId === user.uid) as ShowcaseProfile | undefined;
   // Other profiles
   const profiles = allProfiles?.filter((p) => (p as ShowcaseProfile).userId !== user.uid) as ShowcaseProfile[] | undefined;
-
-  // Fetch connections for current user
-  const { data: connections } = useQuery(
-    ['showcaseConnections', user?.uid],
-    async () => {
-      // Placeholder for the removed firebase/firestore import
-      return [];
-    },
-    { enabled: !!user }
-  );
-
-  // Create or update profile mutation
-  const saveProfileMutation = useMutation(
-    async (form: typeof profileForm) => {
-      let avatarUrl = form.avatar;
-      if (imageFile) {
-        setUploading(true);
-        // Placeholder for the removed firebase/storage import
-        avatarUrl = URL.createObjectURL(imageFile);
-        setUploading(false);
-      }
-      // Placeholder for the removed firebase/firestore import
-    },
-    {
-      onSuccess: () => {
-        setEditMode(false);
-        setImageFile(null);
-        setImagePreview(null);
-        queryClient.invalidateQueries(['showcaseProfiles']);
-      },
-    }
-  );
-
-  // Connect mutation (add notification)
-  const connectMutation = useMutation(
-    async (toUserId: string) => {
-      // Placeholder for the removed firebase/firestore import
-    },
-    {
-      onSuccess: () => queryClient.invalidateQueries(['showcaseConnections', user?.uid]),
-    }
-  );
-
-  // Messaging: fetch messages between user and chatUser
-  const { data: chatMessages, refetch: refetchMessages } = useQuery(
-    ['showcaseMessages', user?.uid, chatUser?.userId],
-    async () => {
-      if (!user || !chatUser) return [];
-      // Placeholder for the removed firebase/firestore import
-      return [];
-    },
-    { enabled: !!user && !!chatUser }
-  );
-
-  // Send message mutation (add notification)
-  const sendMessageMutation = useMutation(
-    async (content: string) => {
-      if (!user || !chatUser) return;
-      // Placeholder for the removed firebase/firestore import
-    },
-    {
-      onSuccess: () => {
-        setChatInput('');
-        refetchMessages();
-      },
-    }
-  );
-
-  if (error) {
-    return <div className="text-center py-12 text-red-500">Error loading profiles.</div>;
-  }
 
   // Helper: check if already connected
   const isConnected = (profileId: string) => {
@@ -276,246 +298,78 @@ const ShowcasePage = () => {
   // If user has no profile, show create form
   if (user && !myProfile && !editMode) {
     return (
-      <div className="max-w-2xl mx-auto py-12 px-4">
+      <div className="max-w-2xl mx-auto py-12 px-2 sm:px-4 w-full overflow-x-hidden">
         <h1 className="text-3xl font-bold text-ajira-primary mb-8 text-center">Create Your Showcase Profile</h1>
         <form
           onSubmit={e => {
             e.preventDefault();
             saveProfileMutation.mutate(profileForm);
           }}
-          className="bg-white rounded-lg shadow p-6 space-y-4"
+          className="bg-white rounded-2xl shadow-lg p-8 space-y-8"
         >
-          <div className="flex flex-col items-center mb-2">
-            <div className="relative">
-              <img
-                src={imagePreview || profileForm.avatar || user.photoURL || 'https://via.placeholder.com/80'}
-                alt="Avatar Preview"
-                className="w-20 h-20 rounded-full object-cover border mb-2"
-              />
-              <button
-                type="button"
-                className="absolute bottom-0 right-0 bg-ajira-accent text-white rounded-full p-1 text-xs"
-                onClick={() => fileInputRef.current?.click()}
-                tabIndex={-1}
-              >
-                Upload
-              </button>
-            </div>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleImageChange}
-            />
+          {/* Avatar Upload */}
+          <div className="flex flex-col items-center mb-6">
+            <label className="font-semibold mb-2">Profile Photo</label>
+            <img src={imagePreview || profileForm.avatar || user.photoURL || '/default-avatar.png'} className="w-24 h-24 rounded-full object-cover border-2 border-ajira-accent mb-2" />
+            <input type="file" className="hidden" ref={fileInputRef} onChange={handleImageChange} />
+            <button type="button" className="bg-ajira-accent text-white px-4 py-1 rounded" onClick={() => fileInputRef.current?.click()}>Upload Photo</button>
           </div>
-          <input
-            name="name"
-            value={profileForm.name}
-            onChange={handleFormChange}
-            placeholder="Your Name"
-            className="w-full border border-gray-300 rounded-lg px-4 py-2"
-            required
-          />
-          <input
-            name="avatar"
-            value={profileForm.avatar}
-            onChange={handleFormChange}
-            placeholder="Avatar URL (optional)"
-            className="w-full border border-gray-300 rounded-lg px-4 py-2"
-          />
-          <input
-            name="bio"
-            value={profileForm.bio}
-            onChange={handleFormChange}
-            placeholder="Short Bio"
-            className="w-full border border-gray-300 rounded-lg px-4 py-2"
-            required
-          />
-          <input
-            name="skills"
-            value={profileForm.skills.join(', ')}
-            onChange={(e) => handleSkillsChange(e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
-            placeholder="Skills (comma separated)"
-            className="w-full border border-gray-300 rounded-lg px-4 py-2"
-          />
-          <input
-            name="portfolioLinks"
-            value={profileForm.portfolioLinks.map(link => `${link.title} - ${link.url}`).join('\n')}
-            onChange={(e) => handlePortfolioLinksChange(e.target.value.split('\n').map(line => {
-              const [title, url] = line.split(' - ');
-              return { title: title.trim(), url: url.trim() };
-            }))}
-            placeholder="Portfolio Links (one per line, format: Title - URL)"
-            className="w-full border border-gray-300 rounded-lg px-4 py-2"
-          />
-          <input
-            name="socialLinks"
-            value={profileForm.socialLinks.map(link => `${link.platform} - ${link.url}`).join('\n')}
-            onChange={(e) => handleSocialLinksChange(e.target.value.split('\n').map(line => {
-              const [platform, url] = line.split(' - ');
-              return { platform: platform.trim(), url: url.trim() };
-            }))}
-            placeholder="Social Links (one per line, format: Platform - URL)"
-            className="w-full border border-gray-300 rounded-lg px-4 py-2"
-          />
-          <textarea
-            name="achievements"
-            value={profileForm.achievements}
-            onChange={handleFormChange}
-            placeholder="Achievements"
-            className="w-full border border-gray-300 rounded-lg px-4 py-2"
-            required
-          />
-          <textarea
-            name="journey"
-            value={profileForm.journey}
-            onChange={handleFormChange}
-            placeholder="Share your journey..."
-            className="w-full border border-gray-300 rounded-lg px-4 py-2"
-            rows={4}
-            required
-          />
-          <button
-            type="submit"
-            className="bg-ajira-accent text-white px-6 py-2 rounded hover:bg-ajira-accent/90 transition"
-            disabled={saveProfileMutation.isLoading || uploading}
-          >
-            {saveProfileMutation.isLoading || uploading ? 'Saving...' : 'Save Profile'}
-          </button>
-        </form>
-      </div>
-    );
-  }
 
-  return (
-    <div className="max-w-7xl mx-auto px-4 py-12">
-      <h1 className="text-3xl font-bold text-ajira-primary text-center mb-12">
-        Professional Showcase
-      </h1>
-
-      {/* My Profile Section */}
-      <div className="mb-12">
-        <div className="bg-white rounded-lg shadow-lg p-6">
-          <div className="flex items-start gap-6">
-            <div className="w-48 flex-shrink-0">
-              {editMode ? (
-                <div className="relative">
-                  <img
-                    src={imagePreview || myProfile?.avatar || '/default-avatar.png'}
-                    alt="Profile"
-                    className="w-48 h-48 rounded-lg object-cover"
-                  />
-                  <button
-                    onClick={() => fileInputRef.current?.click()}
-                    className="absolute bottom-2 right-2 bg-white rounded-full p-2 shadow-lg hover:bg-gray-50"
-                  >
-                    <span className="sr-only">Change photo</span>
-                    📷
-                  </button>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageChange}
-                    className="hidden"
-                  />
-                </div>
-              ) : (
-                <img
-                  src={myProfile?.avatar || '/default-avatar.png'}
-                  alt="Profile"
-                  className="w-48 h-48 rounded-lg object-cover"
-                />
-              )}
-            </div>
-
-            <div className="flex-1">
-              {editMode ? (
-                <form className="space-y-4">
+          {/* Basic Info */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Name
-                    </label>
-                    <input
-                      type="text"
-                      name="name"
-                      value={profileForm.name}
-                      onChange={handleFormChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ajira-accent/50 focus:border-transparent"
-                      required
-                    />
+            <h2 className="text-xl font-bold mb-4">Basic Info</h2>
+            <label className="block mb-1 font-medium">What’s your full name?</label>
+            <input name="name" value={profileForm.name} onChange={handleFormChange} className="w-full border border-gray-300 rounded-lg px-4 py-2" required />
+            <label className="block mt-4 mb-1 font-medium">Tell us about yourself</label>
+            <textarea name="bio" value={profileForm.bio} onChange={handleFormChange} className="w-full border border-gray-300 rounded-lg px-4 py-2" placeholder="Your background, passions, and what you love to do." required />
                   </div>
 
+          {/* Skills & Experience */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Bio
-                    </label>
-                    <textarea
-                      name="bio"
-                      value={profileForm.bio}
-                      onChange={handleFormChange}
-                      rows={3}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ajira-accent/50 focus:border-transparent"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Skills
-                    </label>
-                    <div className="flex flex-wrap gap-2">
-                      {profileForm.skills?.map((skill, index) => (
-                        <span
-                          key={index}
-                          className="bg-ajira-accent/10 text-ajira-accent px-3 py-1 rounded-full text-sm"
-                        >
+            <h2 className="text-xl font-bold mb-4">Skills & Experience</h2>
+            <label className="block mb-1 font-medium">What are your top skills?</label>
+            <div className="flex flex-wrap gap-2 mb-2">
+              {profileForm.skills.map((skill, idx) => (
+                <span key={skill} className="bg-ajira-accent/10 text-ajira-accent px-3 py-1 rounded-full text-sm">
                           {skill}
-                          <button
-                            onClick={() => {
-                              const newSkills = [...profileForm.skills];
-                              newSkills.splice(index, 1);
-                              handleSkillsChange(newSkills);
-                            }}
-                            className="ml-2 hover:text-red-500"
-                          >
-                            ×
-                          </button>
+                  <button type="button" className="ml-2 hover:text-red-500" onClick={() => handleSkillsChange(profileForm.skills.filter((_, i) => i !== idx))}>×</button>
                         </span>
                       ))}
                       <input
                         type="text"
-                        placeholder="Add skill..."
+                placeholder="Add a skill and press Enter"
                         className="px-3 py-1 border border-gray-300 rounded-full text-sm"
-                        onKeyPress={(e) => {
+                onKeyDown={e => {
                           if (e.key === 'Enter') {
                             e.preventDefault();
                             const input = e.target as HTMLInputElement;
                             const newSkill = input.value.trim();
-                            if (newSkill && !profileForm.skills?.includes(newSkill)) {
-                              handleSkillsChange([...(profileForm.skills || []), newSkill]);
+                    if (newSkill && !profileForm.skills.includes(newSkill)) {
+                      handleSkillsChange([...profileForm.skills, newSkill]);
                               input.value = '';
                             }
                           }
                         }}
                       />
                     </div>
+            <label className="block mt-4 mb-1 font-medium">Share your proudest achievements</label>
+            <textarea name="achievements" value={profileForm.achievements} onChange={handleFormChange} className="w-full border border-gray-300 rounded-lg px-4 py-2" placeholder="Awards, recognitions, or milestones." />
+            <label className="block mt-4 mb-1 font-medium">Your Journey</label>
+            <textarea name="journey" value={profileForm.journey} onChange={handleFormChange} className="w-full border border-gray-300 rounded-lg px-4 py-2" placeholder="How did you get here? What’s your story?" />
                   </div>
 
+          {/* Portfolio Links */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Portfolio Links
-                    </label>
-                    {profileForm.portfolioLinks?.map((link, index) => (
-                      <div key={index} className="flex gap-2 mb-2">
+            <h2 className="text-xl font-bold mb-4">Portfolio</h2>
+            {profileForm.portfolioLinks.map((link, idx) => (
+              <div key={idx} className="flex gap-2 mb-2">
                         <input
                           type="text"
                           value={link.title}
-                          placeholder="Title"
-                          onChange={(e) => {
+                  placeholder="Title (e.g. My Website)"
+                  onChange={e => {
                             const newLinks = [...profileForm.portfolioLinks];
-                            newLinks[index].title = e.target.value;
+                    newLinks[idx].title = e.target.value;
                             handlePortfolioLinksChange(newLinks);
                           }}
                           className="flex-1 px-3 py-1 border border-gray-300 rounded-lg text-sm"
@@ -524,300 +378,138 @@ const ShowcasePage = () => {
                           type="url"
                           value={link.url}
                           placeholder="URL"
-                          onChange={(e) => {
+                  onChange={e => {
                             const newLinks = [...profileForm.portfolioLinks];
-                            newLinks[index].url = e.target.value;
+                    newLinks[idx].url = e.target.value;
                             handlePortfolioLinksChange(newLinks);
                           }}
                           className="flex-1 px-3 py-1 border border-gray-300 rounded-lg text-sm"
                         />
-                        <button
-                          onClick={() => {
-                            const newLinks = [...profileForm.portfolioLinks];
-                            newLinks.splice(index, 1);
-                            handlePortfolioLinksChange(newLinks);
-                          }}
-                          className="text-red-500 hover:text-red-700"
-                        >
-                          ×
-                        </button>
+                <button type="button" className="text-red-500 hover:text-red-700" onClick={() => handlePortfolioLinksChange(profileForm.portfolioLinks.filter((_, i) => i !== idx))}>×</button>
                       </div>
                     ))}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        handlePortfolioLinksChange([
-                          ...(profileForm.portfolioLinks || []),
-                          { title: '', url: '' }
-                        ]);
-                      }}
-                      className="text-ajira-accent hover:text-ajira-accent/80 text-sm"
-                    >
-                      + Add Portfolio Link
-                    </button>
+            <button type="button" onClick={() => handlePortfolioLinksChange([...(profileForm.portfolioLinks || []), { title: '', url: '' }])} className="text-ajira-accent hover:text-ajira-accent/80 text-sm">+ Add Portfolio Link</button>
                   </div>
 
+          {/* Social Links */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Achievements
-                    </label>
-                    <textarea
-                      name="achievements"
-                      value={profileForm.achievements}
-                      onChange={handleFormChange}
-                      rows={3}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ajira-accent/50 focus:border-transparent"
-                    />
+            <h2 className="text-xl font-bold mb-4">Social Links</h2>
+            {profileForm.socialLinks.map((link, idx) => (
+              <div key={idx} className="flex gap-2 mb-2">
+                <input
+                  type="text"
+                  value={link.platform}
+                  placeholder="Platform (e.g. LinkedIn)"
+                  onChange={e => {
+                    const newLinks = [...profileForm.socialLinks];
+                    newLinks[idx].platform = e.target.value;
+                    handleSocialLinksChange(newLinks);
+                  }}
+                  className="flex-1 px-3 py-1 border border-gray-300 rounded-lg text-sm"
+                />
+                <input
+                  type="url"
+                  value={link.url}
+                  placeholder="URL"
+                  onChange={e => {
+                    const newLinks = [...profileForm.socialLinks];
+                    newLinks[idx].url = e.target.value;
+                    handleSocialLinksChange(newLinks);
+                  }}
+                  className="flex-1 px-3 py-1 border border-gray-300 rounded-lg text-sm"
+                />
+                <button type="button" className="text-red-500 hover:text-red-700" onClick={() => handleSocialLinksChange(profileForm.socialLinks.filter((_, i) => i !== idx))}>×</button>
+              </div>
+            ))}
+            <button type="button" onClick={() => handleSocialLinksChange([...(profileForm.socialLinks || []), { platform: '', url: '' }])} className="text-ajira-accent hover:text-ajira-accent/80 text-sm">+ Add Social Link</button>
                   </div>
 
+          {/* Work Preferences */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Journey
-                    </label>
-                    <textarea
-                      name="journey"
-                      value={profileForm.journey}
-                      onChange={handleFormChange}
-                      rows={3}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ajira-accent/50 focus:border-transparent"
-                    />
+            <h2 className="text-xl font-bold mb-4">Work Preferences</h2>
+            <label className="block mb-1 font-medium">Availability</label>
+            <select name="availability" value={profileForm.availability || ''} onChange={e => setProfileForm(prev => ({ ...prev, availability: e.target.value }))} className="w-full border border-gray-300 rounded-lg px-4 py-2">
+              <option value="">Select availability</option>
+              <option value="available">Available for work</option>
+              <option value="busy">Busy</option>
+              <option value="not_available">Not available</option>
+            </select>
+            <label className="block mt-4 mb-1 font-medium">Location</label>
+            <input name="location" value={profileForm.location || ''} onChange={handleFormChange} className="w-full border border-gray-300 rounded-lg px-4 py-2" placeholder="Where are you based?" />
+            <label className="block mt-4 mb-1 font-medium">Languages</label>
+            <input name="languages" value={profileForm.languages?.join(', ') || ''} onChange={e => setProfileForm(prev => ({ ...prev, languages: e.target.value.split(',').map(l => l.trim()).filter(Boolean) }))} className="w-full border border-gray-300 rounded-lg px-4 py-2" placeholder="Languages you speak (comma separated)" />
                   </div>
 
-                  <div className="flex justify-end gap-4">
-                    <button
-                      type="button"
-                      onClick={() => setEditMode(false)}
-                      className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      className="px-6 py-2 bg-ajira-accent text-white rounded-lg hover:bg-ajira-accent/90"
-                    >
-                      Save Profile
-                    </button>
-                  </div>
+          <button type="submit" className="w-full bg-ajira-accent text-white py-3 rounded-lg font-bold text-lg mt-8 hover:bg-ajira-accent/90 transition">Save Profile</button>
                 </form>
-              ) : (
-                <div>
-                  <div className="flex justify-between items-start mb-4">
-                    <div>
-                      <h2 className="text-2xl font-bold text-ajira-primary">
-                        {myProfile?.name || user.displayName || 'Your Name'}
-                      </h2>
-                      <p className="text-gray-600">{myProfile?.bio || 'Add a bio to tell your story'}</p>
                     </div>
-                    <button
-                      onClick={() => {
-                        setProfileForm({
-                          name: myProfile?.name || '',
-                          avatar: myProfile?.avatar || '',
-                          bio: myProfile?.bio || '',
-                          skills: myProfile?.skills || [],
-                          achievements: myProfile?.achievements || '',
-                          journey: myProfile?.journey || '',
-                          portfolioLinks: myProfile?.portfolioLinks || [],
-                          socialLinks: myProfile?.socialLinks || [],
-                        });
-                        setEditMode(true);
-                      }}
-                      className="px-4 py-2 text-ajira-accent hover:bg-ajira-accent/10 rounded-lg"
-                    >
-                      Edit Profile
-                    </button>
-                  </div>
+    );
+  }
 
-                  {myProfile && myProfile.skills && myProfile.skills.length > 0 && (
-                    <div className="mb-6">
-                      <h3 className="text-lg font-semibold mb-2">Skills</h3>
-                      <div className="flex flex-wrap gap-2">
-                        {myProfile.skills.map((skill, index) => (
-                          <span
-                            key={index}
-                            className="bg-ajira-accent/10 text-ajira-accent px-3 py-1 rounded-full text-sm"
-                          >
-                            {skill}
-                          </span>
+  return (
+    <div className="max-w-7xl mx-auto px-2 sm:px-4 py-8 sm:py-12 w-full overflow-x-hidden">
+      <h1 className="text-3xl sm:text-4xl font-extrabold text-ajira-primary text-center mb-12 tracking-tight">
+        🚀 Project Showcase
+      </h1>
+
+      {/* My Profile Section */}
+      {myProfile && (
+        <section className="mb-16">
+          <div className="bg-white rounded-2xl shadow-lg p-4 sm:p-8 flex flex-col md:flex-row items-center gap-6 sm:gap-8 w-full">
+            <img src={myProfile.avatar || '/default-avatar.png'} className="w-32 sm:w-40 h-32 sm:h-40 rounded-full object-cover border-4 border-ajira-primary shadow" />
+            <div className="flex-1">
+              <h2 className="text-xl sm:text-2xl font-bold text-ajira-primary mb-2">{myProfile.name}</h2>
+              <p className="text-gray-600 mb-4">{myProfile.bio}</p>
+              <div className="flex flex-wrap gap-2 mb-4">
+                {myProfile.skills?.map(skill => (
+                  <span key={skill} className="bg-ajira-accent/10 text-ajira-accent px-3 py-1 rounded-full text-sm font-medium">{skill}</span>
                         ))}
                       </div>
-                    </div>
-                  )}
-
-                  {myProfile && myProfile.portfolioLinks && myProfile.portfolioLinks.length > 0 && (
-                    <div className="mb-6">
-                      <h3 className="text-lg font-semibold mb-2">Portfolio</h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {myProfile.portfolioLinks.map((link, index) => (
-                          <a
-                            key={index}
-                            href={link.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-2 text-ajira-accent hover:underline"
-                          >
-                            🔗 {link.title}
-                          </a>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {myProfile?.achievements && (
-                    <div className="mb-6">
-                      <h3 className="text-lg font-semibold mb-2">Achievements</h3>
-                      <p className="text-gray-600">{myProfile.achievements}</p>
-                    </div>
-                  )}
-
-                  {myProfile?.journey && (
-                    <div>
-                      <h3 className="text-lg font-semibold mb-2">My Journey</h3>
-                      <p className="text-gray-600">{myProfile.journey}</p>
-                    </div>
-                  )}
+              <div className="flex gap-4">
+                <button className="bg-ajira-accent text-white px-6 py-2 rounded-lg font-semibold shadow hover:bg-ajira-accent/90 transition">Edit Profile</button>
                 </div>
-              )}
             </div>
           </div>
-        </div>
-      </div>
+        </section>
+      )}
 
       {/* Other Profiles Section */}
-      <h2 className="text-2xl font-bold text-ajira-primary mb-6">Connect with Professionals</h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {profiles?.map((profile) => (
-          <div key={profile.id} className="bg-white rounded-lg shadow-lg p-6">
-            <div className="flex items-start gap-4">
-              <img
-                src={profile.avatar || '/default-avatar.png'}
-                alt={profile.name}
-                className="w-20 h-20 rounded-lg object-cover"
-              />
-              <div>
-                <h3 className="font-semibold text-lg">{profile.name}</h3>
-                <p className="text-gray-600 text-sm mb-2">{profile.bio}</p>
-                {profile.skills?.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mb-4">
-                    {profile.skills.slice(0, 3).map((skill, index) => (
-                      <span
-                        key={index}
-                        className="bg-ajira-accent/10 text-ajira-accent px-2 py-0.5 rounded-full text-xs"
-                      >
-                        {skill}
-                      </span>
+      <section>
+        <h2 className="text-2xl font-bold text-ajira-primary mb-8">Connect with Professionals</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-8 w-full">
+          {profiles?.map(profile => (
+            <div key={profile.id} className="bg-white rounded-2xl shadow-lg p-6 flex flex-col items-center hover:shadow-xl transition">
+              <img src={profile.avatar || '/default-avatar.png'} className="w-20 sm:w-24 h-20 sm:h-24 rounded-full object-cover border-2 border-ajira-accent mb-4" />
+              <h3 className="text-base sm:text-lg font-bold text-ajira-primary mb-1">{profile.name}</h3>
+              <p className="text-gray-600 text-center mb-2 text-sm sm:text-base">{profile.bio}</p>
+              <div className="flex flex-wrap gap-1 mb-3">
+                {profile.skills.slice(0, 3).map(skill => (
+                  <span key={skill} className="bg-ajira-accent/10 text-ajira-accent px-2 py-0.5 rounded-full text-xs">{skill}</span>
                     ))}
                     {profile.skills.length > 3 && (
-                      <span className="text-gray-500 text-xs">+{profile.skills.length - 3} more</span>
-                    )}
-                  </div>
-                )}
-                {user && (
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => connectMutation.mutate(profile.userId)}
-                      disabled={isConnected(profile.userId) || connectMutation.isLoading}
-                      className={`px-4 py-1.5 rounded font-medium text-sm transition ${
-                        isConnected(profile.userId)
-                          ? 'bg-gray-100 text-gray-500'
-                          : 'bg-ajira-accent text-white hover:bg-ajira-accent/90'
-                      } disabled:opacity-50`}
-                    >
-                      {isConnected(profile.userId)
-                        ? 'Connected'
-                        : connectMutation.isLoading
-                        ? 'Connecting...'
-                        : 'Connect'}
-                    </button>
-                    {isConnected(profile.userId) && (
-                      <button
-                        onClick={() => {
-                          setChatUser(profile);
-                          setChatOpen(true);
-                        }}
-                        className="px-4 py-1.5 rounded font-medium text-sm bg-ajira-primary text-white hover:bg-ajira-primary/90 transition"
-                      >
-                        Message
-                      </button>
-                    )}
-                  </div>
+                  <span className="text-gray-400 text-xs">+{profile.skills.length - 3} more</span>
                 )}
               </div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Chat Modal */}
-      {chatOpen && chatUser && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-4 relative">
-            <button
-              className="absolute top-2 right-2 text-gray-500 hover:text-ajira-accent"
-              onClick={() => setChatOpen(false)}
-            >
-              ×
-            </button>
-            <div className="flex items-center mb-4">
-              <img
-                src={chatUser.avatar || '/default-avatar.png'}
-                alt={chatUser.name}
-                className="w-10 h-10 rounded-full mr-2"
-              />
-              <span className="font-semibold">{chatUser.name}</span>
-            </div>
-            <div className="h-64 overflow-y-auto bg-gray-50 rounded p-2 mb-2">
-              <div className="flex flex-col-reverse">
-                {chatMessages && chatMessages.length > 0 ? (
-                  chatMessages.map((msg: any, i: number) => (
-                    <div
-                      key={i}
-                      className={`mb-2 flex ${msg.fromUserId === user.uid ? 'justify-end' : 'justify-start'}`}
-                    >
-                      <div
-                        className={`px-3 py-2 rounded-lg max-w-xs ${
-                          msg.fromUserId === user.uid
-                            ? 'bg-ajira-accent text-white'
-                            : 'bg-gray-200 text-gray-900'
-                        }`}
-                      >
-                        {msg.content}
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-center text-gray-400">No messages yet.</div>
+              <div className="flex gap-2 mt-2">
+                {profile.portfolioLinks && profile.portfolioLinks[0]?.url && (
+                  <a href={profile.portfolioLinks[0].url} target="_blank" rel="noopener noreferrer" className="text-ajira-accent underline text-xs flex items-center gap-1">
+                    <span>🔗</span>Portfolio
+                  </a>
                 )}
+                {profile.socialLinks?.map(link => (
+                  <a key={link.platform} href={link.url} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-ajira-accent text-xl">
+                    <i className={`fab fa-${link.platform.toLowerCase()}`}></i>
+                  </a>
+                ))}
+              </div>
+              <div className="flex gap-2 mt-4">
+                <button className="bg-ajira-accent text-white px-4 py-1.5 rounded font-medium text-sm shadow hover:bg-ajira-accent/90 transition">Connect</button>
+                <button className="bg-ajira-primary text-white px-4 py-1.5 rounded font-medium text-sm shadow hover:bg-ajira-primary/90 transition">Message</button>
               </div>
             </div>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={chatInput}
-                onChange={(e) => setChatInput(e.target.value)}
-                placeholder="Type a message..."
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ajira-accent/50 focus:border-transparent"
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter' && chatInput.trim()) {
-                    sendMessageMutation.mutate(chatInput.trim());
-                  }
-                }}
-              />
-              <button
-                onClick={() => {
-                  if (chatInput.trim()) {
-                    sendMessageMutation.mutate(chatInput.trim());
-                  }
-                }}
-                disabled={!chatInput.trim() || sendMessageMutation.isLoading}
-                className="px-4 py-2 bg-ajira-accent text-white rounded-lg hover:bg-ajira-accent/90 disabled:opacity-50"
-              >
-                Send
-              </button>
-            </div>
-          </div>
+          ))}
         </div>
-      )}
+      </section>
     </div>
   );
 };

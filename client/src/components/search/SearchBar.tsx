@@ -4,7 +4,7 @@ import { Search, X } from 'lucide-react';
 import { useQuery } from 'react-query';
 import { collection, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
 import { db, COLLECTIONS } from '../../config/firebase';
-import type { Gig } from '../../types/marketplace';
+import type { Gig } from '../../api/marketplace';
 
 interface SearchBarProps {
   initialQuery?: string;

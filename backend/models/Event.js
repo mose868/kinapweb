@@ -357,8 +357,6 @@ eventSchema.index({ 'schedule.startDate': 1, status: 1, isPublished: 1 });
 eventSchema.index({ category: 1, eventType: 1, status: 1 });
 eventSchema.index({ 'location.city': 1, 'schedule.startDate': 1 });
 eventSchema.index({ 'pricing.isFree': 1, status: 1 });
-eventSchema.index({ slug: 1 });
-eventSchema.index({ tags: 1 });
 eventSchema.index({ 'organizer.email': 1 });
 eventSchema.index({ 'schedule.startDate': 1, 'schedule.endDate': 1 });
 eventSchema.index({ isFeatured: 1, status: 1, 'schedule.startDate': 1 });

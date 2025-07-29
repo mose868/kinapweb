@@ -1,20 +1,24 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { api, endpoints } from '../config/api';
+import { 
+  loginUser, 
+  registerUser, 
+  getCurrentUser, 
+  updateUserProfile, 
+  logoutUser, 
+  verifyToken,
+  type User,
+  type LoginCredentials,
+  type RegisterData
+} from '../api/auth';
 
-interface User {
-  id: string;
-  email: string;
-  name: string;
-  role: string;
-  avatar?: string;
-}
+// Remove duplicate interface since we're importing it from auth.ts
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
   error: string | null;
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, name: string) => Promise<void>;
+  register: (userData: RegisterData) => Promise<void>;
   logout: () => Promise<void>;
   updateProfile: (data: Partial<User>) => Promise<void>;
 }
@@ -39,93 +43,48 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const token = localStorage.getItem('token');
       if (!token) {
         setUser(null);
+        setLoading(false);
         return;
       }
 
       try {
-        const userData = localStorage.getItem('userData');
-        if (userData) {
-          setUser(JSON.parse(userData));
-          return;
-        }
-
-        // Fallback to API call
-        const response = await api.get(endpoints.auth.profile);
-        setUser(response.data);
-      } catch (error) {
-        try {
-          const decoded = JSON.parse(atob(token));
-          const registeredUsers = JSON.parse(localStorage.getItem('registeredUsers') || '[]');
-          const foundUser = registeredUsers.find((u: any) => u.id === decoded.userId);
-          if (foundUser) {
-            setUser(foundUser);
-          } else {
-            localStorage.removeItem('token');
-            localStorage.removeItem('userData');
-            setUser(null);
-          }
-        } catch {
+        // Verify token with backend
+        const isValid = await verifyToken(token);
+        if (!isValid) {
           localStorage.removeItem('token');
           localStorage.removeItem('userData');
           setUser(null);
+          setLoading(false);
+          return;
         }
+
+        // Get user data from backend
+        const userData = await getCurrentUser(token);
+        setUser(userData);
+        localStorage.setItem('userData', JSON.stringify(userData));
+      } catch (error) {
+        console.error('Error loading user:', error);
+        localStorage.removeItem('token');
+        localStorage.removeItem('userData');
+        setUser(null);
+      } finally {
+        setLoading(false);
       }
     };
 
-    // Initial load
-    loadUserFromStorage().finally(() => setLoading(false));
-
-    // Listen for storage changes to update user state when login/logout happens
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'userData' || e.key === 'token') {
-        if (e.newValue === null) {
-          // User was logged out
-          setUser(null);
-        } else if (e.key === 'userData' && e.newValue) {
-          // User data was updated
-          try {
-            setUser(JSON.parse(e.newValue));
-          } catch (error) {
-            console.error('Error parsing user data:', error);
-          }
-        }
-      }
-    };
-
-    // Custom event fired manually after auth changes within the same tab
-    const handleAuthUpdated = () => {
-      loadUserFromStorage();
-    };
-
-    window.addEventListener('storage', handleStorageChange);
-    window.addEventListener('authUpdated', handleAuthUpdated as EventListener);
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('authUpdated', handleAuthUpdated as EventListener);
-    };
+    loadUserFromStorage();
   }, []);
 
   const login = async (email: string, password: string) => {
     try {
       setError(null);
       
-      // Mock authentication - check registered users
-      const registeredUsers = JSON.parse(localStorage.getItem('registeredUsers') || '[]');
-      const user = registeredUsers.find((u: any) => u.email === email);
+      const credentials: LoginCredentials = { email, password };
+      const response = await loginUser(credentials);
       
-      if (!user) {
-        throw new Error('User not found. Please check your email or sign up.');
-      }
-      
-      if (user.password !== password) {
-        throw new Error('Invalid password. Please try again.');
-      }
-
-      // Create session
-      const token = btoa(JSON.stringify({ userId: user.id, email: user.email }));
-      localStorage.setItem('token', token);
-      localStorage.setItem('userData', JSON.stringify(user));
-      setUser(user);
+      localStorage.setItem('token', response.token);
+      localStorage.setItem('userData', JSON.stringify(response.user));
+      setUser(response.user);
       
     } catch (error: any) {
       setError(error.message || 'Failed to login');
@@ -133,37 +92,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const register = async (email: string, password: string, name: string) => {
+  const register = async (userData: RegisterData) => {
     try {
       setError(null);
       
-      // Mock authentication - check if user exists
-      const registeredUsers = JSON.parse(localStorage.getItem('registeredUsers') || '[]');
-      const existingUser = registeredUsers.find((user: any) => user.email === email);
+      const response = await registerUser(userData);
       
-      if (existingUser) {
-        throw new Error('User with this email already exists');
-      }
-
-      // Create new user
-      const newUser = {
-        id: Date.now().toString(),
-        email: email,
-        name: name,
-        role: 'student',
-        password: password, // In real app, this would be hashed
-        avatar: null
-      };
-
-      // Save to registered users
-      registeredUsers.push(newUser);
-      localStorage.setItem('registeredUsers', JSON.stringify(registeredUsers));
-
-      // Create session
-      const token = btoa(JSON.stringify({ userId: newUser.id, email: newUser.email }));
-      localStorage.setItem('token', token);
-      localStorage.setItem('userData', JSON.stringify(newUser));
-      setUser(newUser);
+      localStorage.setItem('token', response.token);
+      localStorage.setItem('userData', JSON.stringify(response.user));
+      setUser(response.user);
       
     } catch (error: any) {
       setError(error.message || 'Failed to register');
@@ -173,7 +110,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = async () => {
     try {
-      await api.post(endpoints.auth.logout);
+      const token = localStorage.getItem('token');
+      if (token) {
+        await logoutUser(token);
+      }
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
@@ -187,10 +127,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const updateProfile = async (data: Partial<User>) => {
     try {
       setError(null);
-      const response = await api.put(endpoints.users.update(user?.id || ''), data);
-      setUser(response.data);
+      const token = localStorage.getItem('token');
+      if (!token || !user) {
+        throw new Error('Not authenticated');
+      }
+      
+      const updatedUser = await updateUserProfile(user._id, data, token);
+      setUser(updatedUser);
+      localStorage.setItem('userData', JSON.stringify(updatedUser));
     } catch (error: any) {
-      setError(error.response?.data?.message || 'Failed to update profile');
+      setError(error.message || 'Failed to update profile');
       throw error;
     }
   };

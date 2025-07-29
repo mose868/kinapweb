@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { Search, Filter, Star, Heart, Share2, ChevronDown, Grid, List, SlidersHorizontal } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import sampleGigs from '../data/sampleGigs';
+import { fetchGigs, type Gig } from '../api/marketplace';
 
 const Marketplace = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -13,7 +13,43 @@ const Marketplace = () => {
   const [deliveryTime, setDeliveryTime] = useState('all');
   const [viewMode, setViewMode] = useState('grid');
   const [showFilters, setShowFilters] = useState(false);
+  const [gigs, setGigs] = useState<Gig[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
+
+  // Fetch gigs from API
+  React.useEffect(() => {
+    const loadGigs = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        
+        const filters = {
+          category: selectedCategory !== 'All' ? selectedCategory : undefined,
+          minPrice: priceRange[0],
+          maxPrice: priceRange[1],
+          search: searchQuery || undefined,
+          sort: sortBy === 'newest' ? 'newest' : 
+                sortBy === 'price_low' ? 'price-low' : 
+                sortBy === 'price_high' ? 'price-high' : 
+                sortBy === 'rating' ? 'rating' : 
+                sortBy === 'best_selling' ? 'orders' : 'newest'
+        };
+
+        const response = await fetchGigs(filters);
+        setGigs(response.gigs);
+      } catch (err) {
+        console.error('Error loading gigs:', err);
+        setError('Failed to load gigs. Please try again.');
+        setGigs([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadGigs();
+  }, [searchQuery, selectedCategory, sortBy, priceRange, deliveryTime]);
 
   const handleSearch = useCallback((e) => {
     const value = e.target.value;
@@ -41,50 +77,19 @@ const Marketplace = () => {
     { value: 'rating', label: 'Highest Rated' }
   ];
 
-  // Use imported sample gigs data
-  const gigs = sampleGigs;
-
-  // Filter and sort gigs
+  // Filter gigs based on remaining client-side filters
   const filteredGigs = React.useMemo(() => {
-    let filtered = gigs.filter(gig => {
-      const matchesSearch = !searchQuery || 
-        gig.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        gig.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        gig.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
-      const matchesCategory = selectedCategory === 'All' || gig.category === selectedCategory;
-      const matchesPrice = gig.price >= priceRange[0] && gig.price <= priceRange[1];
+    return gigs.filter(gig => {
+      // Delivery time filter (not handled by API)
+      const gigDeliveryDays = gig.packages?.[0]?.deliveryTime || 999;
       const matchesDelivery = deliveryTime === 'all' || 
-        (deliveryTime === '1day' && gig.deliveryTime.includes('1 day')) ||
-        (deliveryTime === '3days' && parseInt(gig.deliveryTime) <= 3) ||
-        (deliveryTime === '7days' && parseInt(gig.deliveryTime) <= 7);
+        (deliveryTime === '1day' && gigDeliveryDays <= 1) ||
+        (deliveryTime === '3days' && gigDeliveryDays <= 3) ||
+        (deliveryTime === '7days' && gigDeliveryDays <= 7);
       
-      return matchesSearch && matchesCategory && matchesPrice && matchesDelivery;
+      return matchesDelivery;
     });
-
-    // Sort gigs
-    switch (sortBy) {
-      case 'best_selling':
-        filtered.sort((a, b) => b.orders - a.orders);
-        break;
-      case 'newest':
-        filtered.sort((a, b) => b.id - a.id);
-        break;
-      case 'price_low':
-        filtered.sort((a, b) => a.price - b.price);
-        break;
-      case 'price_high':
-        filtered.sort((a, b) => b.price - a.price);
-        break;
-      case 'rating':
-        filtered.sort((a, b) => b.rating - a.rating);
-        break;
-      default:
-        // Recommended - mix of rating and orders
-        filtered.sort((a, b) => (b.rating * b.orders) - (a.rating * a.orders));
-    }
-
-    return filtered;
-  }, [searchQuery, selectedCategory, sortBy, priceRange, deliveryTime, gigs]);
+  }, [gigs, deliveryTime]);
 
   const toggleFavorite = (gigId) => {
     // In real app, this would update the backend
@@ -270,19 +275,56 @@ const Marketplace = () => {
       <div className="container-custom py-6">
         <div className="mb-4">
           <p className="text-gray-600">
-            {filteredGigs.length} services available
+            {isLoading ? 'Loading...' : `${filteredGigs.length} services available`}
             {searchQuery && ` for "${searchQuery}"`}
           </p>
         </div>
 
+        {/* Loading State */}
+        {isLoading && (
+          <div className={viewMode === 'grid' 
+            ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" 
+            : "space-y-4"
+          }>
+            {Array.from({ length: 8 }, (_, i) => (
+              <div key={i} className="bg-white rounded-lg shadow-sm animate-pulse">
+                <div className="aspect-video bg-gray-200 rounded-t-lg"></div>
+                <div className="p-4">
+                  <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                  <div className="h-3 bg-gray-200 rounded mb-4"></div>
+                  <div className="h-6 bg-gray-200 rounded"></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Error State */}
+        {error && !isLoading && (
+          <div className="text-center py-12">
+            <div className="text-red-400 mb-4">
+              <Search className="w-16 h-16 mx-auto" />
+            </div>
+            <h3 className="text-xl font-semibold text-gray-700 mb-2">Error loading gigs</h3>
+            <p className="text-gray-500 mb-4">{error}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="text-green-600 hover:text-green-700 font-medium"
+            >
+              Try again
+            </button>
+          </div>
+        )}
+
         {/* Gigs Grid/List */}
-        <div className={viewMode === 'grid' 
-          ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" 
-          : "space-y-4"
-        }>
+        {!isLoading && !error && (
+          <div className={viewMode === 'grid' 
+            ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" 
+            : "space-y-4"
+          }>
           {filteredGigs.map((gig) => (
             <motion.div
-              key={gig.id}
+              key={gig._id}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               className={`bg-white rounded-lg shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden ${
@@ -292,12 +334,12 @@ const Marketplace = () => {
               {/* Gig Image */}
               <div className={`relative ${viewMode === 'list' ? 'w-64 flex-shrink-0' : 'aspect-video'}`}>
                 <img
-                  src={gig.image}
+                  src={gig.images?.[0]?.url || gig.image}
                   alt={gig.title}
                   className="w-full h-full object-cover"
                 />
                 <button
-                  onClick={() => toggleFavorite(gig.id)}
+                  onClick={() => toggleFavorite(gig._id)}
                   className="absolute top-3 right-3 p-2 bg-white/80 rounded-full hover:bg-white transition-colors"
                 >
                   <Heart
@@ -332,13 +374,13 @@ const Marketplace = () => {
                 {/* Seller Info */}
                 <div className="flex items-center space-x-2 mb-3">
                   <img
-                    src={gig.seller.image}
-                    alt={gig.seller.name}
+                    src={gig.seller?.avatar || gig.seller?.image}
+                    alt={gig.seller?.displayName || gig.seller?.name}
                     className="w-8 h-8 rounded-full object-cover"
                   />
                   <div>
-                    <p className="text-sm font-medium text-gray-900">{gig.seller.name}</p>
-                    <p className="text-xs text-gray-500">{gig.seller.level}</p>
+                    <p className="text-sm font-medium text-gray-900">{gig.seller?.displayName || gig.seller?.name}</p>
+                    <p className="text-xs text-gray-500">{gig.seller?.level || 'Seller'}</p>
                   </div>
                   <div className="ml-auto">
                     <span className={`w-2 h-2 rounded-full ${
@@ -356,9 +398,9 @@ const Marketplace = () => {
                 <div className="flex items-center space-x-2 mb-3">
                   <div className="flex items-center">
                     <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                    <span className="text-sm font-medium text-gray-900 ml-1">{gig.rating}</span>
+                    <span className="text-sm font-medium text-gray-900 ml-1">{gig.stats?.rating || gig.rating}</span>
                   </div>
-                  <span className="text-sm text-gray-500">({gig.reviews})</span>
+                  <span className="text-sm text-gray-500">({gig.stats?.reviews || gig.reviews})</span>
                 </div>
 
                 {/* Features (for list view) */}
@@ -377,29 +419,25 @@ const Marketplace = () => {
                 {/* Price & CTA */}
                 <div className="flex items-center justify-between">
                   <div>
-                    {gig.originalPrice > gig.price && (
-                      <span className="text-xs text-gray-400 line-through">
-                        KSh {gig.originalPrice.toLocaleString()}
-                      </span>
-                    )}
                     <div className="flex items-center space-x-1">
                       <span className="text-xs text-gray-500">Starting at</span>
                       <span className="text-lg font-bold text-gray-900">
-                        KSh {gig.price.toLocaleString()}
+                        KSh {(gig.packages?.[0]?.price || gig.pricing?.amount || gig.price || 0).toLocaleString()}
                       </span>
                     </div>
                   </div>
-                  <Link to={`/marketplace/gigs/${gig.id}`} className="bg-green-600 text-white px-4 py-2 rounded text-sm hover:bg-green-700 transition-colors inline-block text-center">
+                  <Link to={`/marketplace/gigs/${gig._id}`} className="bg-green-600 text-white px-4 py-2 rounded text-sm hover:bg-green-700 transition-colors inline-block text-center">
                     View Details
                   </Link>
                 </div>
               </div>
             </motion.div>
           ))}
-        </div>
+          </div>
+        )}
 
         {/* Load More */}
-        {filteredGigs.length > 0 && (
+        {!isLoading && !error && filteredGigs.length > 0 && (
           <div className="text-center mt-12">
             <button className="bg-white border border-green-600 text-green-600 px-8 py-3 rounded-lg hover:bg-green-50 transition-colors">
               Load More Gigs
@@ -408,7 +446,7 @@ const Marketplace = () => {
         )}
 
         {/* No Results */}
-        {filteredGigs.length === 0 && (
+        {!isLoading && !error && filteredGigs.length === 0 && (
           <div className="text-center py-12">
             <div className="text-gray-400 mb-4">
               <Search className="w-16 h-16 mx-auto" />

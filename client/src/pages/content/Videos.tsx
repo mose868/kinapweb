@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
+import YouTube from 'react-youtube';
 import { motion } from 'framer-motion'
 import { 
   Search, 
@@ -80,6 +81,10 @@ const Videos: React.FC = () => {
   const [uploadStep, setUploadStep] = useState(1); // 1: select file, 2: details
   const [uploadProgress, setUploadProgress] = useState(0);
   const [videoPreviewUrl, setVideoPreviewUrl] = useState('');
+
+  // For YouTube player control
+  const [ytPlayer, setYtPlayer] = useState<any>(null);
+  const [isPlaying, setIsPlaying] = useState(true);
 
   // Load likes/dislikes/comments from localStorage
   useEffect(() => {
@@ -413,7 +418,7 @@ const Videos: React.FC = () => {
   const DEFAULT_AVATAR = 'https://ui-avatars.com/api/?name=User&background=0D8ABC&color=fff';
 
   return (
-    <div className="flex min-h-screen bg-white">
+    <div className="flex min-h-screen bg-white w-full overflow-x-hidden">
       {/* Sidebar */}
       <aside className="hidden md:flex flex-col w-60 bg-white border-r border-gray-200 py-6 px-2 fixed left-0 top-0 bottom-0 z-40">
         <div className="flex items-center mb-8 px-2">
@@ -464,9 +469,9 @@ const Videos: React.FC = () => {
         </div>
       </aside>
       {/* Main Content */}
-      <div className="flex-1 flex flex-col ml-0 md:ml-60">
+      <div className="flex-1 flex flex-col ml-0 md:ml-60 w-full">
         {/* Top Bar */}
-        <header className="sticky top-0 z-30 bg-white border-b border-gray-200 flex items-center justify-between px-4 py-3">
+        <header className="sticky top-0 z-30 bg-white border-b border-gray-200 flex flex-col sm:flex-row items-center justify-between px-2 sm:px-4 py-3 w-full">
           <div className="flex items-center gap-4">
             <button className="md:hidden p-2 rounded-full hover:bg-gray-100">
               <Menu size={24} />
@@ -506,14 +511,14 @@ const Videos: React.FC = () => {
                   className="w-full px-4 py-2 bg-[#121212] border border-gray-700 rounded-full focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white placeholder-gray-400 pr-10"
                 />
                 {searchQuery && (
-                  <button
+                    <button
                     type="button"
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-500 text-lg"
                     onClick={() => setSearchQuery('')}
                     tabIndex={-1}
                   >
                     ✕
-                  </button>
+                    </button>
                 )}
                 {showSuggestions && (searchSuggestions.length > 0 || creatorSuggestions.length > 0) && (
                   <div className="absolute left-0 right-0 mt-2 bg-white rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto">
@@ -546,9 +551,9 @@ const Videos: React.FC = () => {
                       >
                         <span className="font-semibold">{s.title}</span>
                         <span className="ml-2 text-xs text-gray-500">{s.channel?.name}</span>
-                      </div>
-                    ))}
-                  </div>
+                    </div>
+                  ))}
+                </div>
                 )}
               </div>
             </div>
@@ -561,19 +566,19 @@ const Videos: React.FC = () => {
           </div>
         </header>
         {/* Category Tabs */}
-        <div className="flex gap-2 overflow-x-auto py-4 px-4 bg-white border-b border-gray-200 scrollbar-hide">
-          {categories.map(category => (
-            <button
-              key={category}
-              onClick={() => setSelectedCategory(category)}
+        <div className="flex gap-2 overflow-x-auto py-4 px-2 sm:px-4 bg-white border-b border-gray-200 scrollbar-hide w-full">
+            {categories.map(category => (
+              <button
+                key={category}
+                onClick={() => setSelectedCategory(category)}
               className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-colors ${selectedCategory === category ? 'bg-gray-900 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
-            >
-              {category}
-            </button>
-          ))}
-        </div>
+              >
+                {category}
+              </button>
+            ))}
+          </div>
         {/* Video Grid */}
-        <main className="flex-1 p-4 md:p-8 bg-white">
+        <main className="flex-1 p-2 sm:p-4 md:p-8 bg-white w-full">
           {/* Filters Bar */}
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center space-x-4">
@@ -619,140 +624,140 @@ const Videos: React.FC = () => {
 
           {/* Videos Grid/List or Fallback */}
           {filteredVideos.length > 0 ? (
-            <div className={viewMode === 'grid'
-              ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4"
-              : "space-y-4"
-            }>
+          <div className={viewMode === 'grid' 
+            ? "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 w-full" 
+            : "space-y-4 w-full"
+          }>
               {filteredVideos.map((video) => (
-                <motion.div
-                  key={video.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className={`group cursor-pointer ${
-                    viewMode === 'list' ? 'flex bg-[#181818] rounded-lg overflow-hidden hover:bg-[#272727]' : ''
-                  }`}
+              <motion.div
+                key={video.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className={`group cursor-pointer ${
+                  viewMode === 'list' ? 'flex bg-[#181818] rounded-lg overflow-hidden hover:bg-[#272727]' : ''
+                }`}
                   onClick={() => { setSelectedVideo(video); addToHistory(video); }}
-                >
-                  {/* Video Thumbnail */}
-                  <div className={`relative ${viewMode === 'list' ? 'w-80 flex-shrink-0' : 'aspect-video'} rounded-lg overflow-hidden`}>
-                    <img
-                      src={video.thumbnail}
-                      alt={video.title}
-                      className="w-full h-full object-cover group-hover:rounded-none transition-all duration-200"
-                    />
-                    {/* Duration/Live Badge */}
-                    <div className="absolute bottom-2 right-2">
-                      {video.isLive ? (
-                        <div className="flex items-center space-x-1">
-                          <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-                          <span className="bg-red-600 text-white px-2 py-1 text-xs font-medium rounded">
-                            LIVE
-                          </span>
-                        </div>
-                      ) : (
-                        <span className="bg-black/80 text-white px-2 py-1 text-xs rounded font-medium">
-                          {video.duration}
-                        </span>
-                      )}
-                    </div>
-                    {/* Quality & Premium Badges */}
-                    <div className="absolute top-2 right-2 flex flex-col space-y-1">
-                      {video.quality === '4K' && (
-                        <span className="bg-black/80 text-white px-2 py-1 text-xs rounded font-medium">
-                          4K
-                        </span>
-                      )}
-                      {video.isPremium && (
-                        <span className="bg-yellow-600 text-white px-2 py-1 text-xs rounded font-medium">
-                          PREMIUM
-                        </span>
-                      )}
-                    </div>
-                    {/* Sponsored Badge */}
-                    {video.isSponsored && (
-                      <div className="absolute top-2 left-2">
-                        <span className="bg-yellow-500 text-black px-2 py-1 text-xs rounded font-medium">
-                          AD
+              >
+                {/* Video Thumbnail */}
+                <div className={`relative ${viewMode === 'list' ? 'w-80 flex-shrink-0' : 'aspect-video'} rounded-lg overflow-hidden`}>
+                  <img
+                    src={video.thumbnail}
+                    alt={video.title}
+                    className="w-full h-full object-cover group-hover:rounded-none transition-all duration-200"
+                  />
+                  {/* Duration/Live Badge */}
+                  <div className="absolute bottom-2 right-2">
+                    {video.isLive ? (
+                      <div className="flex items-center space-x-1">
+                        <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                        <span className="bg-red-600 text-white px-2 py-1 text-xs font-medium rounded">
+                          LIVE
                         </span>
                       </div>
+                    ) : (
+                      <span className="bg-black/80 text-white px-2 py-1 text-xs rounded font-medium">
+                        {video.duration}
+                      </span>
                     )}
-                    {/* Play Button Overlay */}
+                  </div>
+                  {/* Quality & Premium Badges */}
+                  <div className="absolute top-2 right-2 flex flex-col space-y-1">
+                    {video.quality === '4K' && (
+                      <span className="bg-black/80 text-white px-2 py-1 text-xs rounded font-medium">
+                        4K
+                      </span>
+                    )}
+                    {video.isPremium && (
+                      <span className="bg-yellow-600 text-white px-2 py-1 text-xs rounded font-medium">
+                        PREMIUM
+                      </span>
+                    )}
+                  </div>
+                  {/* Sponsored Badge */}
+                  {video.isSponsored && (
+                    <div className="absolute top-2 left-2">
+                      <span className="bg-yellow-500 text-black px-2 py-1 text-xs rounded font-medium">
+                        AD
+                      </span>
+                    </div>
+                  )}
+                  {/* Play Button Overlay */}
                     <div
                       className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20"
                     >
-                      <PlayCircle className="w-16 h-16 text-white" />
-                    </div>
+                    <PlayCircle className="w-16 h-16 text-white" />
                   </div>
+                </div>
 
-                  {/* Video Info */}
-                  <div className="p-3 flex-1">
-                    <div className="flex space-x-3">
-                      {/* Channel Avatar */}
-                      <img
+                {/* Video Info */}
+                <div className="p-3 flex-1">
+                  <div className="flex space-x-3">
+                    {/* Channel Avatar */}
+                    <img
                         src={video.channel.avatar || DEFAULT_AVATAR}
-                        alt={video.channel.name}
+                      alt={video.channel.name}
                         className="w-6 h-6 rounded-full"
-                      />
+                    />
+                    
+                    <div className="flex-1 min-w-0">
+                      {/* Video Title */}
+                      <h3 className="font-medium text-white line-clamp-2 group-hover:text-blue-400 cursor-pointer mb-1 text-sm leading-5">
+                        {video.title}
+                      </h3>
                       
-                      <div className="flex-1 min-w-0">
-                        {/* Video Title */}
-                        <h3 className="font-medium text-white line-clamp-2 group-hover:text-blue-400 cursor-pointer mb-1 text-sm leading-5">
-                          {video.title}
-                        </h3>
-                        
-                        {/* Channel Name */}
-                        <div className="flex items-center mb-1">
-                          <span className="text-sm text-gray-400 hover:text-white cursor-pointer">
-                            {video.channel.name}
-                          </span>
-                          {getVerificationBadge(video.channel)}
-                        </div>
-                        
-                        {/* Video Stats */}
-                        <div className="text-sm text-gray-400">
-                          <span>{formatViews(video.views)}</span>
-                          <span className="mx-1">•</span>
-                          <span>{video.uploadDate}</span>
-                        </div>
-
-                        {/* Description (for list view) */}
-                        {viewMode === 'list' && (
-                          <p className="text-sm text-gray-400 mt-2 line-clamp-2">
-                            {video.description}
-                          </p>
-                        )}
+                      {/* Channel Name */}
+                      <div className="flex items-center mb-1">
+                        <span className="text-sm text-gray-400 hover:text-white cursor-pointer">
+                          {video.channel.name}
+                        </span>
+                        {getVerificationBadge(video.channel)}
+                      </div>
+                      
+                      {/* Video Stats */}
+                      <div className="text-sm text-gray-400">
+                        <span>{formatViews(video.views)}</span>
+                        <span className="mx-1">•</span>
+                        <span>{video.uploadDate}</span>
                       </div>
 
-                      {/* More Options */}
-                      <button className="p-1 hover:bg-gray-700 rounded-full transition-colors opacity-0 group-hover:opacity-100">
-                        <MoreHorizontal size={16} className="text-gray-400" />
+                      {/* Description (for list view) */}
+                      {viewMode === 'list' && (
+                        <p className="text-sm text-gray-400 mt-2 line-clamp-2">
+                          {video.description}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* More Options */}
+                    <button className="p-1 hover:bg-gray-700 rounded-full transition-colors opacity-0 group-hover:opacity-100">
+                      <MoreHorizontal size={16} className="text-gray-400" />
+                    </button>
+                  </div>
+
+                  {/* Action Buttons (for list view) */}
+                  {viewMode === 'list' && (
+                    <div className="flex items-center space-x-6 mt-3 pt-3 border-t border-gray-700">
+                      <button className="flex items-center space-x-2 text-gray-400 hover:text-white transition-colors">
+                        <ThumbsUp size={16} />
+                        <span className="text-sm">{video.likes.toLocaleString()}</span>
+                      </button>
+                      <button className="flex items-center space-x-2 text-gray-400 hover:text-white transition-colors">
+                        <ThumbsDown size={16} />
+                        <span className="text-sm">{video.dislikes}</span>
+                      </button>
+                      <button className="flex items-center space-x-2 text-gray-400 hover:text-white transition-colors">
+                        <Share2 size={16} />
+                        <span className="text-sm">Share</span>
+                      </button>
+                      <button className="flex items-center space-x-2 text-gray-400 hover:text-white transition-colors">
+                        <Download size={16} />
+                        <span className="text-sm">Download</span>
                       </button>
                     </div>
-
-                    {/* Action Buttons (for list view) */}
-                    {viewMode === 'list' && (
-                      <div className="flex items-center space-x-6 mt-3 pt-3 border-t border-gray-700">
-                        <button className="flex items-center space-x-2 text-gray-400 hover:text-white transition-colors">
-                          <ThumbsUp size={16} />
-                          <span className="text-sm">{video.likes.toLocaleString()}</span>
-                        </button>
-                        <button className="flex items-center space-x-2 text-gray-400 hover:text-white transition-colors">
-                          <ThumbsDown size={16} />
-                          <span className="text-sm">{video.dislikes}</span>
-                        </button>
-                        <button className="flex items-center space-x-2 text-gray-400 hover:text-white transition-colors">
-                          <Share2 size={16} />
-                          <span className="text-sm">Share</span>
-                        </button>
-                        <button className="flex items-center space-x-2 text-gray-400 hover:text-white transition-colors">
-                          <Download size={16} />
-                          <span className="text-sm">Download</span>
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </motion.div>
-              ))}
+                  )}
+                </div>
+              </motion.div>
+            ))}
             </div>
           ) : (
             <div className="text-center py-12">
@@ -850,7 +855,7 @@ const Videos: React.FC = () => {
                                 {video.channel.name}
                               </span>
                               {getVerificationBadge(video.channel)}
-                            </div>
+          </div>
                             
                             {/* Video Stats */}
                             <div className="text-sm text-gray-400">
@@ -938,7 +943,7 @@ const Videos: React.FC = () => {
 
       {/* Overlay for YouTube-like player */}
       {selectedVideo && (
-        <div className="fixed inset-0 z-50 bg-white flex items-start justify-center min-h-screen w-screen overflow-y-auto">
+        <div className="fixed inset-0 z-50 bg-white flex flex-col md:flex-row items-start justify-center min-h-screen w-screen overflow-y-auto px-0 sm:px-2">
           {/* Elegant close button */}
           <button
             onClick={() => setSelectedVideo(null)}
@@ -948,23 +953,74 @@ const Videos: React.FC = () => {
           >
             ✕
           </button>
-          <div className="relative w-full max-w-[1400px] mx-auto flex flex-col md:flex-row items-start justify-center min-h-[80vh] py-8 px-2 md:px-0 gap-8">
+          <div className="relative w-full max-w-[1400px] mx-auto flex flex-col md:flex-row items-start justify-center min-h-[80vh] py-4 sm:py-8 px-1 sm:px-2 md:px-0 gap-4 sm:gap-8">
             {/* Left: Player + Info */}
             <div className="flex-1 flex flex-col items-center md:items-start justify-start w-full max-w-3xl mx-auto">
               {/* Video Player, centered with margin, rounded corners */}
-              <div className="w-full flex justify-center items-center mb-6 mt-8 md:mt-0">
-                <div className="relative w-full aspect-video bg-black rounded-2xl shadow-2xl overflow-hidden flex items-center justify-center" style={{ minHeight: '360px', maxWidth: '900px' }}>
-                  <iframe
-                    width="100%"
-                    height="100%"
-                    src={`https://www.youtube.com/embed/${selectedVideo.videoUrl.split('v=')[1]}?autoplay=1&rel=0&modestbranding=1&showinfo=0&controls=1${selectedVideo.isLive ? '&autoplay=1' : ''}`}
-                    title={selectedVideo.title}
-                    frameBorder="0"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                    allowFullScreen
+              <div className="w-full flex justify-center items-center mb-4 sm:mb-6 mt-4 sm:mt-8 md:mt-0">
+                <div className="relative w-full aspect-video bg-black rounded-2xl shadow-2xl overflow-hidden flex items-center justify-center" style={{ minHeight: '180px', maxWidth: '900px' }}>
+                  {/* Use react-youtube for YouTube videos, fallback to <video> for uploads */}
+                  {selectedVideo.videoUrl && selectedVideo.videoUrl.includes('youtube.com') ? (
+                    <>
+                      <YouTube
+                        videoId={selectedVideo.videoUrl.split('v=')[1]}
+                        opts={{
+                          width: '100%',
+                          height: '100%',
+                          playerVars: {
+                            autoplay: 1,
+                            rel: 0,
+                            modestbranding: 1,
+                            showinfo: 0,
+                            controls: 0, // Hide default controls
+                          },
+                        }}
+                        className="w-full h-full min-h-[200px] rounded-2xl"
+                        onReady={e => {
+                          setYtPlayer(e.target);
+                          setIsPlaying(true);
+                        }}
+                        onPlay={() => setIsPlaying(true)}
+                        onPause={() => setIsPlaying(false)}
+                      />
+                      {/* Custom Play/Pause Controls */}
+                      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-4 z-10">
+                        <button
+                          className="bg-white/80 hover:bg-white text-black rounded-full p-3 shadow-lg border border-gray-300"
+                          onClick={() => {
+                            if (ytPlayer) {
+                              if (isPlaying) {
+                                ytPlayer.pauseVideo();
+                                setIsPlaying(false);
+                              } else {
+                                ytPlayer.playVideo();
+                                setIsPlaying(true);
+                              }
+                            }
+                          }}
+                        >
+                          {isPlaying ? (
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8">
+                              <rect x="6" y="5" width="4" height="14" rx="1" fill="currentColor" />
+                              <rect x="14" y="5" width="4" height="14" rx="1" fill="currentColor" />
+                            </svg>
+                          ) : (
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8">
+                              <polygon points="6,4 20,12 6,20" fill="currentColor" />
+                            </svg>
+                          )}
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <video
+                      src={selectedVideo.videoUrl}
+                      controls
+                      autoPlay
                     className="w-full h-full min-h-[200px] rounded-2xl"
                     style={{ borderRadius: 16, boxShadow: '0 8px 32px rgba(0,0,0,0.15)' }}
-                  ></iframe>
+                    />
+                  )}
                 </div>
               </div>
               {/* Info/Actions Section */}
@@ -1079,7 +1135,7 @@ const Videos: React.FC = () => {
         </div>
       )}
       {showUploadModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 px-2 sm:px-0">
           <div className="bg-white rounded-xl shadow-lg p-0 w-full max-w-lg relative flex flex-col">
             <button className="absolute top-2 right-2 text-gray-500 hover:text-red-600 text-2xl font-bold" onClick={() => { setShowUploadModal(false); setUploadStep(1); setVideoPreviewUrl(''); setUploadForm({ title: '', description: '', thumbnail: '', videoFile: null, duration: '' }); }}>✕</button>
             <div className="flex flex-col items-center p-8">
@@ -1123,8 +1179,8 @@ const Videos: React.FC = () => {
                 </form>
               )}
             </div>
-          </div>
         </div>
+      </div>
       )}
     </div>
   );

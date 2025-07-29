@@ -316,7 +316,6 @@ const mentorSessionSchema = new mongoose.Schema(
 );
 
 // Indexes for performance
-mentorSessionSchema.index({ sessionId: 1 });
 mentorSessionSchema.index({ 'mentor.mentorId': 1, 'scheduling.scheduledFor': -1 });
 mentorSessionSchema.index({ 'mentee.email': 1, 'scheduling.scheduledFor': -1 });
 mentorSessionSchema.index({ 'status.current': 1, 'scheduling.scheduledFor': 1 });

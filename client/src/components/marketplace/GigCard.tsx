@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Star, Heart, Award, Eye, ShoppingCart, Clock, User, Shield, CheckCircle, Verified, Crown, Zap, Badge, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import type { Gig } from '../../types/marketplace';
+import type { Gig } from '../../api/marketplace';
 
 // Enhanced seller verification system
 interface SellerVerificationProps {
@@ -10,11 +10,10 @@ interface SellerVerificationProps {
 }
 
 const SellerVerificationBadge: React.FC<SellerVerificationProps> = ({ seller, compact = false }) => {
-  // Simulate verification levels based on seller data
-  const isVerified = seller.isVerified || seller.email?.includes('verified') || seller.orders > 50 || Math.random() > 0.6;
-  const isPro = seller.isPro || seller.level === 'Level 2' || seller.orders > 100 || Math.random() > 0.8;
-  const isTopRated = seller.rating >= 4.8 && seller.reviews > 50;
-  const isFeatured = seller.isKinapChoice || Math.random() > 0.9;
+  // Use actual seller data from API
+  const isVerified = seller.verified;
+  const isPro = seller.rating >= 4.5;
+  const isTopRated = seller.rating >= 4.8;
 
   if (compact) {
     return (
@@ -84,7 +83,7 @@ const GigCard: React.FC<GigCardProps> = ({ gig, viewMode = 'grid' }) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isFavorited, setIsFavorited] = useState(false);
 
-  const images = gig.images || [gig.image].filter(Boolean);
+  const images = gig.images?.map(img => img.url) || [];
   const hasMultipleImages = images.length > 1;
 
   const nextImage = (e: React.MouseEvent) => {
@@ -194,7 +193,7 @@ const GigCard: React.FC<GigCardProps> = ({ gig, viewMode = 'grid' }) => {
             )}
 
             {/* KiNaP's Choice Badge */}
-            {gig.isKinapChoice && (
+            {gig.featured && (
               <div className="absolute top-2 left-2 bg-ajira-accent text-white px-2 py-1 rounded-md text-xs font-bold flex items-center gap-1 shadow-md">
                 <Award className="w-3 h-3" />
                 KiNaP's Choice
@@ -338,7 +337,7 @@ const GigCard: React.FC<GigCardProps> = ({ gig, viewMode = 'grid' }) => {
         )}
 
         {/* KiNaP's Choice Badge */}
-        {gig.isKinapChoice && (
+        {gig.featured && (
           <div className="absolute top-3 left-3 bg-ajira-accent text-white px-2 py-1 rounded-md text-xs font-bold flex items-center gap-1 shadow-md">
             <Award className="w-3 h-3" />
             KiNaP's Choice
@@ -363,7 +362,7 @@ const GigCard: React.FC<GigCardProps> = ({ gig, viewMode = 'grid' }) => {
             alt={gig.seller?.name}
             className="w-6 h-6 rounded-full object-cover border border-ajira-gray-200"
           />
-          <span className="text-sm font-medium text-ajira-text-primary">{gig.seller?.name}</span>
+          <span className="text-sm font-medium text-ajira-text-primary">{gig.seller?.displayName}</span>
           {renderSellerBadge()}
         </div>
         
@@ -376,10 +375,10 @@ const GigCard: React.FC<GigCardProps> = ({ gig, viewMode = 'grid' }) => {
         <div className="flex items-center gap-1 mb-3">
           <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
           <span className="text-sm font-medium text-ajira-text-primary">
-            {Number(gig.stats?.rating || gig.rating || 0).toFixed(1)}
+            {Number(gig.stats?.rating || 0).toFixed(1)}
           </span>
           <span className="text-xs text-ajira-text-muted">
-            ({(gig.stats?.reviews || gig.reviews || 0).toLocaleString()})
+            ({(gig.stats?.reviews || 0).toLocaleString()})
           </span>
         </div>
         
@@ -392,12 +391,12 @@ const GigCard: React.FC<GigCardProps> = ({ gig, viewMode = 'grid' }) => {
         <div className="flex items-center justify-between mt-4 pt-3 border-t border-ajira-gray-100">
           <div className="flex items-center gap-1 text-xs text-ajira-text-muted">
             <Clock className="w-3 h-3" />
-            <span>{gig.deliveryTime || gig.packages?.[0]?.deliveryTime || '3 days'}</span>
+            <span>{gig.packages?.[0]?.deliveryTime || '3 days'} days</span>
           </div>
           <div className="text-right">
             <div className="text-xs text-ajira-text-muted">Starting at</div>
             <div className="text-lg font-bold text-ajira-text-primary">
-              KES {(gig.packages?.[0]?.price || gig.price || 0).toLocaleString()}
+              KES {(gig.packages?.[0]?.price || gig.pricing?.amount || 0).toLocaleString()}
             </div>
           </div>
         </div>

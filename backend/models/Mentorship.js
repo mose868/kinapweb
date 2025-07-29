@@ -249,8 +249,6 @@ mentorshipSchema.index({ expertiseLevel: 1, status: 1 });
 mentorshipSchema.index({ 'pricing.isFree': 1, status: 1 });
 mentorshipSchema.index({ 'ratings.overall': -1, status: 1 });
 mentorshipSchema.index({ 'location.coordinates': '2dsphere' }); // Geospatial index
-mentorshipSchema.index({ slug: 1 });
-mentorshipSchema.index({ tags: 1 });
 mentorshipSchema.index({ 'mentor.email': 1 }, { unique: true });
 mentorshipSchema.index({ 
   'mentor.name': 'text', 

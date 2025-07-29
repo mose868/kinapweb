@@ -139,8 +139,6 @@ trainingSchema.index({ category: 1, status: 1, isActive: 1 });
 trainingSchema.index({ level: 1, isActive: 1 });
 trainingSchema.index({ 'pricing.isFree': 1, status: 1 });
 trainingSchema.index({ 'schedule.startDate': 1, status: 1 });
-trainingSchema.index({ slug: 1 });
-trainingSchema.index({ tags: 1 });
 trainingSchema.index({ title: 'text', description: 'text', tags: 'text' }); // Full-text search
 
 // Virtual for course URL slug

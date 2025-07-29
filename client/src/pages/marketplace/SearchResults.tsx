@@ -4,7 +4,7 @@ import { useQuery } from 'react-query';
 // import { SearchBar } from '../../components/search';
 import GigCard from '../../components/marketplace/GigCard';
 import { SlidersHorizontal } from 'lucide-react';
-import type { Gig } from '../../types/marketplace';
+import type { Gig } from '../../api/marketplace';
 
 const GIGS_PER_PAGE = 12;
 

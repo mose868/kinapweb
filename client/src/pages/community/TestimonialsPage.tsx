@@ -219,10 +219,10 @@ const TestimonialsPage = () => {
       }
     ];
     return (
-      <div className="max-w-7xl mx-auto px-4 py-12">
+      <div className="max-w-7xl mx-auto px-2 sm:px-4 py-8 sm:py-12 w-full overflow-x-hidden">
         <h1 className="text-4xl font-bold text-ajira-primary mb-4">Success Stories & Testimonials 2025 (Demo)</h1>
         <p className="text-lg text-gray-600 mb-8">Experience the latest success stories from our 2025 cohort</p>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-8 w-full">
           {demoTestimonials.map(t => (
             <div key={t.id} className="bg-white rounded-lg shadow p-6">
               <div className="flex items-center mb-2">
@@ -244,19 +244,19 @@ const TestimonialsPage = () => {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-12">
+    <div className="max-w-7xl mx-auto px-2 sm:px-4 py-8 sm:py-12 w-full overflow-x-hidden">
       <div className="text-center mb-12">
-        <h1 className="text-4xl font-bold text-ajira-primary mb-4">
+        <h1 className="text-3xl sm:text-4xl font-bold text-ajira-primary mb-4">
           Success Stories & Testimonials
         </h1>
-        <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+        <p className="text-base sm:text-lg text-gray-600 max-w-2xl mx-auto">
           Discover how Ajira Digital has transformed careers and lives. Read inspiring stories from our community members and share your own journey.
         </p>
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
-        <div className="flex flex-wrap gap-4 items-center">
+      <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6 mb-8 w-full">
+        <div className="flex flex-wrap gap-4 items-center w-full">
           <div className="flex-1 min-w-[200px]">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -265,7 +265,7 @@ const TestimonialsPage = () => {
                 value={filter.searchQuery}
                 onChange={(e) => setFilter(prev => ({ ...prev, searchQuery: e.target.value }))}
                 placeholder="Search testimonials..."
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ajira-accent/50 focus:border-transparent"
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ajira-accent/50 focus:border-transparent text-base sm:text-lg"
               />
             </div>
           </div>
@@ -273,7 +273,7 @@ const TestimonialsPage = () => {
             <select
               value={filter.category}
               onChange={(e) => setFilter(prev => ({ ...prev, category: e.target.value }))}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ajira-accent/50 focus:border-transparent"
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ajira-accent/50 focus:border-transparent text-base sm:text-lg"
             >
               <option value="all">All Categories</option>
               {CATEGORIES.map((category) => (
@@ -283,7 +283,7 @@ const TestimonialsPage = () => {
             <select
               value={filter.rating}
               onChange={(e) => setFilter(prev => ({ ...prev, rating: Number(e.target.value) }))}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ajira-accent/50 focus:border-transparent"
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ajira-accent/50 focus:border-transparent text-base sm:text-lg"
             >
               <option value={0}>All Ratings</option>
               <option value={5}>5 Stars</option>
@@ -296,7 +296,7 @@ const TestimonialsPage = () => {
 
       {/* Submit Testimonial Form */}
       {user && (
-        <div className="bg-white rounded-lg shadow-lg p-6 mb-12">
+        <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6 mb-12 w-full">
           <h2 className="text-2xl font-semibold text-ajira-primary mb-6">
             Share Your Success Story
           </h2>
@@ -311,7 +311,7 @@ const TestimonialsPage = () => {
                   value={formData.userRole}
                   onChange={(e) => setFormData(prev => ({ ...prev, userRole: e.target.value }))}
                   placeholder="e.g., Web Developer, Digital Marketer"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ajira-accent/50 focus:border-transparent"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ajira-accent/50 focus:border-transparent text-base sm:text-lg"
                   required
                 />
               </div>
@@ -322,7 +322,7 @@ const TestimonialsPage = () => {
                 <select
                   value={formData.category}
                   onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ajira-accent/50 focus:border-transparent"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ajira-accent/50 focus:border-transparent text-base sm:text-lg"
                   required
                 >
                   {CATEGORIES.map((category) => (
@@ -353,7 +353,7 @@ const TestimonialsPage = () => {
                 onChange={(e) => setFormData(prev => ({ ...prev, impact: e.target.value }))}
                 placeholder="What specific impact or achievement did you accomplish? (e.g., Increased income by 50%, Landed 5 new clients)"
                 rows={2}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ajira-accent/50 focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ajira-accent/50 focus:border-transparent text-base sm:text-lg"
                 required
               />
             </div>
@@ -367,7 +367,7 @@ const TestimonialsPage = () => {
                 value={formData.projectLink}
                 onChange={(e) => setFormData(prev => ({ ...prev, projectLink: e.target.value }))}
                 placeholder="https://your-project.com"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ajira-accent/50 focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ajira-accent/50 focus:border-transparent text-base sm:text-lg"
               />
             </div>
 
@@ -398,7 +398,7 @@ const TestimonialsPage = () => {
             <button
               type="submit"
               disabled={submitting}
-              className="w-full bg-ajira-accent text-white py-3 rounded-lg hover:bg-ajira-accent/90 disabled:opacity-50 font-medium"
+              className="w-full bg-ajira-accent text-white py-3 rounded-lg hover:bg-ajira-accent/90 disabled:opacity-50 font-medium text-base sm:text-lg"
             >
               {submitting ? 'Submitting...' : 'Share Your Story'}
             </button>
@@ -407,7 +407,7 @@ const TestimonialsPage = () => {
       )}
 
       {/* Testimonials Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 w-full">
         {testimonials.length === 0 ? (
           <div className="col-span-full text-center py-12">
             <div className="text-gray-400 mb-4">

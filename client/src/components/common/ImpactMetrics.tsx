@@ -56,26 +56,26 @@ const ImpactMetrics = () => {
     {
       icon: <Users className="w-8 h-8 text-ajira-accent" />,
       label: 'Total Members',
-      value: metrics.totalMembers,
-      format: (value: number) => value.toLocaleString()
+      value: metrics.totalMembers ?? 0,
+      format: (value: number) => (value ?? 0).toLocaleString()
     },
     {
       icon: <Briefcase className="w-8 h-8 text-ajira-primary" />,
       label: 'Projects Completed',
-      value: metrics.projectsCompleted,
-      format: (value: number) => value.toLocaleString()
+      value: metrics.projectsCompleted ?? 0,
+      format: (value: number) => (value ?? 0).toLocaleString()
     },
     {
       icon: <DollarSign className="w-8 h-8 text-green-500" />,
       label: 'Total Earnings',
-      value: metrics.totalEarnings,
-      format: (value: number) => `KES ${value.toLocaleString()}`
+      value: metrics.totalEarnings ?? 0,
+      format: (value: number) => `KES ${(value ?? 0).toLocaleString()}`
     },
     {
       icon: <Award className="w-8 h-8 text-yellow-500" />,
       label: 'Success Rate',
-      value: metrics.successRate,
-      format: (value: number) => `${value.toFixed(1)}%`
+      value: metrics.successRate ?? 0,
+      format: (value: number) => `${(value ?? 0).toFixed(1)}%`
     }
   ]
 
@@ -110,7 +110,7 @@ const ImpactMetrics = () => {
           <div className="flex items-center">
             <Users className="w-6 h-6 text-ajira-accent mr-3" />
             <span className="text-2xl font-bold text-ajira-primary">
-              {metrics.activeFreelancers.toLocaleString()}
+              {(metrics.activeFreelancers ?? 0).toLocaleString()}
             </span>
           </div>
           <p className="text-sm text-gray-600 mt-2">
@@ -128,7 +128,7 @@ const ImpactMetrics = () => {
                 <Star
                   key={i}
                   className={`w-6 h-6 ${
-                    i < Math.round(metrics.averageRating)
+                    i < Math.round(metrics.averageRating ?? 0)
                       ? 'text-yellow-400 fill-current'
                       : 'text-gray-300'
                   }`}
@@ -136,7 +136,7 @@ const ImpactMetrics = () => {
               ))}
             </div>
             <span className="ml-3 text-2xl font-bold text-ajira-primary">
-              {metrics.averageRating.toFixed(1)}
+              {(metrics.averageRating ?? 0).toFixed(1)}
             </span>
           </div>
           <p className="text-sm text-gray-600 mt-2">

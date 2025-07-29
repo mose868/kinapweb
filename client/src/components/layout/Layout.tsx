@@ -11,7 +11,7 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 w-full overflow-x-hidden">
       <Helmet>
         <title>Ajira Digital KiNaP Club - Digital Skills & Opportunities</title>
         <meta name="description" content="Join Ajira Digital at Kiambu National Polytechnic. Learn digital skills, find online work opportunities, and build your digital career." />
@@ -22,8 +22,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         <meta name="twitter:card" content="summary_large_image" />
       </Helmet>
       <Navbar />
-      <main className="flex-1">
-        {children ? children : <Outlet />}
+      <main className="flex-1 w-full mt-6">
+        <div className="w-full px-2 sm:px-4 lg:px-8">
+          {children ? children : <Outlet />}
+        </div>
       </main>
       <Footer />
       <Chatbot />

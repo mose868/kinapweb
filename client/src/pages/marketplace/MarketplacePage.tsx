@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import GigCard from '../../components/marketplace/GigCard';
 import LoadingState from '../../components/common/LoadingState'
-import sampleGigs from '../../data/sampleGigs';
+import { fetchGigs, fetchFeaturedGigs, fetchMarketplaceStats, type Gig, type SearchFilters } from '../../api/marketplace';
 import { Award, Filter, Search, Star, ChevronDown, Grid, List, MapPin, Clock, Users, TrendingUp, Zap, Shield, Sparkles } from 'lucide-react';
 import { 
   CategoryShowcase, 
@@ -115,67 +115,89 @@ const MarketplacePage = () => {
   const [viewMode, setViewMode] = useState('grid');
   const [page, setPage] = useState(1);
 
-  // Use sample gigs data
-  const gigs = sampleGigs;
-  const isLoading = false;
+  const [gigs, setGigs] = useState<Gig[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [stats, setStats] = useState<any>(null);
+
+  // Fetch gigs from API
+  useEffect(() => {
+    const loadGigs = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        
+        const filters: SearchFilters = {
+          category: selectedCategory !== 'all' ? selectedCategory : undefined,
+          subcategory: selectedSubcategory !== 'all' ? selectedSubcategory : undefined,
+          minPrice: priceRange !== 'all' ? PRICE_RANGES.find(r => r.value === priceRange)?.min : undefined,
+          maxPrice: priceRange !== 'all' ? PRICE_RANGES.find(r => r.value === priceRange)?.max : undefined,
+          search: search || undefined,
+          sort: sortBy === 'newest' ? 'newest' : 
+                sortBy === 'priceLow' ? 'price-low' : 
+                sortBy === 'priceHigh' ? 'price-high' : 
+                sortBy === 'topRated' ? 'rating' : 
+                sortBy === 'bestSelling' ? 'orders' : 'newest',
+          page,
+          limit: GIGS_PER_PAGE
+        };
+
+        const response = await fetchGigs(filters);
+        setGigs(response.gigs);
+        
+        // Load stats
+        const statsData = await fetchMarketplaceStats();
+        setStats(statsData);
+      } catch (err) {
+        console.error('Error loading gigs:', err);
+        setError('Failed to load gigs. Please try again.');
+        setGigs([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadGigs();
+  }, [selectedCategory, selectedSubcategory, search, sortBy, priceRange, deliveryTime, page]);
 
   // Get current category data
   const currentCategory = fiverCategories.find(cat => cat.value === selectedCategory);
   const subcategories = currentCategory?.subcategories || [];
 
-  // Advanced filtering with Fiverr-like logic
-  let filteredGigs = (gigs || []).filter((gig: any) => {
-    // Category filter
-    const matchesCategory = selectedCategory === 'all' || gig.category === selectedCategory;
-    
-    // Subcategory filter
-    const matchesSubcategory = selectedSubcategory === 'all' || gig.subcategory === selectedSubcategory;
-    
-    // Search filter (title, description, tags, seller name)
-    const searchTerm = search.toLowerCase();
-    const matchesSearch = !searchTerm || 
-      gig.title.toLowerCase().includes(searchTerm) ||
-      gig.description.toLowerCase().includes(searchTerm) ||
-      gig.seller?.name.toLowerCase().includes(searchTerm) ||
-      (gig.tags && gig.tags.some((tag: string) => tag.toLowerCase().includes(searchTerm)));
-    
-    // Price range filter
-    const priceRangeData = PRICE_RANGES.find(range => range.value === priceRange);
-    const gigPrice = gig.packages?.[0]?.price || gig.price || 0;
-    const matchesPrice = !priceRangeData || (gigPrice >= priceRangeData.min && gigPrice <= priceRangeData.max);
-    
-    // Delivery time filter
-    const gigDeliveryDays = parseInt(gig.deliveryTime) || parseInt(gig.packages?.[0]?.deliveryTime) || 999;
+  // Filter gigs based on remaining client-side filters
+  let filteredGigs = gigs.filter((gig: Gig) => {
+    // Delivery time filter (not handled by API)
+    const gigDeliveryDays = gig.packages?.[0]?.deliveryTime || 999;
     const matchesDelivery = deliveryTime === 'all' || 
       (deliveryTime === '1day' && gigDeliveryDays <= 1) ||
       (deliveryTime === '3days' && gigDeliveryDays <= 3) ||
       (deliveryTime === '7days' && gigDeliveryDays <= 7) ||
       (deliveryTime === '14days' && gigDeliveryDays <= 14);
     
-    // KiNaP's Choice filter
-    const matchesKinapChoice = !showKinapChoiceOnly || gig.isKinapChoice;
+    // KiNaP's Choice filter (featured gigs)
+    const matchesKinapChoice = !showKinapChoiceOnly || gig.featured;
     
-    return matchesCategory && matchesSubcategory && matchesSearch && matchesPrice && matchesDelivery && matchesKinapChoice;
+    return matchesDelivery && matchesKinapChoice;
   });
 
-  // Advanced sorting with Fiverr-like algorithm
-  filteredGigs = filteredGigs.sort((a: any, b: any) => {
-    const getPrice = (gig: any) => gig.packages?.[0]?.price || gig.price || 0;
-    const getRating = (gig: any) => Number(gig.stats?.rating || gig.rating) || 0;
-    const getOrders = (gig: any) => Number(gig.stats?.orders || gig.orders) || 0;
-    const getReviews = (gig: any) => Number(gig.stats?.reviews || gig.reviews) || 0;
+  // Client-side sorting for remaining options
+  filteredGigs = filteredGigs.sort((a: Gig, b: Gig) => {
+    const getPrice = (gig: Gig) => gig.packages?.[0]?.price || gig.pricing.amount || 0;
+    const getRating = (gig: Gig) => gig.stats.rating || 0;
+    const getOrders = (gig: Gig) => gig.stats.orders || 0;
+    const getReviews = (gig: Gig) => gig.stats.reviews || 0;
 
     switch (sortBy) {
       case 'recommended':
-        // Fiverr's algorithm: KiNaP's Choice first, then score based on rating, orders, and reviews
-        if (a.isKinapChoice && !b.isKinapChoice) return -1;
-        if (!a.isKinapChoice && b.isKinapChoice) return 1;
+        // Featured gigs first, then by rating and orders
+        if (a.featured && !b.featured) return -1;
+        if (!a.featured && b.featured) return 1;
         const scoreA = (getRating(a) * 0.4) + (Math.log(getOrders(a) + 1) * 0.3) + (Math.log(getReviews(a) + 1) * 0.3);
         const scoreB = (getRating(b) * 0.4) + (Math.log(getOrders(b) + 1) * 0.3) + (Math.log(getReviews(b) + 1) * 0.3);
         return scoreB - scoreA;
       case 'kinapChoice':
-        if (a.isKinapChoice && !b.isKinapChoice) return -1;
-        if (!a.isKinapChoice && b.isKinapChoice) return 1;
+        if (a.featured && !b.featured) return -1;
+        if (!a.featured && b.featured) return 1;
         return getRating(b) - getRating(a);
       case 'bestSelling':
         return getOrders(b) - getOrders(a);
@@ -193,9 +215,8 @@ const MarketplacePage = () => {
     }
   });
 
-  // Pagination
-  const totalPages = Math.ceil(filteredGigs.length / GIGS_PER_PAGE);
-  const paginatedGigs = filteredGigs.slice((page - 1) * GIGS_PER_PAGE, page * GIGS_PER_PAGE);
+  // Pagination - now handled by API, but we can still slice for client-side filtering
+  const paginatedGigs = filteredGigs;
 
   // Reset to page 1 when filters change
   useEffect(() => {
@@ -603,20 +624,60 @@ const MarketplacePage = () => {
               </div>
             </div>
 
+            {/* Loading State */}
+            {isLoading && (
+              <div className="grid gap-8 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {Array.from({ length: 8 }, (_, i) => (
+                  <div key={i} className="bg-white rounded-2xl p-6 shadow-ajira animate-pulse">
+                    <div className="w-full h-48 bg-ajira-gray-200 rounded-xl mb-4"></div>
+                    <div className="h-4 bg-ajira-gray-200 rounded mb-2"></div>
+                    <div className="h-3 bg-ajira-gray-200 rounded mb-4"></div>
+                    <div className="h-6 bg-ajira-gray-200 rounded mb-2"></div>
+                    <div className="h-4 bg-ajira-gray-200 rounded"></div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Error State */}
+            {error && !isLoading && (
+              <div className="text-center py-20">
+                <div className="max-w-md mx-auto">
+                  <div className="w-24 h-24 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <Search className="w-12 h-12 text-red-500" />
+                  </div>
+                  <h3 className="text-2xl font-semibold text-ajira-text-primary mb-4">
+                    Error loading gigs
+                  </h3>
+                  <p className="text-ajira-text-muted mb-8">
+                    {error}
+                  </p>
+                  <button
+                    onClick={() => window.location.reload()}
+                    className="px-8 py-4 bg-ajira-primary text-white rounded-xl hover:bg-ajira-blue-600 transition-all duration-200 shadow-ajira-lg"
+                  >
+                    Try again
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Gigs Grid */}
-            <div className={`grid gap-8 ${
-              viewMode === 'grid' 
-                ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' 
-                : 'grid-cols-1'
-            }`}>
-              {paginatedGigs.map((gig: any) => (
-                <GigCard 
-                  key={gig.id} 
-                  gig={gig} 
-                  viewMode={viewMode}
-                />
-              ))}
-            </div>
+            {!isLoading && !error && (
+              <div className={`grid gap-8 ${
+                viewMode === 'grid' 
+                  ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' 
+                  : 'grid-cols-1'
+              }`}>
+                {paginatedGigs.map((gig: Gig) => (
+                  <GigCard 
+                    key={gig._id} 
+                    gig={gig} 
+                    viewMode={viewMode}
+                  />
+                ))}
+              </div>
+            )}
 
             {/* Enhanced Pagination */}
             <div className="mt-16">
