@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
-import { Search, X, User, LogOut, Settings, Bell, Menu, ChevronDown, Info, Users, BookOpen, Briefcase, Globe, Star, Award, MessageCircle, UserCheck, HelpCircle, ChevronRight, Camera } from 'lucide-react';
+import { Search, X, User, LogOut, Settings, Bell, Menu, ChevronDown, Info, Users, BookOpen, Briefcase, Globe, Star, Award, MessageCircle, UserCheck, HelpCircle, ChevronRight, Camera, Moon, Sun } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTheme } from '../../contexts/ThemeContext';
 
 const Navbar = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -23,6 +24,7 @@ const Navbar = () => {
   const dropdownRefs = useRef<(HTMLDivElement | null)[]>([]);
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const { theme, setTheme, isDark } = useTheme();
 
   // Calculate unread notifications count
   const unreadCount = notifications.filter(n => n.unread).length;
@@ -242,6 +244,16 @@ const Navbar = () => {
     }
   };
 
+  const toggleTheme = () => {
+    if (theme === 'light') {
+      setTheme('dark');
+    } else if (theme === 'dark') {
+      setTheme('system');
+    } else {
+      setTheme('light');
+    }
+  };
+
   const handleDropdownToggle = (dropdownId: string, index?: number) => {
     if (activeDropdown === dropdownId) {
       setActiveDropdown(null);
@@ -265,7 +277,7 @@ const Navbar = () => {
   };
 
   return (
-    <nav className="bg-white shadow-lg border-b border-gray-200 sticky top-0 z-50 backdrop-blur-sm w-full">
+    <nav className="bg-white dark:bg-gray-900 shadow-lg border-b border-gray-200 dark:border-gray-700 sticky top-0 z-50 backdrop-blur-sm w-full">
       <div className="max-w-7xl mx-auto w-full px-2 sm:px-4 lg:px-8">
         <div className="flex flex-wrap items-center justify-between min-h-16 w-full gap-y-2">
           {/* Logo with Professional KiNaP Branding */}
@@ -634,6 +646,17 @@ const Navbar = () => {
                             </span>
                           )}
                         </Link>
+                        <button
+                          onClick={toggleTheme}
+                          className="flex items-center w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors group"
+                        >
+                          {isDark ? (
+                            <Sun className="h-4 w-4 mr-3 text-kenya-green group-hover:text-kenya-red transition-colors" />
+                          ) : (
+                            <Moon className="h-4 w-4 mr-3 text-kenya-green group-hover:text-kenya-red transition-colors" />
+                          )}
+                          {isDark ? 'Light Mode' : 'Dark Mode'}
+                        </button>
                         <div className="border-t border-gray-100 mt-2 pt-2">
         <button
                             onClick={handleSignOut} 
@@ -685,46 +708,54 @@ const Navbar = () => {
       </div>
       {/* Enhanced Mobile Menu with better animations */}
       {mobileMenuOpen && (
-        <div className="lg:hidden border-t border-kenya-green/10 bg-white shadow-xl animate-in slide-in-from-top duration-300 z-[9999]">
+        <div className="lg:hidden border-t border-kenya-green/10 bg-white dark:bg-gray-900 shadow-xl animate-in slide-in-from-top duration-300 z-[9999]">
+
           <div className="px-4 pt-4 pb-6 space-y-4">
             {/* Mobile Navigation Links */}
             <div className="space-y-3">
-              {dropdownMenus.map((menu) => (
-                <div key={menu.id} className="space-y-1">
-                  <button
-                    onClick={() => handleDropdownToggle(menu.id)}
-                    className={`flex items-center justify-between w-full px-4 py-3 rounded-lg text-lg font-semibold transition-all duration-200 ${
-                      activeDropdown === menu.id
-                        ? 'text-kenya-red bg-kenya-green/10 border-kenya-green'
-                        : 'text-kenya-black hover:text-kenya-red hover:bg-kenya-green/10 hover:border-kenya-green/30'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <menu.icon className="w-5 h-5" />
-                      {menu.label}
-                    </div>
-                    <ChevronDown className={`w-4 h-4 transition-transform ${activeDropdown === menu.id ? 'rotate-180' : ''}`} />
-                  </button>
-                  {activeDropdown === menu.id && (
-                    <div className="ml-4 space-y-1 animate-in slide-in-from-top duration-200">
-                      {menu.items.map((item, index) => (
-                        <Link
-                          key={index}
-                          to={item.to}
-                          className="flex items-center gap-3 px-6 py-3 text-base text-kenya-black hover:bg-kenya-green/10 hover:text-kenya-red rounded-lg transition-colors mx-2"
-                          onClick={closeAllDropdowns}
-                        >
-                          <item.icon className="w-4 h-4 text-kenya-green" />
-                          <div>
-                            <div className="font-medium">{item.label}</div>
-                            <div className="text-xs text-gray-600">{item.description}</div>
-                          </div>
-                        </Link>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
+              {/* Direct Links for Mobile */}
+              <div className="space-y-2">
+                <Link
+                  to="/about"
+                  className="flex items-center gap-3 px-4 py-3 text-lg font-semibold text-kenya-black dark:text-white hover:bg-kenya-green/10 hover:text-kenya-red rounded-lg transition-colors"
+                  onClick={closeAllDropdowns}
+                >
+                  <Info className="w-5 h-5 text-kenya-green" />
+                  About KiNaP
+                </Link>
+                <Link
+                  to="/community"
+                  className="flex items-center gap-3 px-4 py-3 text-lg font-semibold text-kenya-black dark:text-white hover:bg-kenya-green/10 hover:text-kenya-red rounded-lg transition-colors"
+                  onClick={closeAllDropdowns}
+                >
+                  <Users className="w-5 h-5 text-kenya-green" />
+                  Community Hub
+                </Link>
+                <Link
+                  to="/marketplace"
+                  className="flex items-center gap-3 px-4 py-3 text-lg font-semibold text-kenya-black dark:text-white hover:bg-kenya-green/10 hover:text-kenya-red rounded-lg transition-colors"
+                  onClick={closeAllDropdowns}
+                >
+                  <Briefcase className="w-5 h-5 text-kenya-green" />
+                  Marketplace
+                </Link>
+                <Link
+                  to="/training"
+                  className="flex items-center gap-3 px-4 py-3 text-lg font-semibold text-kenya-black dark:text-white hover:bg-kenya-green/10 hover:text-kenya-red rounded-lg transition-colors"
+                  onClick={closeAllDropdowns}
+                >
+                  <BookOpen className="w-5 h-5 text-kenya-green" />
+                  Training
+                </Link>
+                <Link
+                  to="/videos"
+                  className="flex items-center gap-3 px-4 py-3 text-lg font-semibold text-kenya-black dark:text-white hover:bg-kenya-green/10 hover:text-kenya-red rounded-lg transition-colors"
+                  onClick={closeAllDropdowns}
+                >
+                  <Globe className="w-5 h-5 text-kenya-green" />
+                  Videos
+                </Link>
+              </div>
             </div>
             
             {/* Enhanced Mobile User Section */}
@@ -775,6 +806,20 @@ const Navbar = () => {
                         </span>
                       )}
                     </Link>
+                    <button 
+                      onClick={() => {
+                        toggleTheme();
+                        closeAllDropdowns();
+                      }} 
+                      className="flex items-center gap-3 px-4 py-3 text-kenya-black hover:bg-kenya-green/10 rounded-lg transition-colors group w-full"
+                    >
+                      {isDark ? (
+                        <Sun className="h-4 w-4 text-kenya-green group-hover:text-kenya-red transition-colors" />
+                      ) : (
+                        <Moon className="h-4 w-4 text-kenya-green group-hover:text-kenya-red transition-colors" />
+                      )}
+                      {isDark ? 'Light Mode' : 'Dark Mode'}
+                    </button>
                     <button 
                       onClick={handleSignOut} 
                       className="flex items-center gap-3 w-full px-4 py-3 text-kenya-red hover:bg-kenya-red/10 rounded-lg transition-colors group"

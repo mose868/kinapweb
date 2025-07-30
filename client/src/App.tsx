@@ -6,6 +6,7 @@ import Chatbot from './components/chatbot/Chatbot';
 import { routes } from './routes';
 import type { RouteConfig } from './routes';
 import { NotificationProvider } from './contexts/NotificationContext';
+import { ThemeProvider } from './contexts/ThemeContext';
 
 const RouteErrorBoundary = () => {
   const error = useRouteError();
@@ -28,26 +29,28 @@ const RouteErrorBoundary = () => {
 
 const App = () => {
   return (
-    <NotificationProvider>
-      <Helmet>
-        <title>Ajira Digital KiNaP Club</title>
-        <meta name="description" content="Ajira Digital KiNaP Club - Your trusted marketplace for digital services" />
-      </Helmet>
-      <ErrorBoundary>
-        <Routes>
-          {routes.map((route: RouteConfig) => (
-            <Route
-              key={route.path}
-              path={route.path}
-              element={route.element}
-              errorElement={<RouteErrorBoundary />}
-            />
-          ))}
-        </Routes>
-      </ErrorBoundary>
-      <Chatbot />
-      <Toaster position="top-right" />
-    </NotificationProvider>
+    <ThemeProvider>
+      <NotificationProvider>
+        <Helmet>
+          <title>Ajira Digital KiNaP Club</title>
+          <meta name="description" content="Ajira Digital KiNaP Club - Your trusted marketplace for digital services" />
+        </Helmet>
+        <ErrorBoundary>
+          <Routes>
+            {routes.map((route: RouteConfig) => (
+              <Route
+                key={route.path}
+                path={route.path}
+                element={route.element}
+                errorElement={<RouteErrorBoundary />}
+              />
+            ))}
+          </Routes>
+        </ErrorBoundary>
+        <Chatbot />
+        <Toaster position="top-right" />
+      </NotificationProvider>
+    </ThemeProvider>
   );
 };
 
