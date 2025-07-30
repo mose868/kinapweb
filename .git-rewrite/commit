@@ -1,6 +1,0 @@
-tree 674ae0192e889f41cda9057b5ee4bf0d2d3f629c
-parent 48f274f31c409c67c364122c99f33586ada88abb
-author olinga-abdulaziz <abdulazizolinga17@gmail.com> 1750860579 +0300
-committer olinga-abdulaziz <abdulazizolinga17@gmail.com> 1750860579 +0300
-
-Move profile fetching to ProfilePage, revert AuthPage payload changes

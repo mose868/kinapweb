@@ -611,6 +611,31 @@ const CommunityPage: React.FC = () => {
 
           {/* Groups List */}
           <div className="flex-1 overflow-y-auto">
+            {/* Starred Messages Section */}
+            <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+              <button
+                onClick={() => {
+                  setShowStarredMessages(true);
+                  setSelectedGroup(null);
+                }}
+                className={`w-full flex items-center gap-3 p-3 rounded-lg transition-colors ${
+                  showStarredMessages
+                    ? 'bg-ajira-primary/10 text-ajira-primary'
+                    : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-900 dark:text-white'
+                }`}
+              >
+                <div className="w-10 h-10 bg-ajira-primary rounded-full flex items-center justify-center">
+                  <span className="text-white font-semibold text-sm">★</span>
+                </div>
+                <div className="flex-1 text-left">
+                  <div className="font-medium">Starred messages</div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400">
+                    {starredMessages.length} message{starredMessages.length !== 1 ? 's' : ''}
+                  </div>
+                </div>
+              </button>
+            </div>
+
             {filteredGroups.map((group) => (
               <div
                 key={group.id}
@@ -818,7 +843,103 @@ const CommunityPage: React.FC = () => {
 
         {/* Chat Area */}
         <div className={`${showSettings ? 'hidden' : 'flex'} lg:flex flex-1 flex-col bg-gray-50 dark:bg-gray-900 ${sidebarCollapsed ? 'block' : 'hidden lg:block'}`}>
-          {selectedGroup ? (
+          {showStarredMessages ? (
+            <>
+              {/* Starred Messages Header */}
+              <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setShowStarredMessages(false)}
+                    className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                  >
+                    <ChevronLeft className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                  </button>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-ajira-primary rounded-full flex items-center justify-center">
+                      <span className="text-white font-semibold text-sm">★</span>
+                    </div>
+                    <div>
+                      <h2 className="font-semibold text-gray-900 dark:text-white">Starred messages</h2>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">Your important messages</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+                    <MoreVertical className="w-5 h-5 text-gray-500" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Starred Messages Content */}
+              <div className="flex-1 flex items-center justify-center bg-gray-50 dark:bg-gray-900 p-4">
+                {starredMessages.length > 0 ? (
+                  <div className="w-full max-w-2xl">
+                    <div className="space-y-4">
+                      {starredMessages.map((message, index) => (
+                        <div
+                          key={message.id || index}
+                          className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700 shadow-sm"
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className="w-10 h-10 bg-ajira-primary rounded-full flex items-center justify-center flex-shrink-0">
+                              <span className="text-white font-semibold text-sm">
+                                {message.userName ? message.userName.charAt(0).toUpperCase() : 'U'}
+                              </span>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between mb-1">
+                                <h3 className="font-medium text-gray-900 dark:text-white">
+                                  {message.userName || 'Unknown User'}
+                                </h3>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs text-gray-500">
+                                    {new Date(message.timestamp).toLocaleDateString()}
+                                  </span>
+                                  <button
+                                    onClick={() => toggleStarMessage(message)}
+                                    className="text-ajira-primary hover:text-ajira-primary/80 transition-colors"
+                                  >
+                                    ★
+                                  </button>
+                                </div>
+                              </div>
+                              <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">
+                                {message.content || message.message}
+                              </p>
+                              <div className="flex items-center gap-2 text-xs text-gray-500">
+                                <span>
+                                  {new Date(message.timestamp).toLocaleTimeString([], {
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  })}
+                                </span>
+                                {message.status && (
+                                  <span className="flex items-center gap-1">
+                                    {message.status === 'read' ? '✓✓' : '✓'}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center">
+                    <div className="w-24 h-24 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <span className="text-4xl text-gray-400">★</span>
+                    </div>
+                    <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">No starred messages</h3>
+                    <p className="text-gray-600 dark:text-gray-400 max-w-md">
+                      Messages you star will appear here. Tap and hold on any message to star it.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </>
+          ) : selectedGroup ? (
             <>
               {/* Chat Header */}
               <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4 flex items-center justify-between">
