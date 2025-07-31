@@ -154,90 +154,83 @@ const TestimonialsPage = () => {
     return <LoadingState message="Loading testimonials" description="Please wait while we fetch the testimonials" />
   }
 
-  // If no testimonials, show demo testimonials
+  // If no testimonials, show coming soon message
   if (!testimonials || testimonials.length === 0) {
-    const demoTestimonials = [
-      {
-        id: 'demo1',
-        userName: 'Jane Doe',
-        userRole: 'Web Developer',
-        content: 'Ajira Digital helped me land my first freelance job in 2025! The new AI-powered training modules are incredible. Highly recommend to anyone starting out.',
-        rating: 5,
-        category: 'Web Development',
-        impact: 'Landed first client worth $2,000',
-        createdAt: new Date(),
-      },
-      {
-        id: 'demo2',
-        userName: 'John Smith',
-        userRole: 'Digital Marketer',
-        content: 'The community and resources are top-notch. I learned so much about social media automation and AI tools in 2025. My business has grown 300%!',
-        rating: 5,
-        category: 'Digital Marketing',
-        impact: 'Business growth of 300%',
-        createdAt: new Date(),
-      },
-      {
-        id: 'demo3',
-        userName: 'Sarah Johnson',
-        userRole: 'Content Creator',
-        content: 'Amazing mentorship program! The 2025 content creation strategies helped me build a YouTube channel with 100K+ subscribers.',
-        rating: 5,
-        category: 'Content Creation',
-        impact: 'Built 100K+ subscriber channel',
-        createdAt: new Date(),
-      },
-      {
-        id: 'demo4',
-        userName: 'Michael Brown',
-        userRole: 'Data Analyst',
-        content: 'The AI and machine learning courses for 2025 are cutting-edge. I transitioned from basic data entry to advanced analytics.',
-        rating: 4,
-        category: 'Data Analysis',
-        impact: 'Career transition to analytics',
-        createdAt: new Date(),
-      },
-      {
-        id: 'demo5',
-        userName: 'Emily Davis',
-        userRole: 'Virtual Assistant',
-        content: 'Excellent training on automation tools and client management. Now I manage 15+ clients efficiently using 2025 productivity tools.',
-        rating: 5,
-        category: 'Virtual Assistant',
-        impact: 'Managing 15+ clients',
-        createdAt: new Date(),
-      },
-      {
-        id: 'demo6',
-        userName: 'David Wilson',
-        userRole: 'Freelance Writer',
-        content: 'The writing and SEO courses helped me increase my rates by 200%. The 2025 AI writing tools integration is fantastic!',
-        rating: 4,
-        category: 'Content Writing',
-        impact: 'Increased rates by 200%',
-        createdAt: new Date(),
-      }
-    ];
     return (
-      <div className="max-w-7xl mx-auto px-2 sm:px-4 py-8 sm:py-12 w-full overflow-x-hidden">
-        <h1 className="text-4xl font-bold text-ajira-primary mb-4">Success Stories & Testimonials 2025 (Demo)</h1>
-        <p className="text-lg text-gray-600 mb-8">Experience the latest success stories from our 2025 cohort</p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-8 w-full">
-          {demoTestimonials.map(t => (
-            <div key={t.id} className="bg-white rounded-lg shadow p-6">
-              <div className="flex items-center mb-2">
-                <span className="font-bold text-lg mr-2">{t.userName}</span>
-                <span className="text-sm text-gray-500">({t.userRole})</span>
-              </div>
-              <div className="mb-2">{t.content}</div>
-              <div className="mb-2"><span className="font-semibold">Category:</span> {t.category}</div>
-              <div className="mb-2"><span className="font-semibold">Impact:</span> {t.impact}</div>
-              <div className="mb-2"><span className="font-semibold">Rating:</span> {t.rating} / 5</div>
+      <div className="max-w-5xl mx-auto px-4 py-16 text-center">
+        <div className="bg-gradient-to-br from-ajira-primary/10 via-ajira-accent/10 to-ajira-secondary/10 rounded-3xl p-12 shadow-2xl">
+          <div className="text-7xl mb-8">🌟</div>
+          <h1 className="text-4xl md:text-6xl font-bold text-ajira-primary mb-6">
+            Success Stories & Testimonials
+          </h1>
+          <div className="text-xl md:text-2xl text-gray-700 mb-10 leading-relaxed">
+            <p className="mb-6">
+              <span className="font-bold text-ajira-accent">Incredible transformations are about to unfold!</span>
+            </p>
+            <p className="text-lg text-gray-600">
+              We're building a powerful platform where success stories will inspire and motivate the next generation of digital professionals.
+            </p>
+          </div>
+          
+          <div className="grid md:grid-cols-3 gap-8 mb-12 text-left">
+            <div className="bg-white/90 rounded-2xl p-8 shadow-xl transform hover:scale-105 transition-all duration-300">
+              <div className="text-4xl mb-4">💫</div>
+              <h3 className="text-xl font-bold text-ajira-primary mb-3">Share Your Journey</h3>
+              <p className="text-gray-600 leading-relaxed">Inspire others by sharing your transformation story, achievements, and the impact Ajira Digital had on your career.</p>
             </div>
-          ))}
-        </div>
-        <div className="mt-8 text-center">
-          <p className="text-gray-500">Sign up or log in to share your own story!</p>
+            
+            <div className="bg-white/90 rounded-2xl p-8 shadow-xl transform hover:scale-105 transition-all duration-300">
+              <div className="text-4xl mb-4">🔥</div>
+              <h3 className="text-xl font-bold text-ajira-primary mb-3">Discover Inspiration</h3>
+              <p className="text-gray-600 leading-relaxed">Read authentic success stories from real professionals who transformed their lives through digital skills and opportunities.</p>
+            </div>
+            
+            <div className="bg-white/90 rounded-2xl p-8 shadow-xl transform hover:scale-105 transition-all duration-300">
+              <div className="text-4xl mb-4">🚀</div>
+              <h3 className="text-xl font-bold text-ajira-primary mb-3">Build Community</h3>
+              <p className="text-gray-600 leading-relaxed">Connect with like-minded professionals, celebrate achievements, and be part of a supportive network of digital innovators.</p>
+            </div>
+          </div>
+          
+          <div className="bg-gradient-to-r from-ajira-primary/20 to-ajira-accent/20 rounded-3xl p-10 border-2 border-ajira-primary/30">
+            <p className="text-2xl font-bold text-ajira-primary mb-6">
+              🎊 Coming Soon - Get Ready to Be Inspired!
+            </p>
+            <p className="text-lg text-gray-700 mb-8 leading-relaxed">
+              Our team is crafting an extraordinary testimonials platform that will showcase the incredible journeys of our community members. 
+              Prepare to be amazed by the stories of transformation, growth, and success that will soon grace these pages!
+            </p>
+            <div className="flex flex-col sm:flex-row gap-6 justify-center">
+              <button className="bg-gradient-to-r from-ajira-accent to-ajira-accent/80 text-white px-10 py-4 rounded-2xl font-bold text-xl hover:from-ajira-accent/90 hover:to-ajira-accent/70 transition-all transform hover:scale-105 shadow-2xl">
+                Join the Waitlist
+              </button>
+              <button className="bg-gradient-to-r from-ajira-primary to-ajira-primary/80 text-white px-10 py-4 rounded-2xl font-bold text-xl hover:from-ajira-primary/90 hover:to-ajira-primary/70 transition-all transform hover:scale-105 shadow-2xl">
+                Explore More
+              </button>
+            </div>
+          </div>
+          
+          <div className="mt-12 bg-white/80 rounded-2xl p-8 shadow-lg">
+            <h3 className="text-2xl font-bold text-ajira-primary mb-4">What's Coming?</h3>
+            <div className="grid md:grid-cols-2 gap-6 text-left">
+              <div>
+                <h4 className="font-semibold text-ajira-accent mb-2">✨ Interactive Storytelling</h4>
+                <p className="text-gray-600">Rich multimedia testimonials with videos, images, and detailed success journeys.</p>
+              </div>
+              <div>
+                <h4 className="font-semibold text-ajira-accent mb-2">🏆 Achievement Showcase</h4>
+                <p className="text-gray-600">Highlight specific milestones, income growth, and career transformations.</p>
+              </div>
+              <div>
+                <h4 className="font-semibold text-ajira-accent mb-2">🤝 Community Engagement</h4>
+                <p className="text-gray-600">Like, comment, and connect with success stories that inspire you.</p>
+              </div>
+              <div>
+                <h4 className="font-semibold text-ajira-accent mb-2">📊 Impact Analytics</h4>
+                <p className="text-gray-600">Track and visualize the real impact of Ajira Digital on careers and lives.</p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     );

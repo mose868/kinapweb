@@ -175,69 +175,67 @@ const ShowcasePage = () => {
     return <div className="text-center py-12 text-red-500">Error loading profiles.</div>;
   }
 
-  // If user is not available, show demo mode
+  // If user is not available, show coming soon message
   if (!user) {
-    // Demo profiles
-    const demoProfiles = [
-      {
-        id: '1',
-        userId: 'demo1',
-        name: 'Jane Doe',
-        avatar: 'https://randomuser.me/api/portraits/women/44.jpg',
-        bio: 'Web developer and designer.',
-        skills: ['React', 'Node.js', 'UI/UX'],
-        achievements: 'Built 20+ websites for clients.',
-        journey: 'Started as a freelancer, now runs a small agency.',
-        portfolioLinks: [{ title: 'Portfolio', url: 'https://janedoe.dev' }],
-        socialLinks: [{ platform: 'LinkedIn', url: 'https://linkedin.com/in/janedoe' }],
-        availability: 'available',
-        location: 'Nairobi',
-        languages: ['English', 'Swahili'],
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-      {
-        id: '2',
-        userId: 'demo2',
-        name: 'John Smith',
-        avatar: 'https://randomuser.me/api/portraits/men/32.jpg',
-        bio: 'Digital marketer and content creator.',
-        skills: ['SEO', 'Content Writing', 'Social Media'],
-        achievements: 'Grew 10+ brands online.',
-        journey: 'Started as a blogger, now a marketing consultant.',
-        portfolioLinks: [{ title: 'Blog', url: 'https://johnsmith.blog' }],
-        socialLinks: [{ platform: 'Twitter', url: 'https://twitter.com/johnsmith' }],
-        availability: 'busy',
-        location: 'Mombasa',
-        languages: ['English'],
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      }
-    ];
     return (
-      <div className="max-w-5xl mx-auto px-2 sm:px-4 py-8 w-full overflow-x-hidden">
-        <h1 className="text-3xl font-bold mb-6">Showcase Profiles (Demo)</h1>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-8 w-full">
-          {demoProfiles.map(profile => (
-            <div key={profile.id} className="bg-white rounded-lg shadow p-6 flex flex-col items-center">
-              <img src={profile.avatar} alt={profile.name} className="w-24 h-24 rounded-full mb-4" />
-              <h2 className="text-xl font-semibold mb-2">{profile.name}</h2>
-              <p className="text-gray-600 mb-2">{profile.bio}</p>
-              <div className="mb-2">
-                <span className="font-semibold">Skills:</span> {profile.skills.join(', ')}
-              </div>
-              <div className="mb-2">
-                <span className="font-semibold">Location:</span> {profile.location}
-              </div>
-              <div className="mb-2">
-                <span className="font-semibold">Languages:</span> {profile.languages.join(', ')}
-              </div>
-              <a href={profile.portfolioLinks[0].url} target="_blank" rel="noopener noreferrer" className="text-ajira-accent underline">{profile.portfolioLinks[0].title}</a>
+      <div className="max-w-4xl mx-auto px-4 py-16 text-center">
+        <div className="bg-gradient-to-br from-ajira-primary/10 to-ajira-accent/10 rounded-3xl p-12 shadow-xl">
+          <div className="text-6xl mb-6">🚀</div>
+          <h1 className="text-4xl md:text-5xl font-bold text-ajira-primary mb-6">
+            Project Showcase
+          </h1>
+          <div className="text-xl md:text-2xl text-gray-700 mb-8 leading-relaxed">
+            <p className="mb-4">
+              <span className="font-semibold text-ajira-accent">Something amazing is brewing!</span>
+            </p>
+            <p className="text-lg text-gray-600">
+              We're crafting an incredible showcase platform where you'll be able to:
+            </p>
+          </div>
+          
+          <div className="grid md:grid-cols-2 gap-6 mb-12 text-left">
+            <div className="bg-white/80 rounded-2xl p-6 shadow-lg">
+              <div className="text-3xl mb-3">💼</div>
+              <h3 className="text-xl font-bold text-ajira-primary mb-2">Showcase Your Work</h3>
+              <p className="text-gray-600">Display your projects, skills, and achievements in a stunning portfolio that stands out.</p>
             </div>
-          ))}
-        </div>
-        <div className="mt-8 text-center">
-          <p className="text-gray-500">Sign up or log in to create your own profile and connect with others!</p>
+            
+            <div className="bg-white/80 rounded-2xl p-6 shadow-lg">
+              <div className="text-3xl mb-3">🤝</div>
+              <h3 className="text-xl font-bold text-ajira-primary mb-2">Connect & Collaborate</h3>
+              <p className="text-gray-600">Find talented professionals, build meaningful connections, and discover exciting opportunities.</p>
+            </div>
+            
+            <div className="bg-white/80 rounded-2xl p-6 shadow-lg">
+              <div className="text-3xl mb-3">🎯</div>
+              <h3 className="text-xl font-bold text-ajira-primary mb-2">Get Discovered</h3>
+              <p className="text-gray-600">Let potential clients and employers find you through our powerful discovery system.</p>
+            </div>
+            
+            <div className="bg-white/80 rounded-2xl p-6 shadow-lg">
+              <div className="text-3xl mb-3">📈</div>
+              <h3 className="text-xl font-bold text-ajira-primary mb-2">Grow Your Network</h3>
+              <p className="text-gray-600">Join a community of passionate professionals and expand your professional network.</p>
+            </div>
+          </div>
+          
+          <div className="bg-ajira-primary/5 rounded-2xl p-8 border-2 border-ajira-primary/20">
+            <p className="text-lg font-semibold text-ajira-primary mb-4">
+              🎉 Coming Very Soon!
+            </p>
+            <p className="text-gray-600 mb-6">
+              Our team is working tirelessly to bring you the most innovative showcase platform. 
+              Get ready to take your professional presence to the next level!
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <button className="bg-ajira-accent text-white px-8 py-3 rounded-xl font-bold text-lg hover:bg-ajira-accent/90 transition-all transform hover:scale-105 shadow-lg">
+                Sign Up for Early Access
+              </button>
+              <button className="bg-ajira-primary text-white px-8 py-3 rounded-xl font-bold text-lg hover:bg-ajira-primary/90 transition-all transform hover:scale-105 shadow-lg">
+                Learn More
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     );

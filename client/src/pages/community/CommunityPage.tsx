@@ -14,10 +14,32 @@ import {
   Keyboard,
   MessageCircle,
   User,
+  Users,
   ArrowRight,
-  Plus
+
+  // WhatsApp-style interface icons
+  Paperclip,
+  Send,
+  Smile,
+  Camera,
+  FileText,
+  Image,
+  Video,
+  Music,
+  File,
+  Phone,
+  Video as VideoIcon,
+  CornerUpLeft,
+  Circle,
+  CircleDot,
+  Download
 } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
+import Picker from '@emoji-mart/react';
+import data from '@emoji-mart/data';
+import { groupsApi } from '../../api/groups';
+import { kinapAIApi } from '../../api/chat';
+import socketService from '../../services/socket';
 
 type Theme = 'light' | 'dark' | 'system';
 
@@ -29,7 +51,7 @@ interface ChatMessage {
   message: string;
   timestamp: Date;
   isOwn?: boolean;
-  messageType: 'text' | 'image' | 'file' | 'voice' | 'video' | 'system';
+  messageType: 'text' | 'image' | 'file' | 'video' | 'system' | 'audio' | 'document';
   status: 'sending' | 'sent' | 'delivered' | 'read';
   replyTo?: string;
   mediaUrl?: string;
@@ -78,10 +100,10 @@ const SETTINGS_CATEGORIES = [
 ];
 
 const CHAT_SETTINGS = [
-  { id: 'display', name: 'Display', hasArrow: true },
+  { id: 'display', name: 'Display', isHeader: true },
   { id: 'theme', name: 'Theme', hasArrow: true },
   { id: 'wallpaper', name: 'Wallpaper', hasArrow: true },
-  { id: 'chat_settings', name: 'Chat settings', hasArrow: true },
+  { id: 'chat_settings', name: 'Chat settings', isHeader: true },
   { id: 'media_upload_quality', name: 'Media upload quality', hasArrow: true },
   { id: 'media_auto_download', name: 'Media auto-download', hasArrow: true },
   { id: 'spell_check', name: 'Spell check', description: 'Check spelling while typing', toggle: true, value: false },
@@ -247,6 +269,19 @@ const WALLPAPER_OPTIONS = [
   },
 ];
 
+// 1. Add default wallpapers and colors at the top of the file:
+const DEFAULT_WALLPAPERS = [
+  { id: 'wa1', url: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=600&q=80' },
+  { id: 'wa2', url: 'https://images.unsplash.com/photo-1465101046530-73398c7f28ca?auto=format&fit=crop&w=600&q=80' },
+  { id: 'wa3', url: 'https://images.unsplash.com/photo-1519125323398-675f0ddb6308?auto=format&fit=crop&w=600&q=80' },
+  { id: 'wa4', url: 'https://images.unsplash.com/photo-1465101178521-c1a9136a3b99?auto=format&fit=crop&w=600&q=80' },
+  { id: 'wa5', url: 'https://images.unsplash.com/photo-1465101046530-73398c7f28ca?auto=format&fit=crop&w=600&q=80' },
+  { id: 'color1', color: '#efeae2' },
+  { id: 'color2', color: '#d2f8d2' },
+  { id: 'color3', color: '#f5e1fd' },
+  { id: 'color4', color: '#fffbe7' },
+];
+
 const CommunityPage: React.FC = () => {
   // State management
   const [groups, setGroups] = useState<ChatGroup[]>([]);
@@ -261,47 +296,89 @@ const CommunityPage: React.FC = () => {
   const [showStarredMessages, setShowStarredMessages] = useState(false);
   const [starredMessages, setStarredMessages] = useState<ChatMessage[]>([]);
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
-  const [showCreateGroup, setShowCreateGroup] = useState(false);
+
   const [showRingtoneModal, setShowRingtoneModal] = useState(false);
   const [selectedRingtone, setSelectedRingtone] = useState('default');
   const [showThemeModal, setShowThemeModal] = useState(false);
   const [showWallpaperModal, setShowWallpaperModal] = useState(false);
   const [selectedWallpaper, setSelectedWallpaper] = useState('default');
+
+
   const { theme: currentTheme, setTheme: setCurrentTheme, isDark } = useTheme();
   const [isSaving, setIsSaving] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [settingsSearchQuery, setSettingsSearchQuery] = useState('');
+  const [privacySettings, setPrivacySettings] = useState(() => {
+    const saved = localStorage.getItem('kinap-privacy-settings');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (error) {
+        console.error('Error loading privacy settings:', error);
+      }
+    }
+    return {
+      profileVisibility: 'Everyone',
+      onlineStatus: true
+    };
+  });
+  const [joiningGroup, setJoiningGroup] = useState<string | null>(null);
+  const [joinSuccess, setJoinSuccess] = useState<string | null>(null);
+  
+  // File upload states
+  const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
+  const [replyToMessage, setReplyToMessage] = useState<ChatMessage | null>(null);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  
+  // File input refs
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
+  const documentInputRef = useRef<HTMLInputElement>(null);
 
-  const [settings, setSettings] = useState({
-    darkTheme: false,
-    enterToSend: true,
-    messageNotifications: true,
-    sound: true,
-    spellCheck: false,
-    replaceTextWithEmoji: false,
-    messagePreview: false,
-    readReceipts: false,
-    typingIndicators: false,
-    autoSaveMedia: false,
-    lastSeen: false,
-    profilePhoto: false,
-    about: false,
-    groups: false,
-    status: false,
-    showPreviews: false,
-    reactionNotifications: false,
-    backgroundSync: false,
-    incomingSounds: false,
-    outgoingSounds: false,
-    vibration: false,
-    ledLight: false
+  const [settings, setSettings] = useState(() => {
+    const savedSettings = localStorage.getItem('kinap-chat-settings');
+    const defaultSettings = {
+      darkTheme: false,
+      enterToSend: true,
+      messageNotifications: true,
+      sound: true,
+      spellCheck: false,
+      replaceTextWithEmoji: false,
+      messagePreview: false,
+      readReceipts: false,
+      typingIndicators: false,
+      autoSaveMedia: false,
+      lastSeen: false,
+      profilePhoto: false,
+      about: false,
+      groups: false,
+      status: false,
+      showPreviews: false,
+      reactionNotifications: false,
+      backgroundSync: false,
+      incomingSounds: false,
+      outgoingSounds: false,
+      vibration: false,
+      ledLight: false
+    };
+    
+    if (savedSettings) {
+      try {
+        const parsedSettings = JSON.parse(savedSettings);
+        return { ...defaultSettings, ...parsedSettings };
+      } catch (error) {
+        console.error('Error loading settings:', error);
+        return defaultSettings;
+      }
+    }
+    
+    return defaultSettings;
   });
 
-  const [newGroup, setNewGroup] = useState({
-    name: '',
-    description: '',
-    category: ''
-  });
+
 
   const menuRef = useRef<HTMLButtonElement>(null);
 
@@ -359,7 +436,8 @@ const CommunityPage: React.FC = () => {
           messageType: 'text',
           status: 'read',
           content: 'Hi John!'
-        }
+        },
+
       ],
       admins: ['1'],
       type: 'group',
@@ -390,16 +468,6 @@ const CommunityPage: React.FC = () => {
 
   // Load persistent data from localStorage on component mount
   useEffect(() => {
-    const savedSettings = localStorage.getItem('kinap-chat-settings');
-    if (savedSettings) {
-      try {
-        const parsedSettings = JSON.parse(savedSettings);
-        setSettings(prev => ({ ...prev, ...parsedSettings }));
-      } catch (error) {
-        console.error('Error loading settings:', error);
-      }
-    }
-
     // Load selected ringtone
     const savedRingtone = localStorage.getItem('kinap-selected-ringtone');
     if (savedRingtone) {
@@ -426,26 +494,93 @@ const CommunityPage: React.FC = () => {
     }
 
     // Load chat groups with messages
-    const savedGroups = localStorage.getItem('kinap-chat-groups');
-    if (savedGroups) {
-      try {
-        const parsedGroups = JSON.parse(savedGroups);
-        // Convert date strings back to Date objects
-        const groupsWithDates = parsedGroups.map((group: any) => ({
-          ...group,
-          lastMessageTime: new Date(group.lastMessageTime),
-          messages: group.messages.map((msg: any) => ({
-            ...msg,
-            timestamp: new Date(msg.timestamp)
-          }))
-        }));
-        setGroups(groupsWithDates);
-      } catch (error) {
-        console.error('Error loading chat groups:', error);
+    const loadGroups = async () => {
+      const savedGroups = localStorage.getItem('kinap-chat-groups');
+      let currentGroups: ChatGroup[] = [];
+      
+      if (savedGroups) {
+        try {
+          const parsedGroups = JSON.parse(savedGroups);
+          // Convert date strings back to Date objects
+          currentGroups = parsedGroups.map((group: any) => ({
+            ...group,
+            lastMessageTime: new Date(group.lastMessageTime),
+            messages: group.messages.map((msg: any) => ({
+              ...msg,
+              timestamp: new Date(msg.timestamp)
+            }))
+          }));
+        } catch (error) {
+          console.error('Error loading chat groups:', error);
+          currentGroups = demoGroups;
+        }
+      } else {
+        // If no saved groups, start with demo groups and save them
+        currentGroups = demoGroups;
+        localStorage.setItem('kinap-chat-groups', JSON.stringify(demoGroups));
       }
-    } else {
-      setGroups(demoGroups);
-    }
+
+      // Ensure we always have at least one group for testing
+      if (currentGroups.length === 0) {
+        currentGroups = [demoGroups[0]]; // Always keep at least the first demo group
+        localStorage.setItem('kinap-chat-groups', JSON.stringify(currentGroups));
+      }
+
+      setGroups(currentGroups);
+
+      // Load user's groups from API (but don't override existing groups)
+      try {
+        const userId = 'demo-user-id'; // In real app, get from auth context
+        const response = await fetch(`/api/groups/user/${userId}`);
+        if (response.ok) {
+          const apiGroups = await response.json();
+          const formattedGroups = apiGroups.map((group: any) => ({
+            id: group._id,
+            name: group.name,
+            description: group.description,
+            avatar: 'https://via.placeholder.com/40',
+            members: group.members?.length || 0,
+            lastMessage: 'Welcome to the group!',
+            lastMessageTime: new Date(group.createdAt),
+            unreadCount: 0,
+            messages: [],
+            admins: group.admins || [],
+            type: 'group' as const,
+            category: group.category
+          }));
+
+          // Merge API groups with existing groups (only add new ones)
+          setGroups((prev: ChatGroup[]) => {
+            const merged = [...prev];
+            formattedGroups.forEach((apiGroup: any) => {
+              const exists = merged.find(g => g.id === apiGroup.id || g.category === apiGroup.category);
+              if (!exists) {
+                merged.push(apiGroup);
+              }
+            });
+            return merged;
+          });
+        }
+      } catch (error) {
+        console.error('Error loading groups from API:', error);
+        // If API fails, we still have our local groups
+      }
+    };
+
+    loadGroups();
+    
+    // Ensure we always have at least one group for testing
+    const ensureDefaultGroup = () => {
+      const savedGroups = localStorage.getItem('kinap-chat-groups');
+      if (!savedGroups || JSON.parse(savedGroups).length === 0) {
+        const defaultGroup = demoGroups[0];
+        localStorage.setItem('kinap-chat-groups', JSON.stringify([defaultGroup]));
+        setGroups([defaultGroup]);
+      }
+    };
+    
+    // Check after a short delay to ensure groups are loaded
+    setTimeout(ensureDefaultGroup, 1000);
   }, []);
 
   // Save settings to localStorage whenever they change
@@ -454,6 +589,27 @@ const CommunityPage: React.FC = () => {
     localStorage.setItem('kinap-chat-settings', JSON.stringify(settings));
     setTimeout(() => setIsSaving(false), 500);
   }, [settings]);
+
+  // Save privacy settings to localStorage whenever they change
+  useEffect(() => {
+    setIsSaving(true);
+    localStorage.setItem('kinap-privacy-settings', JSON.stringify(privacySettings));
+    setTimeout(() => setIsSaving(false), 500);
+  }, [privacySettings]);
+
+  // Save media auto-download settings to localStorage whenever they change
+  useEffect(() => {
+    setIsSaving(true);
+    localStorage.setItem('kinap-media-auto-download', JSON.stringify(mediaAutoDownload));
+    setTimeout(() => setIsSaving(false), 500);
+  }, [mediaAutoDownload]);
+
+  // Save media quality setting to localStorage whenever it changes
+  useEffect(() => {
+    setIsSaving(true);
+    localStorage.setItem('kinap-media-quality', selectedMediaQuality);
+    setTimeout(() => setIsSaving(false), 500);
+  }, [selectedMediaQuality]);
 
   // Save selected ringtone to localStorage
   useEffect(() => {
@@ -473,20 +629,186 @@ const CommunityPage: React.FC = () => {
 
   // Save chat groups to localStorage whenever they change
   useEffect(() => {
-    setIsSaving(true);
-    localStorage.setItem('kinap-chat-groups', JSON.stringify(groups));
-    setTimeout(() => setIsSaving(false), 500);
+    if (groups.length > 0) { // Only save if we have groups
+      setIsSaving(true);
+      localStorage.setItem('kinap-chat-groups', JSON.stringify(groups));
+      setTimeout(() => setIsSaving(false), 500);
+    }
   }, [groups]);
 
-  // Click outside handler for menu
+  // Save privacy settings to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('kinap-privacy-settings', JSON.stringify(privacySettings));
+  }, [privacySettings]);
+
+  // Save media auto-download settings to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('kinap-media-auto-download', JSON.stringify(mediaAutoDownload));
+  }, [mediaAutoDownload]);
+
+  // Save media quality setting to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('kinap-media-quality', selectedMediaQuality);
+  }, [selectedMediaQuality]);
+
+  // Socket.IO Integration for Real-time Messaging
+  useEffect(() => {
+    // Initialize Socket.IO connection
+    const activeUser = {
+      id: 'demo-user-id',
+      name: 'Demo User',
+      avatar: 'https://via.placeholder.com/40/1B4F72/FFFFFF?text=U'
+    };
+
+    // Connect to Socket.IO
+    const socket = socketService.connect(activeUser.id, activeUser.name, activeUser.avatar);
+
+    // Listen for incoming messages
+    socketService.on('message', (messageData: ChatMessage) => {
+      setGroups(prevGroups => {
+        return prevGroups.map(group => {
+          if (group.id === messageData.groupId) {
+            return {
+              ...group,
+              messages: [...group.messages, messageData],
+              lastMessage: messageData.content || messageData.message,
+              lastMessageTime: new Date()
+            };
+          }
+          return group;
+        });
+      });
+    });
+
+    // Listen for typing indicators
+    socketService.on('user_typing', ({ groupId, userId, userName }) => {
+      setGroups(prevGroups => {
+        return prevGroups.map(group => {
+          if (group.id === groupId) {
+            return {
+              ...group,
+              isTyping: true,
+              typingUsers: [...(group.typingUsers || []), userName]
+            };
+          }
+          return group;
+        });
+      });
+    });
+
+    socketService.on('user_stop_typing', ({ groupId, userId }) => {
+      setGroups(prevGroups => {
+        return prevGroups.map(group => {
+          if (group.id === groupId) {
+            return {
+              ...group,
+              isTyping: false,
+              typingUsers: (group.typingUsers || []).filter(user => user !== userId)
+            };
+          }
+          return group;
+        });
+      });
+    });
+
+    // Listen for user join/leave events
+    socketService.on('user_joined', ({ groupId, userName }) => {
+      console.log(`${userName} joined group ${groupId}`);
+    });
+
+    socketService.on('user_left', ({ groupId, userName }) => {
+      console.log(`${userName} left group ${groupId}`);
+    });
+
+    // Listen for message reactions
+    socketService.on('reaction_added', ({ messageId, userId, reaction }) => {
+      setGroups(prevGroups => {
+        return prevGroups.map(group => {
+          return {
+            ...group,
+            messages: group.messages.map(msg => {
+              if (msg.id === messageId) {
+                return {
+                  ...msg,
+                  reactions: [...(msg.reactions || []), { emoji: reaction, users: [userId] }]
+                };
+              }
+              return msg;
+            })
+          };
+        });
+      });
+    });
+
+    // Listen for message edits
+    socketService.on('message_edited', ({ messageId, newContent, userId }) => {
+      setGroups(prevGroups => {
+        return prevGroups.map(group => {
+          return {
+            ...group,
+            messages: group.messages.map(msg => {
+              if (msg.id === messageId) {
+                return {
+                  ...msg,
+                  content: newContent,
+                  message: newContent,
+                  isEdited: true
+                };
+              }
+              return msg;
+            })
+          };
+        });
+      });
+    });
+
+    // Listen for message deletions
+    socketService.on('message_deleted', ({ messageId, userId }) => {
+      setGroups(prevGroups => {
+        return prevGroups.map(group => {
+          return {
+            ...group,
+            messages: group.messages.filter(msg => msg.id !== messageId)
+          };
+        });
+      });
+    });
+
+    // Listen for online/offline status
+    socketService.on('user_online', ({ userId, userName, userAvatar }) => {
+      console.log(`${userName} is now online`);
+    });
+
+    socketService.on('user_offline', ({ userId }) => {
+      console.log(`User ${userId} is now offline`);
+    });
+
+    // Cleanup on unmount
+    return () => {
+      socketService.disconnect();
+    };
+  }, []);
+
+  // Click outside handler for menu and other dropdowns
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        const target = event.target as HTMLElement;
-        // Don't close if clicking on the dropdown menu itself
+      const target = event.target as HTMLElement;
+      
+      // Close main menu
+      if (menuRef.current && !menuRef.current.contains(target)) {
         if (!target.closest('.menu-dropdown')) {
           setShowMainMenu(false);
         }
+      }
+      
+      // Close attachment menu
+      if (!target.closest('.attachment-menu')) {
+        setShowAttachmentMenu(false);
+      }
+      
+      // Close emoji picker
+      if (!target.closest('.emoji-picker')) {
+        setShowEmojiPicker(false);
       }
     };
 
@@ -762,7 +1084,6 @@ const CommunityPage: React.FC = () => {
           .replace(/sketch/g, '🎨')
           .replace(/adobe/g, '🎨')
           .replace(/photoshop/g, '🎨')
-          .replace(/illustrator/g, '🎨')
           .replace(/indesign/g, '🎨')
           .replace(/premiere/g, '🎬')
           .replace(/aftereffects/g, '🎬')
@@ -805,6 +1126,7 @@ const CommunityPage: React.FC = () => {
           .replace(/webflow/g, '🛒')
           .replace(/bubble/g, '🛒')
           .replace(/airtable/g, '📊')
+          .replace(/notion/g, '📝')
           .replace(/slack/g, '💬')
           .replace(/discord/g, '🎮')
           .replace(/teams/g, '👥')
@@ -853,98 +1175,6 @@ const CommunityPage: React.FC = () => {
           .replace(/sketch/g, '🎨')
           .replace(/adobe/g, '🎨')
           .replace(/photoshop/g, '🎨')
-          .replace(/illustrator/g, '🎨')
-          .replace(/indesign/g, '🎨')
-          .replace(/premiere/g, '🎬')
-          .replace(/aftereffects/g, '🎬')
-          .replace(/blender/g, '🎬')
-          .replace(/maya/g, '🎬')
-          .replace(/3dsmax/g, '🎬')
-          .replace(/cinema4d/g, '🎬')
-          .replace(/houdini/g, '🎬')
-          .replace(/nuke/g, '🎬')
-          .replace(/davinci/g, '🎬')
-          .replace(/finalcut/g, '🎬')
-          .replace(/imovie/g, '🎬')
-          .replace(/openshot/g, '🎬')
-          .replace(/kdenlive/g, '🎬')
-          .replace(/shotcut/g, '🎬')
-          .replace(/lightworks/g, '🎬')
-          .replace(/resolve/g, '🎬')
-          .replace(/vegas/g, '🎬')
-          .replace(/camtasia/g, '🎬')
-          .replace(/obs/g, '🎬')
-          .replace(/streamlabs/g, '🎬')
-          .replace(/xsplit/g, '🎬')
-          .replace(/wirecast/g, '🎬')
-          .replace(/vimeo/g, '🎬')
-          .replace(/youtube/g, '📺')
-          .replace(/twitch/g, '🎮')
-          .replace(/mixer/g, '🎮')
-          .replace(/tiktok/g, '📱')
-          .replace(/pinterest/g, '📌')
-          .replace(/reddit/g, '🤖')
-          .replace(/hackernews/g, '📰')
-          .replace(/producthunt/g, '🚀')
-          .replace(/indiehackers/g, '🚀')
-          .replace(/devto/g, '📝')
-          .replace(/medium/g, '📝')
-          .replace(/substack/g, '📝')
-          .replace(/hashnode/g, '📝')
-          .replace(/squarespace/g, '🛒')
-          .replace(/wix/g, '🛒')
-          .replace(/webflow/g, '🛒')
-          .replace(/bubble/g, '🛒')
-          .replace(/airtable/g, '📊')
-          .replace(/slack/g, '💬')
-          .replace(/discord/g, '🎮')
-          .replace(/teams/g, '👥')
-          .replace(/zoom/g, '📹')
-          .replace(/meet/g, '📹')
-          .replace(/skype/g, '📞')
-          .replace(/telegram/g, '📱')
-          .replace(/signal/g, '📱')
-          .replace(/whatsapp/g, '📱')
-          .replace(/wechat/g, '📱')
-          .replace(/line/g, '📱')
-          .replace(/kakao/g, '📱')
-          .replace(/viber/g, '📱')
-          .replace(/snapchat/g, '👻')
-          .replace(/instagram/g, '📷')
-          .replace(/facebook/g, '📘')
-          .replace(/twitter/g, '🐦')
-          .replace(/linkedin/g, '💼')
-          .replace(/github/g, '🐙')
-          .replace(/gitlab/g, '🦊')
-          .replace(/bitbucket/g, '🪣')
-          .replace(/jira/g, '🎯')
-          .replace(/confluence/g, '📚')
-          .replace(/trello/g, '📋')
-          .replace(/asana/g, '📋')
-          .replace(/monday/g, '📋')
-          .replace(/clickup/g, '📋')
-          .replace(/roam/g, '🧠')
-          .replace(/obsidian/g, '💎')
-          .replace(/logseq/g, '📝')
-          .replace(/remnote/g, '📝')
-          .replace(/roamresearch/g, '🧠')
-          .replace(/amplenote/g, '📝')
-          .replace(/bear/g, '🐻')
-          .replace(/ulysses/g, '📝')
-          .replace(/scrivener/g, '📝')
-          .replace(/typora/g, '📝')
-          .replace(/markdown/g, '📝')
-          .replace(/latex/g, '📝')
-          .replace(/mathjax/g, '📝')
-          .replace(/katex/g, '📝')
-          .replace(/mermaid/g, '📊')
-          .replace(/plantuml/g, '📊')
-          .replace(/drawio/g, '📊')
-          .replace(/figma/g, '🎨')
-          .replace(/sketch/g, '🎨')
-          .replace(/adobe/g, '🎨')
-          .replace(/photoshop/g, '🎨')
-          .replace(/illustrator/g, '🎨')
           .replace(/indesign/g, '🎨')
           .replace(/premiere/g, '🎬')
           .replace(/aftereffects/g, '🎬')
@@ -991,49 +1221,103 @@ const CommunityPage: React.FC = () => {
       userAvatar: activeUser.avatar,
       message: processedMessage,
       timestamp: new Date(),
+      isOwn: true,
       messageType: 'text',
-      status: 'sent',
+      status: 'sending',
+      replyTo: replyToMessage?.id,
       content: processedMessage
     };
 
-    setGroups(prev => prev.map(group => 
-      group.id === selectedGroup.id 
-        ? { ...group, messages: [...group.messages, message] }
-        : group
-    ));
+    // Send message via Socket.IO for real-time communication
+    if (selectedGroup && socketService.isSocketConnected()) {
+      socketService.sendGroupMessage(
+        selectedGroup.id,
+        activeUser.id,
+        processedMessage,
+        'text',
+        activeUser.name
+      );
+    }
 
-    setSelectedGroup(prev => prev ? { ...prev, messages: [...prev.messages, message] } : null);
+    // Add to selected group
+    setSelectedGroup(prev => {
+      if (!prev) return null;
+      const updatedGroup = { ...prev, messages: [...prev.messages, message] };
+      
+      // Save to localStorage immediately
+      const updatedGroups = groups.map(group => 
+        group.id === selectedGroup.id ? updatedGroup : group
+      );
+      localStorage.setItem('kinap-chat-groups', JSON.stringify(updatedGroups));
+      
+      return updatedGroup;
+    });
+    
+    // Update groups state
+    setGroups(prev => {
+      const updatedGroups = prev.map(group => 
+        group.id === selectedGroup.id 
+          ? { ...group, messages: [...group.messages, message] }
+          : group
+      );
+      // Save to localStorage
+      localStorage.setItem('kinap-chat-groups', JSON.stringify(updatedGroups));
+      return updatedGroups;
+    });
+
+    // Clear input and reply
     setNewMessage('');
+    setReplyToMessage(null);
 
-    // Show typing indicator
-    if (settings.typingIndicators) {
-      setTypingUsers(prev => [...prev, 'demo-user']);
-      setTimeout(() => {
-        setTypingUsers(prev => prev.filter(id => id !== 'demo-user'));
-      }, 2000);
-    }
+    // Simulate message delivery (grey double tick)
+    setTimeout(() => {
+      setSelectedGroup(prev => {
+        if (!prev) return null;
+        const updatedGroup = { ...prev, messages: prev.messages.map(msg => 
+          msg.id === message.id ? { ...msg, status: 'delivered' as const } : msg
+        )};
+        
+        // Save to localStorage
+        const updatedGroups = groups.map(group => 
+          group.id === selectedGroup.id ? updatedGroup : group
+        );
+        localStorage.setItem('kinap-chat-groups', JSON.stringify(updatedGroups));
+        
+        return updatedGroup;
+      });
+    }, 1500);
 
-    // Play outgoing sound
-    if (settings.outgoingSounds) {
-      playRingtone('notification');
-    }
+    // Simulate message read (blue double tick)
+    setTimeout(() => {
+      setSelectedGroup(prev => {
+        if (!prev) return null;
+        const updatedGroup = { ...prev, messages: prev.messages.map(msg => 
+          msg.id === message.id ? { ...msg, status: 'read' as const } : msg
+        )};
+        
+        // Save to localStorage
+        const updatedGroups = groups.map(group => 
+          group.id === selectedGroup.id ? updatedGroup : group
+        );
+        localStorage.setItem('kinap-chat-groups', JSON.stringify(updatedGroups));
+        
+        return updatedGroup;
+      });
+    }, 3000);
 
-    // Update read receipts
-    if (settings.readReceipts) {
-      setTimeout(() => {
-        setGroups(prev => prev.map(group => 
-          group.id === selectedGroup.id 
-            ? { ...group, messages: group.messages.map(msg => 
-                msg.id === message.id ? { ...msg, status: 'read' } : msg
-              )}
-            : group
-        ));
-      }, 1000);
+    // Play sound if enabled
+    if (settings.sound) {
+      playRingtone('message');
     }
   };
 
   const handleTyping = () => {
     if (!selectedGroup || !settings.typingIndicators) return;
+    
+    // Send typing indicator via Socket.IO
+    if (socketService.isSocketConnected()) {
+      socketService.startTyping(selectedGroup.id, activeUser.id, activeUser.name);
+    }
     
     if (!typingUsers.includes(activeUser.id)) {
       setTypingUsers(prev => [...prev, activeUser.id]);
@@ -1041,6 +1325,11 @@ const CommunityPage: React.FC = () => {
     
     setTimeout(() => {
       setTypingUsers(prev => prev.filter(id => id !== activeUser.id));
+      
+      // Stop typing indicator via Socket.IO
+      if (socketService.isSocketConnected()) {
+        socketService.stopTyping(selectedGroup.id, activeUser.id);
+      }
     }, 3000);
   };
 
@@ -1062,36 +1351,119 @@ const CommunityPage: React.FC = () => {
     }
   };
 
-  const joinGroup = (category: string) => {
-    const existingGroup = groups.find(g => g.category === category);
-    if (existingGroup) {
-      setSelectedGroup(existingGroup);
-      setShowSettings(false);
-      return;
+  const joinGroup = async (category: string) => {
+    try {
+      console.log('Attempting to join group:', category);
+      
+      // Check if user is already a member
+      const isAlreadyMember = groups.some(g => g.category === category);
+      
+      if (isAlreadyMember) {
+        console.log('Already a member of this group');
+        return; // Already a member
+      }
+
+      setJoiningGroup(category);
+
+      // For demo purposes, using a mock userId
+      // In a real app, this would come from the auth context
+      const userId = 'demo-user-id';
+
+      // Try API call first, fallback to localStorage if it fails
+      try {
+        console.log('Making API call to join group...');
+        const response = await fetch(`/api/groups/join/${category}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ userId })
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          console.log('API response:', result);
+          
+          // Create new group for this category
+          const newGroup: ChatGroup = {
+            id: result.group._id || Date.now().toString(),
+            name: result.group.name || `${category} Community`,
+            description: result.group.description || `${category.toLowerCase()} discussions and community`,
+            avatar: 'https://via.placeholder.com/40',
+            members: result.group.members?.length || 1,
+            lastMessage: 'Welcome to the group!',
+            lastMessageTime: new Date(),
+            unreadCount: 0,
+            messages: [],
+            admins: result.group.admins || ['1'],
+            type: 'group',
+            category: category
+          };
+
+          setGroups(prev => {
+            const updatedGroups = [...prev, newGroup];
+            // Immediately save to localStorage to ensure persistence
+            localStorage.setItem('kinap-chat-groups', JSON.stringify(updatedGroups));
+            return updatedGroups;
+          });
+
+          // Join Socket.IO room for real-time messaging
+          if (socketService.isSocketConnected()) {
+            socketService.joinGroup(newGroup.id, activeUser.id, activeUser.name);
+          }
+
+          console.log('Successfully joined group via API');
+          setJoinSuccess(category);
+          setTimeout(() => setJoinSuccess(null), 3000);
+          
+          // Add join notification to the newly joined group
+          addJoinNotification('Demo User', `${category} Community`, newGroup.id);
+        } else {
+          console.error('API call failed, falling back to localStorage');
+          throw new Error('API call failed');
+        }
+      } catch (apiError) {
+        console.log('API call failed, using localStorage fallback:', apiError);
+        
+        // Fallback to localStorage only
+        const newGroup: ChatGroup = {
+          id: Date.now().toString(),
+          name: `${category} Community`,
+          description: `${category.toLowerCase()} discussions and community`,
+          avatar: 'https://via.placeholder.com/40',
+          members: 1,
+          lastMessage: 'Welcome to the group!',
+          lastMessageTime: new Date(),
+          unreadCount: 0,
+          messages: [],
+          admins: ['1'],
+          type: 'group',
+          category: category
+        };
+
+        setGroups(prev => {
+          const updatedGroups = [...prev, newGroup];
+          // Immediately save to localStorage to ensure persistence
+          localStorage.setItem('kinap-chat-groups', JSON.stringify(updatedGroups));
+          return updatedGroups;
+        });
+        
+                  console.log('Successfully joined group via localStorage');
+          setJoinSuccess(category);
+          setTimeout(() => setJoinSuccess(null), 3000);
+          
+          // Add join notification to the newly joined group
+          addJoinNotification('Demo User', `${category} Community`, newGroup.id);
+      }
+    } catch (error) {
+      console.error('Error joining group:', error);
+    } finally {
+      setJoiningGroup(null);
     }
-    
-    const newGroupData: ChatGroup = {
-      id: Date.now().toString(),
-      name: category,
-      description: `${category} community group`,
-      avatar: 'https://via.placeholder.com/40',
-      members: 1,
-      lastMessage: 'Welcome to the group!',
-      lastMessageTime: new Date(),
-      unreadCount: 0,
-      messages: [],
-      admins: [activeUser.id],
-      type: 'group',
-      category: category
-    };
-    
-    setGroups(prev => [...prev, newGroupData]);
-    setSelectedGroup(newGroupData);
-    setShowSettings(false);
   };
 
   const toggleSetting = (setting: keyof typeof settings) => {
-    setSettings(prev => ({
+    setSettings((prev: typeof settings) => ({
       ...prev,
       [setting]: !prev[setting]
     }));
@@ -1102,52 +1474,321 @@ const CommunityPage: React.FC = () => {
     setShowThemeModal(false);
   };
 
-  const handleWallpaperSelect = (wallpaperId: string) => {
-    setSelectedWallpaper(wallpaperId);
+  // 2. Add state for uploaded wallpaper:
+  const [uploadedWallpaper, setUploadedWallpaper] = useState<string | null>(null);
+  const uploadWallpaperInputRef = useRef<HTMLInputElement>(null);
+
+  // 3. Update handleWallpaperSelect to support uploaded images and persist:
+  const handleWallpaperSelect = (wallpaperIdOrUrl: string) => {
+    setSelectedWallpaper(wallpaperIdOrUrl);
     setShowWallpaperModal(false);
-    // Save to localStorage
-    localStorage.setItem('kinap-wallpaper', wallpaperId);
+    localStorage.setItem('kinap-wallpaper', wallpaperIdOrUrl);
   };
+
+  // 4. Add upload handler:
+  const handleWallpaperUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const url = URL.createObjectURL(file);
+      setUploadedWallpaper(url);
+      handleWallpaperSelect(url);
+    }
+  };
+
+  // 5. On mount, load wallpaper from localStorage:
+  useEffect(() => {
+    const savedWallpaper = localStorage.getItem('kinap-wallpaper');
+    if (savedWallpaper) {
+      setSelectedWallpaper(savedWallpaper);
+      if (savedWallpaper.startsWith('blob:')) setUploadedWallpaper(savedWallpaper);
+    }
+  }, []);
+
+  // 6. In the wallpaper modal, show default wallpapers, colors, upload, and remove:
+  // (Replace the modal content for wallpaper selection with this)
+  {showWallpaperModal && (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-96 max-w-[90vw]">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Choose Wallpaper</h3>
+        <div className="grid grid-cols-4 gap-3 mb-4">
+          {DEFAULT_WALLPAPERS.map(wp => (
+            <button
+              key={wp.id}
+              onClick={() => handleWallpaperSelect(wp.url || wp.color!)}
+              className={`h-16 w-16 rounded-lg border-2 ${selectedWallpaper === (wp.url || wp.color) ? 'border-ajira-primary' : 'border-transparent'}`}
+              style={wp.color ? { background: wp.color } : { backgroundImage: `url(${wp.url})`, backgroundSize: 'cover', backgroundPosition: 'center' }}
+            />
+          ))}
+          {uploadedWallpaper && (
+            <button
+              onClick={() => handleWallpaperSelect(uploadedWallpaper)}
+              className={`h-16 w-16 rounded-lg border-2 ${selectedWallpaper === uploadedWallpaper ? 'border-ajira-primary' : 'border-transparent'}`}
+              style={{ backgroundImage: `url(${uploadedWallpaper})`, backgroundSize: 'cover', backgroundPosition: 'center' }}
+              title="Your uploaded wallpaper"
+            />
+          )}
+        </div>
+        <div className="flex gap-2 mb-4">
+          <button
+            onClick={() => uploadWallpaperInputRef.current?.click()}
+            className="px-4 py-2 bg-ajira-primary text-white rounded-lg hover:bg-ajira-primary/90 transition-colors"
+          >
+            Upload Wallpaper
+          </button>
+          <button
+            onClick={() => { setSelectedWallpaper(''); setShowWallpaperModal(false); localStorage.removeItem('kinap-wallpaper'); setUploadedWallpaper(null); }}
+            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+          >
+            Remove Wallpaper
+          </button>
+        </div>
+        <input
+          ref={uploadWallpaperInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handleWallpaperUpload}
+          className="hidden"
+        />
+        <div className="flex justify-end gap-2 mt-4">
+          <button
+            onClick={() => setShowWallpaperModal(false)}
+            className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => setShowWallpaperModal(false)}
+            className="px-4 py-2 bg-ajira-primary text-white rounded-lg hover:bg-ajira-primary/90 transition-colors"
+          >
+            OK
+          </button>
+        </div>
+      </div>
+    </div>
+  )}
 
   const playRingtone = (ringtoneId: string) => {
-    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-    const oscillator = audioContext.createOscillator();
-    const gainNode = audioContext.createGain();
-    
-    oscillator.connect(gainNode);
-    gainNode.connect(audioContext.destination);
-    
-    oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
-    gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
-    
-    oscillator.start(audioContext.currentTime);
-    oscillator.stop(audioContext.currentTime + 0.3);
+    try {
+      // Create audio context with fallback for older browsers
+      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+      const audioContext = new AudioContext();
+      
+      // Resume audio context if suspended (required for mobile devices)
+      if (audioContext.state === 'suspended') {
+        audioContext.resume();
+      }
+      
+      const gainNode = audioContext.createGain();
+      gainNode.connect(audioContext.destination);
+      gainNode.gain.setValueAtTime(0.4, audioContext.currentTime);
+      
+      // 30 WhatsApp-style ringtones with cross-device compatibility
+      const ringtones: { [key: string]: { frequencies: number[], durations: number[], type?: string } } = {
+        // Classic WhatsApp Sounds
+        'default': {
+          frequencies: [800, 1000, 1200],
+          durations: [0.1, 0.1, 0.2]
+        },
+        'notification': {
+          frequencies: [523.25, 659.25, 783.99], // C5, E5, G5 chord
+          durations: [0.15, 0.15, 0.3]
+        },
+        'message': {
+          frequencies: [800, 1000],
+          durations: [0.1, 0.2]
+        },
+        'call': {
+          frequencies: [440, 554.37, 659.25, 783.99], // A4, C#5, E5, G5
+          durations: [0.2, 0.2, 0.2, 0.4]
+        },
+        'group': {
+          frequencies: [600, 800, 1000, 1200],
+          durations: [0.1, 0.1, 0.1, 0.3]
+        },
+        
+        // Modern Notification Sounds
+        'gentle': {
+          frequencies: [523.25, 659.25],
+          durations: [0.3, 0.5]
+        },
+        'chime': {
+          frequencies: [1046.50, 1318.51, 1567.98], // C6, E6, G6
+          durations: [0.2, 0.2, 0.4]
+        },
+        'urgent': {
+          frequencies: [400, 600, 800, 1000, 1200],
+          durations: [0.08, 0.08, 0.08, 0.08, 0.2]
+        },
+        'soft': {
+          frequencies: [440, 523.25],
+          durations: [0.4, 0.6]
+        },
+        'bright': {
+          frequencies: [659.25, 783.99, 987.77], // E5, G5, B5
+          durations: [0.15, 0.15, 0.3]
+        },
+        
+        // Musical Tones
+        'melody1': {
+          frequencies: [523.25, 659.25, 783.99, 987.77], // C5, E5, G5, B5
+          durations: [0.2, 0.2, 0.2, 0.4]
+        },
+        'melody2': {
+          frequencies: [440, 554.37, 659.25, 783.99, 987.77], // A4, C#5, E5, G5, B5
+          durations: [0.15, 0.15, 0.15, 0.15, 0.3]
+        },
+        'melody3': {
+          frequencies: [523.25, 659.25, 783.99, 1046.50], // C5, E5, G5, C6
+          durations: [0.2, 0.2, 0.2, 0.4]
+        },
+        'melody4': {
+          frequencies: [440, 523.25, 659.25, 783.99], // A4, C5, E5, G5
+          durations: [0.25, 0.25, 0.25, 0.5]
+        },
+        'melody5': {
+          frequencies: [659.25, 783.99, 987.77, 1174.66], // E5, G5, B5, D6
+          durations: [0.15, 0.15, 0.15, 0.3]
+        },
+        
+        // Alert Sounds
+        'alert1': {
+          frequencies: [800, 600, 800, 1000],
+          durations: [0.1, 0.1, 0.1, 0.2]
+        },
+        'alert2': {
+          frequencies: [1000, 800, 1000, 1200],
+          durations: [0.1, 0.1, 0.1, 0.2]
+        },
+        'alert3': {
+          frequencies: [600, 800, 1000, 1200, 1000],
+          durations: [0.08, 0.08, 0.08, 0.08, 0.2]
+        },
+        'alert4': {
+          frequencies: [400, 600, 800, 1000, 1200],
+          durations: [0.06, 0.06, 0.06, 0.06, 0.2]
+        },
+        'alert5': {
+          frequencies: [1200, 1000, 800, 600],
+          durations: [0.1, 0.1, 0.1, 0.2]
+        },
+        
+        // Nature-Inspired Sounds
+        'bird': {
+          frequencies: [1046.50, 1318.51, 1567.98, 1760.00], // C6, E6, G6, A6
+          durations: [0.2, 0.2, 0.2, 0.4]
+        },
+        'wind': {
+          frequencies: [440, 523.25, 659.25],
+          durations: [0.3, 0.3, 0.5]
+        },
+        'water': {
+          frequencies: [523.25, 659.25, 783.99, 987.77],
+          durations: [0.25, 0.25, 0.25, 0.5]
+        },
+        'forest': {
+          frequencies: [440, 554.37, 659.25],
+          durations: [0.4, 0.4, 0.6]
+        },
+        'ocean': {
+          frequencies: [523.25, 659.25, 783.99],
+          durations: [0.3, 0.3, 0.5]
+        },
+        
+        // Tech-Inspired Sounds
+        'digital1': {
+          frequencies: [800, 1000, 1200, 1400],
+          durations: [0.1, 0.1, 0.1, 0.2]
+        },
+        'digital2': {
+          frequencies: [600, 800, 1000, 1200, 1400],
+          durations: [0.08, 0.08, 0.08, 0.08, 0.2]
+        },
+        'digital3': {
+          frequencies: [400, 600, 800, 1000, 1200, 1400],
+          durations: [0.06, 0.06, 0.06, 0.06, 0.06, 0.2]
+        },
+        'digital4': {
+          frequencies: [1400, 1200, 1000, 800],
+          durations: [0.1, 0.1, 0.1, 0.2]
+        },
+        'digital5': {
+          frequencies: [800, 1000, 1200, 1000, 800],
+          durations: [0.1, 0.1, 0.1, 0.1, 0.2]
+        },
+        
+        // Minimal Sounds
+        'minimal1': {
+          frequencies: [523.25],
+          durations: [0.3]
+        },
+        'minimal2': {
+          frequencies: [659.25],
+          durations: [0.3]
+        },
+        'minimal3': {
+          frequencies: [783.99],
+          durations: [0.3]
+        },
+        'minimal4': {
+          frequencies: [440, 659.25],
+          durations: [0.2, 0.4]
+        },
+        'minimal5': {
+          frequencies: [523.25, 783.99],
+          durations: [0.2, 0.4]
+        }
+      };
+      
+      const ringtone = ringtones[ringtoneId] || ringtones['default'];
+      let currentTime = audioContext.currentTime;
+      
+      // Create oscillators for each frequency
+      ringtone.frequencies.forEach((frequency, index) => {
+        const oscillator = audioContext.createOscillator();
+        const envelope = audioContext.createGain();
+        
+        oscillator.connect(envelope);
+        envelope.connect(gainNode);
+        
+        // Set frequency
+        oscillator.frequency.setValueAtTime(frequency, currentTime);
+        
+        // Create envelope for smoother sound
+        envelope.gain.setValueAtTime(0, currentTime);
+        envelope.gain.linearRampToValueAtTime(0.3, currentTime + 0.01);
+        envelope.gain.exponentialRampToValueAtTime(0.01, currentTime + ringtone.durations[index]);
+        
+        oscillator.start(currentTime);
+        oscillator.stop(currentTime + ringtone.durations[index]);
+        
+        currentTime += ringtone.durations[index];
+      });
+      
+    } catch (error) {
+      console.warn('Audio playback failed:', error);
+      // Fallback: try using HTML5 Audio API for older devices
+      try {
+        const audio = new Audio();
+        audio.volume = 0.3;
+        // Create a simple beep using data URL
+        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+        gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+        
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.3);
+      } catch (fallbackError) {
+        console.warn('Fallback audio also failed:', fallbackError);
+      }
+    }
   };
 
-  const handleCreateGroup = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newGroup.name || !newGroup.category) return;
 
-    const groupData: ChatGroup = {
-      id: Date.now().toString(),
-      name: newGroup.name,
-      description: newGroup.description,
-      avatar: 'https://via.placeholder.com/40',
-      members: 1,
-      lastMessage: 'Group created',
-      lastMessageTime: new Date(),
-      unreadCount: 0,
-      messages: [],
-      admins: [activeUser.id],
-      type: 'group',
-      category: newGroup.category
-    };
-
-    setGroups(prev => [...prev, groupData]);
-    setSelectedGroup(groupData);
-    setShowCreateGroup(false);
-    setNewGroup({ name: '', description: '', category: '' });
-  };
 
   const filteredGroups = groups.filter(group =>
     group.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -1155,6 +1796,20 @@ const CommunityPage: React.FC = () => {
   );
 
   const filteredSettings = CHAT_SETTINGS.map(setting => {
+    // Handle header items (Display and Chat settings)
+    if (setting.isHeader) {
+      return (
+        <div
+          key={setting.id}
+          className="px-4 py-2 bg-gray-100 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700"
+        >
+          <div className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">
+            {setting.name}
+          </div>
+        </div>
+      );
+    }
+    
     if (setting.id === 'media_upload_quality') {
       return (
         <div
@@ -1271,6 +1926,445 @@ const CommunityPage: React.FC = () => {
     });
   };
 
+  // Handle privacy settings changes
+  const handlePrivacySettingChange = (setting: string, value: string | boolean) => {
+    const newSettings = { ...privacySettings, [setting]: value };
+    setPrivacySettings(newSettings);
+    localStorage.setItem('kinap-privacy-settings', JSON.stringify(newSettings));
+  };
+
+  // File upload functions
+  const handleFileUpload = async (file: File, type: 'image' | 'video' | 'file') => {
+    setIsUploading(true);
+    setUploadProgress(0);
+
+    try {
+      // Simulate upload progress
+      const progressInterval = setInterval(() => {
+        setUploadProgress(prev => {
+          if (prev >= 90) {
+            clearInterval(progressInterval);
+            return 90;
+          }
+          return prev + 10;
+        });
+      }, 100);
+
+      // Convert file to base64 for persistent storage
+      const fileUrl = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          resolve(e.target?.result as string);
+        };
+        reader.readAsDataURL(file);
+      });
+      
+      // Determine file size
+      const fileSize = file.size < 1024 * 1024 
+        ? `${(file.size / 1024).toFixed(1)} KB`
+        : `${(file.size / (1024 * 1024)).toFixed(1)} MB`;
+
+      // Create message
+      const fileMessage: ChatMessage = {
+        id: Date.now().toString(),
+        userId: activeUser.id,
+        userName: activeUser.name,
+        userAvatar: activeUser.avatar,
+        message: file.name,
+        timestamp: new Date(),
+        isOwn: true,
+        messageType: type,
+        status: 'sent',
+        mediaUrl: fileUrl,
+        fileSize: fileSize,
+        content: file.name
+      };
+
+      // Simulate upload completion
+      setTimeout(() => {
+        setUploadProgress(100);
+        setIsUploading(false);
+
+        // Add to selected group
+        if (selectedGroup) {
+          setSelectedGroup(prev => {
+            if (!prev) return null;
+            const updatedGroup = { ...prev, messages: [...prev.messages, fileMessage] };
+            
+            // Save to localStorage immediately
+            const updatedGroups = groups.map(group => 
+              group.id === selectedGroup.id ? updatedGroup : group
+            );
+            localStorage.setItem('kinap-chat-groups', JSON.stringify(updatedGroups));
+            
+            return updatedGroup;
+          });
+          
+          // Update groups state
+          setGroups(prev => {
+            const updatedGroups = prev.map(group => 
+              group.id === selectedGroup.id 
+                ? { ...group, messages: [...group.messages, fileMessage] }
+                : group
+            );
+            // Save to localStorage
+            localStorage.setItem('kinap-chat-groups', JSON.stringify(updatedGroups));
+            return updatedGroups;
+          });
+
+          // Simulate message delivery (grey double tick)
+          setTimeout(() => {
+            setSelectedGroup(prev => {
+              if (!prev) return null;
+              const updatedGroup = { ...prev, messages: prev.messages.map(msg => 
+                msg.id === fileMessage.id ? { ...msg, status: 'delivered' as const } : msg
+              )};
+              
+              // Save to localStorage
+              const updatedGroups = groups.map(group => 
+                group.id === selectedGroup.id ? updatedGroup : group
+              );
+              localStorage.setItem('kinap-chat-groups', JSON.stringify(updatedGroups));
+              
+              return updatedGroup;
+            });
+          }, 1500);
+
+          // Simulate message read (blue double tick)
+          setTimeout(() => {
+            setSelectedGroup(prev => {
+              if (!prev) return null;
+              const updatedGroup = { ...prev, messages: prev.messages.map(msg => 
+                msg.id === fileMessage.id ? { ...msg, status: 'read' as const } : msg
+              )};
+              
+              // Save to localStorage
+              const updatedGroups = groups.map(group => 
+                group.id === selectedGroup.id ? updatedGroup : group
+              );
+              localStorage.setItem('kinap-chat-groups', JSON.stringify(updatedGroups));
+              
+              return updatedGroup;
+            });
+          }, 3000);
+        }
+      }, 1000);
+
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      setIsUploading(false);
+      alert('Error uploading file. Please try again.');
+    }
+  };
+
+  const handleFileInput = (event: React.ChangeEvent<HTMLInputElement>, type: 'image' | 'video' | 'file') => {
+    const file = event.target.files?.[0];
+    if (file) {
+      handleFileUpload(file, type);
+    }
+    event.target.value = '';
+  };
+
+  // Join notification function
+  const addJoinNotification = (userName: string, groupName: string, groupId: string) => {
+    const joinMessage: ChatMessage = {
+      id: Date.now().toString(),
+      userId: 'system',
+      userName: 'System',
+      userAvatar: '',
+      message: `${userName} joined ${groupName}`,
+      timestamp: new Date(),
+      messageType: 'system',
+      status: 'sent',
+      content: `${userName} joined ${groupName}`
+    };
+
+    // Add notification to the specific group that was joined
+    setGroups(prev => {
+      const updatedGroups = prev.map(group => 
+        group.id === groupId 
+          ? { ...group, messages: [...group.messages, joinMessage] }
+          : group
+      );
+      
+      // Save to localStorage
+      localStorage.setItem('kinap-chat-groups', JSON.stringify(updatedGroups));
+      
+      // If this group is currently selected, update selectedGroup as well
+      if (selectedGroup?.id === groupId) {
+        setSelectedGroup(prev => prev ? { ...prev, messages: [...prev.messages, joinMessage] } : null);
+      }
+      
+      return updatedGroups;
+    });
+  };
+
+  // Reply to message function
+  const handleReply = (message: ChatMessage) => {
+    setReplyToMessage(message);
+  };
+
+  // Cancel reply function
+  const cancelReply = () => {
+    setReplyToMessage(null);
+  };
+
+  // Emoji picker function
+  const addEmoji = (emoji: string) => {
+    setNewMessage(prev => prev + emoji);
+    setShowEmojiPicker(false);
+  };
+
+  // Media viewer states
+  const [viewingMedia, setViewingMedia] = useState<{
+    type: 'image' | 'video' | 'document';
+    url: string;
+    fileName?: string;
+    fileSize?: string;
+  } | null>(null);
+
+  // Chat options menu states
+  const [showChatOptions, setShowChatOptions] = useState(false);
+  const [selectedMessages, setSelectedMessages] = useState<string[]>([]);
+  const [isSelectMode, setIsSelectMode] = useState(false);
+
+  // AI Chat states
+  const [showAIChat, setShowAIChat] = useState(false);
+  const [aiMessages, setAiMessages] = useState<ChatMessage[]>([]);
+  const [aiTyping, setAiTyping] = useState(false);
+  const [aiInputMessage, setAiInputMessage] = useState('');
+  const [aiConversationId, setAiConversationId] = useState<string>('');
+
+  // Message search states
+  const [showSearchResults, setShowSearchResults] = useState(false);
+  const [searchResults, setSearchResults] = useState<ChatMessage[]>([]);
+
+  // Media viewer functions
+  const openMediaViewer = (media: {
+    type: 'image' | 'video' | 'document';
+    url: string;
+    fileName?: string;
+    fileSize?: string;
+  }) => {
+    setViewingMedia(media);
+  };
+
+  const closeMediaViewer = () => {
+    setViewingMedia(null);
+  };
+
+  // Handle escape key to close media viewer and chat options
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (viewingMedia) {
+          closeMediaViewer();
+        }
+        if (showChatOptions) {
+          setShowChatOptions(false);
+        }
+        if (isSelectMode) {
+          setIsSelectMode(false);
+          setSelectedMessages([]);
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [viewingMedia, showChatOptions, isSelectMode]);
+
+  // Handle click outside to close chat options
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element;
+      if (showChatOptions && !target.closest('.chat-options-dropdown')) {
+        setShowChatOptions(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showChatOptions]);
+
+  // Chat options functions
+  const toggleChatOptions = () => {
+    setShowChatOptions(!showChatOptions);
+  };
+
+  const toggleSelectMode = () => {
+    setIsSelectMode(!isSelectMode);
+    setSelectedMessages([]);
+    setShowChatOptions(false);
+  };
+
+  const toggleMessageSelection = (messageId: string) => {
+    setSelectedMessages(prev => 
+      prev.includes(messageId) 
+        ? prev.filter(id => id !== messageId)
+        : [...prev, messageId]
+    );
+  };
+
+  const clearChat = () => {
+    if (selectedGroup) {
+      setSelectedGroup(prev => prev ? { ...prev, messages: [] } : null);
+      setGroups(prev => prev.map(group => 
+        group.id === selectedGroup.id 
+          ? { ...group, messages: [] }
+          : group
+      ));
+      localStorage.setItem('kinap-chat-groups', JSON.stringify(groups.map(group => 
+        group.id === selectedGroup.id 
+          ? { ...group, messages: [] }
+          : group
+      )));
+    }
+    setShowChatOptions(false);
+  };
+
+  const deleteChat = () => {
+    if (selectedGroup) {
+      setGroups(prev => prev.filter(group => group.id !== selectedGroup.id));
+      setSelectedGroup(null);
+      localStorage.setItem('kinap-chat-groups', JSON.stringify(groups.filter(group => group.id !== selectedGroup.id)));
+    }
+    setShowChatOptions(false);
+  };
+
+  const muteNotifications = () => {
+    if (selectedGroup) {
+      setSelectedGroup(prev => prev ? { ...prev, isMuted: !prev.isMuted } : null);
+      setGroups(prev => prev.map(group => 
+        group.id === selectedGroup.id 
+          ? { ...group, isMuted: !group.isMuted }
+          : group
+      ));
+      localStorage.setItem('kinap-chat-groups', JSON.stringify(groups.map(group => 
+        group.id === selectedGroup.id 
+          ? { ...group, isMuted: !group.isMuted }
+          : group
+      )));
+    }
+    setShowChatOptions(false);
+  };
+
+  // AI Chat functions
+  const handleAISendMessage = async () => {
+    if (!aiInputMessage.trim()) return;
+
+    const userMessage: ChatMessage = {
+      id: Date.now().toString(),
+      userId: activeUser.id,
+      userName: activeUser.name,
+      userAvatar: activeUser.avatar,
+      message: aiInputMessage,
+      timestamp: new Date(),
+      isOwn: true,
+      messageType: 'text',
+      status: 'sent',
+      content: aiInputMessage
+    };
+
+    // Add user message to AI chat
+    setAiMessages(prev => [...prev, userMessage]);
+    const currentMessage = aiInputMessage;
+    setAiInputMessage('');
+    setAiTyping(true);
+
+    try {
+      // Call the real Gemini API
+      const response = await kinapAIApi.sendMessage(currentMessage, aiConversationId);
+      
+      // Update conversation ID if it's a new conversation
+      if (response.conversationId && !aiConversationId) {
+        setAiConversationId(response.conversationId);
+      }
+
+      const aiMessage: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        userId: 'ai-assistant',
+        userName: 'Kinap AI',
+        userAvatar: 'https://via.placeholder.com/40/1B4F72/FFFFFF?text=AI',
+        message: response.response,
+        timestamp: new Date(),
+        isOwn: false,
+        messageType: 'text',
+        status: 'read',
+        content: response.response
+      };
+
+      setAiMessages(prev => [...prev, aiMessage]);
+    } catch (error) {
+      console.error('Error calling Kinap AI:', error);
+      
+      const errorMessage: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        userId: 'ai-assistant',
+        userName: 'Kinap AI',
+        userAvatar: 'https://via.placeholder.com/40/1B4F72/FFFFFF?text=AI',
+        message: "I'm sorry, I'm having trouble connecting to my AI capabilities right now. Please try again in a moment.",
+        timestamp: new Date(),
+        isOwn: false,
+        messageType: 'text',
+        status: 'read',
+        content: "I'm sorry, I'm having trouble connecting to my AI capabilities right now. Please try again in a moment."
+      };
+
+      setAiMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setAiTyping(false);
+    }
+  };
+
+
+
+  const startAIChat = () => {
+    setShowAIChat(true);
+    setSelectedGroup(null);
+    setShowStarredMessages(false);
+    // Clear previous conversation and start fresh
+    setAiMessages([]);
+    setAiConversationId('');
+    // On mobile, collapse sidebar when AI chat is selected
+    if (window.innerWidth < 1024) {
+      setSidebarCollapsed(true);
+    }
+  };
+
+  const clearAIConversation = async () => {
+    if (aiConversationId) {
+      try {
+        await kinapAIApi.clearConversation(aiConversationId);
+      } catch (error) {
+        console.error('Error clearing AI conversation:', error);
+      }
+    }
+    setAiMessages([]);
+    setAiConversationId('');
+  };
+
+  // Message search functionality
+  const handleMessageSearch = () => {
+    if (!searchQuery.trim() || !selectedGroup) return;
+
+    const query = searchQuery.toLowerCase();
+    const results = selectedGroup.messages.filter(message => 
+      message.content?.toLowerCase().includes(query) ||
+      message.message.toLowerCase().includes(query) ||
+      message.userName.toLowerCase().includes(query)
+    );
+
+    setSearchResults(results);
+    setShowSearchResults(true);
+  };
+
+  const clearSearch = () => {
+    setSearchQuery('');
+    setSearchResults([]);
+    setShowSearchResults(false);
+  };
+
   return (
     <div className={`h-screen flex flex-col ${isDark ? 'dark' : ''}`}>
       {/* Header */}
@@ -1299,6 +2393,8 @@ const CommunityPage: React.FC = () => {
               className="px-3 py-2 rounded-lg bg-white/10 text-white placeholder-white/70 text-sm w-32 sm:w-48 focus:outline-none focus:ring-2 focus:ring-white/20"
             />
           </div>
+          
+
           
           <div className="relative">
             <button
@@ -1349,19 +2445,13 @@ const CommunityPage: React.FC = () => {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden h-screen">
         {/* Sidebar */}
         <div className={`${sidebarCollapsed ? 'hidden' : 'flex'} lg:flex flex-col w-full lg:w-80 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 absolute lg:relative z-10 h-full`}>
           {/* Sidebar Header */}
           <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Chats</h2>
-              <button
-                onClick={() => setShowCreateGroup(true)}
-                className="lg:hidden p-2 bg-ajira-primary text-white rounded-full hover:bg-ajira-primary/90 transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-              </button>
             </div>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -1374,12 +2464,13 @@ const CommunityPage: React.FC = () => {
           </div>
 
           {/* Starred Messages Section - Pinned */}
-          <div className="p-3 sm:p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50 relative">
+          <div className="p-3 sm:p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50 relative flex-shrink-0">
             <div className="absolute top-2 right-2 w-2 h-2 bg-ajira-primary rounded-full"></div>
             <button
               onClick={() => {
                 setShowStarredMessages(true);
                 setSelectedGroup(null);
+                setShowAIChat(false);
                 // On mobile, collapse sidebar when viewing starred messages
                 if (window.innerWidth < 1024) {
                   setSidebarCollapsed(true);
@@ -1403,14 +2494,38 @@ const CommunityPage: React.FC = () => {
             </button>
           </div>
 
+          {/* AI Chat Section */}
+          <div className="p-3 sm:p-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 relative flex-shrink-0">
+            <div className="absolute top-2 right-2 w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+            <button
+              onClick={startAIChat}
+              className={`w-full flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-lg transition-colors ${
+                showAIChat
+                  ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400'
+                  : 'hover:bg-blue-100 dark:hover:bg-blue-900/30 text-gray-900 dark:text-white'
+              }`}
+            >
+              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
+                <span className="text-white font-semibold text-xs sm:text-sm">AI</span>
+              </div>
+              <div className="flex-1 text-left min-w-0">
+                <div className="font-medium text-sm sm:text-base truncate">Kinap AI</div>
+                <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+                  Your AI assistant
+                </div>
+              </div>
+            </button>
+          </div>
+
           {/* Groups List */}
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto min-h-0">
             {filteredGroups.map((group) => (
               <div
                 key={group.id}
                 onClick={() => {
                   setSelectedGroup(group);
                   setShowStarredMessages(false);
+                  setShowAIChat(false);
                   // On mobile, collapse sidebar when group is selected
                   if (window.innerWidth < 1024) {
                     setSidebarCollapsed(true);
@@ -1457,25 +2572,19 @@ const CommunityPage: React.FC = () => {
           {/* User Profile */}
           <div className="p-3 sm:p-4 border-t border-gray-200 dark:border-gray-700 flex-shrink-0">
             <div className="flex items-center gap-2 sm:gap-3">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-ajira-primary rounded-full flex items-center justify-center flex-shrink-0">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-ajira-primary rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden">
                 <span className="text-white font-semibold text-xs sm:text-sm">D</span>
               </div>
               <div className="flex-1 min-w-0">
                 <h3 className="font-medium text-gray-900 dark:text-white truncate text-sm sm:text-base">Demo User</h3>
-                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 truncate">Online</p>
+                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 truncate">
+                  {privacySettings.onlineStatus ? 'Online' : 'Offline'}
+                </p>
               </div>
             </div>
           </div>
 
-          {/* New Chat Button */}
-          <div className="p-3 sm:p-4 border-t border-gray-200 dark:border-gray-700 flex-shrink-0 hidden lg:block">
-            <button
-              onClick={() => setShowCreateGroup(true)}
-              className="w-full bg-ajira-primary text-white p-3 rounded-full hover:bg-ajira-primary/90 transition-colors flex items-center justify-center"
-            >
-              <Plus className="w-5 h-5" />
-            </button>
-          </div>
+
         </div>
 
         {/* Settings Sidebar */}
@@ -1511,7 +2620,7 @@ const CommunityPage: React.FC = () => {
             <div className="flex-1 overflow-y-auto">
               <div className="p-4">
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="w-12 h-12 bg-ajira-primary rounded-full flex items-center justify-center">
+                  <div className="w-12 h-12 bg-ajira-primary rounded-full flex items-center justify-center overflow-hidden">
                     <span className="text-white font-semibold text-lg">D</span>
                   </div>
                   <div>
@@ -1570,64 +2679,575 @@ const CommunityPage: React.FC = () => {
                   </div>
                 </>
               )}
+
+              {selectedSetting === 'notifications' && (
+                <>
+                  <div className="flex items-center gap-3 mb-6">
+                    <Bell className="w-6 h-6 text-gray-600 dark:text-gray-400" />
+                    <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Notification Settings</h2>
+                  </div>
+
+                  <div className="h-[calc(100vh-200px)] overflow-y-auto pr-2 space-y-6 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-gray-100 dark:scrollbar-track-gray-800">
+                    {/* Message Notifications */}
+                    <div>
+                      <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Message Notifications</h3>
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                          <div>
+                            <div className="font-medium text-gray-900 dark:text-white">Message notifications</div>
+                            <div className="text-sm text-gray-600 dark:text-gray-400">Show notifications for new messages</div>
+                          </div>
+                          <button
+                            onClick={() => toggleSetting('messageNotifications')}
+                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                              settings.messageNotifications ? 'bg-ajira-primary' : 'bg-gray-300 dark:bg-gray-600'
+                            }`}
+                          >
+                            <span
+                              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                settings.messageNotifications ? 'translate-x-6' : 'translate-x-1'
+                              }`}
+                            />
+                          </button>
+                        </div>
+                        
+                        <div className="flex items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                          <div>
+                            <div className="font-medium text-gray-900 dark:text-white">Show previews</div>
+                            <div className="text-sm text-gray-600 dark:text-gray-400">Show message content in notifications</div>
+                          </div>
+                          <button
+                            onClick={() => toggleSetting('showPreviews')}
+                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                              settings.showPreviews ? 'bg-ajira-primary' : 'bg-gray-300 dark:bg-gray-600'
+                            }`}
+                          >
+                            <span
+                              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                settings.showPreviews ? 'translate-x-6' : 'translate-x-1'
+                              }`}
+                            />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Sound Settings */}
+                    <div>
+                      <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Sound Settings</h3>
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                          <div>
+                            <div className="font-medium text-gray-900 dark:text-white">Incoming sounds</div>
+                            <div className="text-sm text-gray-600 dark:text-gray-400">Play sounds for incoming messages</div>
+                          </div>
+                          <button
+                            onClick={() => toggleSetting('incomingSounds')}
+                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                              settings.incomingSounds ? 'bg-ajira-primary' : 'bg-gray-300 dark:bg-gray-600'
+                            }`}
+                          >
+                            <span
+                              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                settings.incomingSounds ? 'translate-x-6' : 'translate-x-1'
+                              }`}
+                            />
+                          </button>
+                        </div>
+                        
+                        <div className="flex items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                          <div>
+                            <div className="font-medium text-gray-900 dark:text-white">Outgoing sounds</div>
+                            <div className="text-sm text-gray-600 dark:text-gray-400">Play sounds for outgoing messages</div>
+                          </div>
+                          <button
+                            onClick={() => toggleSetting('outgoingSounds')}
+                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                              settings.outgoingSounds ? 'bg-ajira-primary' : 'bg-gray-300 dark:bg-gray-600'
+                            }`}
+                          >
+                            <span
+                              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                settings.outgoingSounds ? 'translate-x-6' : 'translate-x-1'
+                              }`}
+                            />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Notification Sound */}
+                    <div>
+                      <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Notification Sound</h3>
+                      <div className="grid grid-cols-2 gap-3 max-h-48 overflow-y-auto">
+                        {[
+                          'default', 'notification', 'message', 'call', 'group',
+                          'gentle', 'chime', 'urgent', 'soft', 'bright',
+                          'melody1', 'melody2', 'melody3', 'melody4', 'melody5',
+                          'alert1', 'alert2', 'alert3', 'alert4', 'alert5',
+                          'bird', 'wind', 'water', 'forest', 'ocean',
+                          'digital1', 'digital2', 'digital3', 'digital4', 'digital5'
+                        ].map((ringtone) => (
+                          <button
+                            key={ringtone}
+                            onClick={() => {
+                              playRingtone(ringtone);
+                              setSelectedRingtone(ringtone);
+                            }}
+                            className={`p-3 text-left rounded-lg border transition-colors ${
+                              selectedRingtone === ringtone
+                                ? 'border-ajira-primary bg-ajira-primary/10 text-ajira-primary'
+                                : 'border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
+                            }`}
+                          >
+                            <div className="text-sm font-medium capitalize">{ringtone}</div>
+                            <div className="text-xs text-gray-500 dark:text-gray-400">Tap to preview</div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Recent Notifications */}
+                    <div>
+                      <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Recent Notifications</h3>
+                      <div className="space-y-3 max-h-48 overflow-y-auto">
+                        {/* New Message Notification */}
+                        <div className="flex items-start gap-3 p-3 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer">
+                          <div className="w-8 h-8 bg-ajira-primary rounded-full flex items-center justify-center flex-shrink-0">
+                            <MessageCircle className="w-4 h-4 text-white" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between">
+                              <h5 className="font-medium text-gray-900 dark:text-white text-sm">New message from John</h5>
+                              <span className="text-xs text-gray-500">2m ago</span>
+                            </div>
+                            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 truncate">
+                              Hey! How's the project going?
+                            </p>
+                          </div>
+                        </div>
+                        
+                        {/* Group Notification */}
+                        <div className="flex items-start gap-3 p-3 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer">
+                          <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
+                            <Users className="w-4 h-4 text-white" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between">
+                              <h5 className="font-medium text-gray-900 dark:text-white text-sm">Web Development Group</h5>
+                              <span className="text-xs text-gray-500">5m ago</span>
+                            </div>
+                            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 truncate">
+                              Jane added you to the group
+                            </p>
+                          </div>
+                        </div>
+                        
+                        {/* System Notification */}
+                        <div className="flex items-start gap-3 p-3 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer">
+                          <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
+                            <Settings className="w-4 h-4 text-white" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between">
+                              <h5 className="font-medium text-gray-900 dark:text-white text-sm">System Update</h5>
+                              <span className="text-xs text-gray-500">1h ago</span>
+                            </div>
+                            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 truncate">
+                              New features available in Community Hub
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="mt-3 text-center">
+                        <button className="text-ajira-primary hover:text-ajira-primary/80 text-sm font-medium">
+                          View all notifications
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {selectedSetting === 'account' && (
+                <>
+                  <div className="flex items-center gap-3 mb-6">
+                    <Key className="w-6 h-6 text-gray-600 dark:text-gray-400" />
+                    <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Account Settings</h2>
+                  </div>
+
+                  <div className="h-[calc(100vh-200px)] overflow-y-auto pr-2 space-y-6 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-gray-100 dark:scrollbar-track-gray-800">
+                    {/* Profile Information */}
+                    <div>
+                      <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Profile Information</h3>
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-4 p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                          <div className="w-16 h-16 bg-ajira-primary rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden">
+                            <span className="text-white font-semibold text-xl">D</span>
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="font-medium text-gray-900 dark:text-white">Demo User</h4>
+                            <p className="text-sm text-gray-600 dark:text-gray-400">demo@example.com</p>
+                            <p className="text-xs text-gray-500 mt-1">Member since January 2024</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Join Groups */}
+                    <div>
+                      <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Join Groups</h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                        You were automatically added to groups based on your registration interests. 
+                        Join additional groups to connect with more communities.
+                      </p>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {GROUP_CATEGORIES.map((category) => {
+                          const isAlreadyMember = groups.some(g => g.category === category);
+                          return (
+                            <div
+                              key={category}
+                              className={`p-4 rounded-lg border transition-colors ${
+                                isAlreadyMember
+                                  ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700'
+                                  : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between mb-2">
+                                <h4 className="font-medium text-gray-900 dark:text-white">{category}</h4>
+                                {isAlreadyMember && (
+                                  <span className="text-xs bg-green-100 dark:bg-green-800 text-green-800 dark:text-green-200 px-2 py-1 rounded-full">
+                                    Member
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                                {category.toLowerCase()} discussions and community
+                              </p>
+                              <button
+                                onClick={() => joinGroup(category)}
+                                disabled={isAlreadyMember || joiningGroup === category}
+                                className={`w-full px-3 py-2 text-sm rounded-lg transition-colors ${
+                                  isAlreadyMember
+                                    ? 'bg-green-100 dark:bg-green-800 text-green-800 dark:text-green-200 cursor-not-allowed'
+                                    : joiningGroup === category
+                                    ? 'bg-gray-300 dark:bg-gray-600 text-gray-500 cursor-not-allowed'
+                                    : joinSuccess === category
+                                    ? 'bg-green-500 text-white cursor-not-allowed'
+                                    : 'bg-ajira-primary text-white hover:bg-ajira-primary/90'
+                                }`}
+                              >
+                                {isAlreadyMember 
+                                  ? 'Already a Member' 
+                                  : joiningGroup === category 
+                                  ? 'Joining...' 
+                                  : joinSuccess === category 
+                                  ? 'Joined Successfully!' 
+                                  : 'Join Group'
+                                }
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+
+
+                    {/* Privacy Settings */}
+                    <div>
+                      <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Privacy</h3>
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                          <div>
+                            <div className="font-medium text-gray-900 dark:text-white">Profile visibility</div>
+                            <div className="text-sm text-gray-600 dark:text-gray-400">Control who can see your profile information</div>
+                          </div>
+                          <select 
+                            value={privacySettings.profileVisibility}
+                            onChange={(e) => handlePrivacySettingChange('profileVisibility', e.target.value)}
+                            className="px-3 py-2 text-sm bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-ajira-primary"
+                          >
+                            <option value="Everyone">Everyone</option>
+                            <option value="Group members only">Group members only</option>
+                            <option value="Friends only">Friends only</option>
+                          </select>
+                        </div>
+                        
+                        <div className="flex items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                          <div>
+                            <div className="font-medium text-gray-900 dark:text-white">Online status</div>
+                            <div className="text-sm text-gray-600 dark:text-gray-400">Show when you're online</div>
+                          </div>
+                          <button
+                            onClick={() => handlePrivacySettingChange('onlineStatus', !privacySettings.onlineStatus)}
+                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-ajira-primary ${
+                              privacySettings.onlineStatus ? 'bg-ajira-primary' : 'bg-gray-300 dark:bg-gray-600'
+                            }`}
+                          >
+                            <span
+                              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                privacySettings.onlineStatus ? 'translate-x-6' : 'translate-x-1'
+                              }`}
+                            />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+
+                  </div>
+                </>
+              )}
+
+              {selectedSetting === 'keyboard' && (
+                <>
+                  <div className="flex items-center gap-3 mb-6">
+                    <Keyboard className="w-6 h-6 text-gray-600 dark:text-gray-400" />
+                    <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Keyboard Shortcuts</h2>
+                  </div>
+
+                  <div className="h-[calc(100vh-200px)] overflow-y-auto pr-2 space-y-6 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-gray-100 dark:scrollbar-track-gray-800">
+                    {/* Navigation Shortcuts */}
+                    <div>
+                      <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Navigation</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                          <span className="text-gray-700 dark:text-gray-300">Go to next chat</span>
+                          <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 dark:bg-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded">Ctrl + ↓</kbd>
+                        </div>
+                        <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                          <span className="text-gray-700 dark:text-gray-300">Go to previous chat</span>
+                          <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 dark:bg-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded">Ctrl + ↑</kbd>
+                        </div>
+                        <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                          <span className="text-gray-700 dark:text-gray-300">Open chat</span>
+                          <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 dark:bg-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded">Enter</kbd>
+                        </div>
+                        <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                          <span className="text-gray-700 dark:text-gray-300">Close chat</span>
+                          <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 dark:bg-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded">Esc</kbd>
+                        </div>
+                        <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                          <span className="text-gray-700 dark:text-gray-300">Toggle sidebar</span>
+                          <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 dark:bg-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded">Ctrl + B</kbd>
+                        </div>
+                        <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                          <span className="text-gray-700 dark:text-gray-300">Open settings</span>
+                          <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 dark:bg-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded">Ctrl + ,</kbd>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Messaging Shortcuts */}
+                    <div>
+                      <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Messaging</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                          <span className="text-gray-700 dark:text-gray-300">Send message</span>
+                          <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 dark:bg-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded">Enter</kbd>
+                        </div>
+                        <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                          <span className="text-gray-700 dark:text-gray-300">New line</span>
+                          <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 dark:bg-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded">Shift + Enter</kbd>
+                        </div>
+                        <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                          <span className="text-gray-700 dark:text-gray-300">Focus message input</span>
+                          <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 dark:bg-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded">Ctrl + L</kbd>
+                        </div>
+                        <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                          <span className="text-gray-700 dark:text-gray-300">Clear input</span>
+                          <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 dark:bg-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded">Ctrl + K</kbd>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Search & Filter Shortcuts */}
+                    <div>
+                      <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Search & Filter</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                          <span className="text-gray-700 dark:text-gray-300">Search messages</span>
+                          <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 dark:bg-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded">Ctrl + F</kbd>
+                        </div>
+                        <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                          <span className="text-gray-700 dark:text-gray-300">Search chats</span>
+                          <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 dark:bg-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded">Ctrl + Shift + F</kbd>
+                        </div>
+                        <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                          <span className="text-gray-700 dark:text-gray-300">Find next</span>
+                          <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 dark:bg-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded">F3</kbd>
+                        </div>
+                        <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                          <span className="text-gray-700 dark:text-gray-300">Find previous</span>
+                          <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 dark:bg-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded">Shift + F3</kbd>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Media & Attachments */}
+                    <div>
+                      <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Media & Attachments</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                          <span className="text-gray-700 dark:text-gray-300">Attach file</span>
+                          <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 dark:bg-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded">Ctrl + U</kbd>
+                        </div>
+                        <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                          <span className="text-gray-700 dark:text-gray-300">Take photo</span>
+                          <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 dark:bg-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded">Ctrl + C</kbd>
+                        </div>
+                        <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                          <span className="text-gray-700 dark:text-gray-300">Record voice</span>
+                          <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 dark:bg-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded">Ctrl + V</kbd>
+                        </div>
+                        <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                          <span className="text-gray-700 dark:text-gray-300">Share location</span>
+                          <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 dark:bg-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded">Ctrl + G</kbd>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Message Actions */}
+                    <div>
+                      <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Message Actions</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                          <span className="text-gray-700 dark:text-gray-300">Reply to message</span>
+                          <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 dark:bg-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded">R</kbd>
+                        </div>
+                        <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                          <span className="text-gray-700 dark:text-gray-300">Forward message</span>
+                          <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 dark:bg-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded">F</kbd>
+                        </div>
+                        <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                          <span className="text-gray-700 dark:text-gray-300">Star message</span>
+                          <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 dark:bg-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded">S</kbd>
+                        </div>
+                        <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                          <span className="text-gray-700 dark:text-gray-300">Delete message</span>
+                          <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 dark:bg-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded">Delete</kbd>
+                        </div>
+                        <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                          <span className="text-gray-700 dark:text-gray-300">Copy message</span>
+                          <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 dark:bg-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded">Ctrl + C</kbd>
+                        </div>
+                        <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                          <span className="text-gray-700 dark:text-gray-300">Edit message</span>
+                          <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 dark:bg-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded">E</kbd>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Group & Contact Actions */}
+                    <div>
+                      <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Group & Contact Actions</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                          <span className="text-gray-700 dark:text-gray-300">Create new group</span>
+                          <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 dark:bg-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded">Ctrl + N</kbd>
+                        </div>
+                        <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                          <span className="text-gray-700 dark:text-gray-300">Add contact</span>
+                          <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 dark:bg-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded">Ctrl + A</kbd>
+                        </div>
+                        <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                          <span className="text-gray-700 dark:text-gray-300">View group info</span>
+                          <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 dark:bg-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded">Ctrl + I</kbd>
+                        </div>
+                        <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                          <span className="text-gray-700 dark:text-gray-300">Mute chat</span>
+                          <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 dark:bg-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded">Ctrl + M</kbd>
+                        </div>
+                        <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                          <span className="text-gray-700 dark:text-gray-300">Archive chat</span>
+                          <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 dark:bg-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded">Ctrl + E</kbd>
+                        </div>
+                        <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                          <span className="text-gray-700 dark:text-gray-300">Pin chat</span>
+                          <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 dark:bg-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded">Ctrl + P</kbd>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* System Actions */}
+                    <div>
+                      <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">System Actions</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                          <span className="text-gray-700 dark:text-gray-300">Refresh</span>
+                          <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 dark:bg-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded">F5</kbd>
+                        </div>
+                        <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                          <span className="text-gray-700 dark:text-gray-300">Hard refresh</span>
+                          <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 dark:bg-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded">Ctrl + F5</kbd>
+                        </div>
+                        <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                          <span className="text-gray-700 dark:text-gray-300">Toggle fullscreen</span>
+                          <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 dark:bg-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded">F11</kbd>
+                        </div>
+                        <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                          <span className="text-gray-700 dark:text-gray-300">Developer tools</span>
+                          <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 dark:bg-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded">F12</kbd>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Mobile Shortcuts */}
+                    <div>
+                      <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Mobile Shortcuts</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                          <span className="text-gray-700 dark:text-gray-300">Swipe to reply</span>
+                          <span className="text-xs text-gray-500 dark:text-gray-400">Swipe left on message</span>
+                        </div>
+                        <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                          <span className="text-gray-700 dark:text-gray-300">Swipe to delete</span>
+                          <span className="text-xs text-gray-500 dark:text-gray-400">Swipe right on message</span>
+                        </div>
+                        <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                          <span className="text-gray-700 dark:text-gray-300">Long press menu</span>
+                          <span className="text-xs text-gray-500 dark:text-gray-400">Long press on message</span>
+                        </div>
+                        <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                          <span className="text-gray-700 dark:text-gray-300">Pull to refresh</span>
+                          <span className="text-xs text-gray-500 dark:text-gray-400">Pull down chat list</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         )}
 
         {/* Chat Area */}
-        <div 
-          className={`${showSettings ? 'hidden' : 'flex'} flex-1 flex-col ${sidebarCollapsed ? 'block' : 'hidden lg:block'} relative`}
-          style={{ 
-            backgroundColor: WALLPAPER_OPTIONS.find(w => w.id === selectedWallpaper)?.color || '#f0f2f5'
-          }}
-        >
-          {/* Doodles Pattern Overlay */}
-          {WALLPAPER_OPTIONS.find(w => w.id === selectedWallpaper)?.pattern === 'doodles' && (
-            <div className="absolute inset-0 opacity-5 pointer-events-none">
-              <div className="w-full h-full flex flex-wrap items-center justify-center text-gray-600 text-xs p-4">
-                <span className="mx-1">💬</span>
-                <span className="mx-1">⭐</span>
-                <span className="mx-1">❤️</span>
-                <span className="mx-1">📱</span>
-                <span className="mx-1">📷</span>
-                <span className="mx-1">✏️</span>
-                <span className="mx-1">⏰</span>
-                <span className="mx-1">🦊</span>
-                <span className="mx-1">🐋</span>
-                <span className="mx-1">🌽</span>
-                <span className="mx-1">🎵</span>
-              </div>
-            </div>
-          )}
+        <div className="flex-1 flex flex-col min-h-0">
           {showStarredMessages ? (
             <>
               {/* Starred Messages Header */}
-              <div className="bg-ajira-primary p-3 sm:p-4 flex items-center justify-between">
+              <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4 flex items-center justify-between flex-shrink-0">
                 <div className="flex items-center gap-3">
-                  <button
-                    onClick={() => setShowStarredMessages(false)}
-                    className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-                  >
-                    <ChevronLeft className="w-5 h-5 text-white" />
-                  </button>
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 sm:w-10 sm:h-10 bg-white rounded-full flex items-center justify-center flex-shrink-0">
-                      <span className="text-ajira-primary font-semibold text-xs sm:text-sm">★</span>
-                    </div>
-                    <div className="min-w-0">
-                      <h2 className="font-semibold text-white text-sm sm:text-base truncate">Starred messages</h2>
-                    </div>
+                  {window.innerWidth < 1024 && (
+                    <button
+                      onClick={() => setSidebarCollapsed(false)}
+                      className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                    >
+                      <ChevronLeft className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                    </button>
+                  )}
+                  <div>
+                    <h2 className="font-semibold text-gray-900 dark:text-white">Starred messages</h2>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">{starredMessages.length} messages</p>
                   </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button className="p-2 hover:bg-white/10 rounded-lg transition-colors">
-                    <MoreVertical className="w-5 h-5 text-white" />
-                  </button>
                 </div>
               </div>
 
               {/* Starred Messages Content */}
-              <div className="flex-1 flex items-center justify-center p-3 sm:p-4 relative">
+              <div className="flex-1 overflow-y-auto p-3 sm:p-4 relative min-h-0">
                 {starredMessages.length > 0 ? (
                   <div className="w-full max-w-2xl">
                     <div className="space-y-3 sm:space-y-4">
@@ -1695,10 +3315,173 @@ const CommunityPage: React.FC = () => {
                 )}
               </div>
             </>
+          ) : showAIChat ? (
+            <>
+              {/* AI Chat Header */}
+              <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4 flex items-center justify-between flex-shrink-0">
+                <div className="flex items-center gap-3">
+                  {window.innerWidth < 1024 && (
+                    <button
+                      onClick={() => setSidebarCollapsed(false)}
+                      className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                    >
+                      <ChevronLeft className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                    </button>
+                  )}
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                      <span className="text-white font-semibold text-sm">AI</span>
+                    </div>
+                    <div>
+                      <h2 className="font-semibold text-gray-900 dark:text-white text-lg">Kinap AI</h2>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">Your AI assistant</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                  <span className="text-sm text-blue-600 dark:text-blue-400">Online</span>
+                </div>
+              </div>
+
+              {/* AI Chat Messages */}
+              <div
+                className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0"
+                style={{ background: '#efeae2' }}
+              >
+                {aiMessages.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-full text-center">
+                    <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center mb-4">
+                      <span className="text-white font-semibold text-lg">AI</span>
+                    </div>
+                    <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Kinap AI</h3>
+                    <p className="text-gray-600 dark:text-gray-400 mb-4 max-w-md">
+                      I'm your AI assistant. I can help with writing, analysis, coding, creative tasks, and answering questions.
+                    </p>
+                    <div className="flex flex-wrap gap-2 justify-center">
+                      {['Hello', 'Help me write', 'Explain something', 'Code help'].map((suggestion) => (
+                        <button
+                          key={suggestion}
+                          onClick={() => setAiInputMessage(suggestion)}
+                          className="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                        >
+                          {suggestion}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-col h-full">
+                    {/* AI Chat Header with Clear Button */}
+                    <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                          <span className="text-white font-semibold text-sm">AI</span>
+                        </div>
+                        <div>
+                          <h4 className="font-semibold text-gray-900 dark:text-white">Kinap AI</h4>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">AI Assistant</p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={clearAIConversation}
+                        className="px-3 py-1 text-xs text-gray-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full transition-colors"
+                      >
+                        Clear Chat
+                      </button>
+                    </div>
+                    
+                                        {/* Messages */}
+                    <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                      {aiMessages.map((message, index) => (
+                        <div
+                          key={index}
+                          className={`flex ${message.userId === activeUser.id ? 'justify-end' : 'justify-start'} mb-2`}
+                        >
+                          <div className="max-w-xs lg:max-w-md">
+                            <div
+                              className={`px-3 py-2 rounded-2xl shadow-sm max-w-xs lg:max-w-md ${
+                                message.userId === activeUser.id
+                                  ? 'bg-[#dcf8c6] text-gray-900 ml-auto'
+                                  : 'bg-white text-gray-900 shadow-md'
+                              }`}
+                            >
+                              {/* Message header */}
+                              <div className="flex items-center justify-between mb-1">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm font-semibold text-gray-700">
+                                    {message.userId === activeUser.id ? 'You' : message.userName}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <span className="text-xs text-gray-500">
+                                    {new Date(message.timestamp).toLocaleTimeString([], {
+                                      hour: '2-digit',
+                                      minute: '2-digit'
+                                    })}
+                                  </span>
+                                  {message.userId === activeUser.id && (
+                                    <span className="text-xs text-gray-500 ml-1">✓✓</span>
+                                  )}
+                                </div>
+                              </div>
+                              
+                              {/* Message content */}
+                              <p className="text-sm leading-relaxed">{message.content}</p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+
+                      {/* AI Typing Indicator */}
+                      {aiTyping && (
+                        <div className="flex justify-start mb-2">
+                          <div className="max-w-xs lg:max-w-md">
+                            <div className="px-3 py-2 rounded-2xl shadow-sm bg-white text-gray-900 shadow-md">
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-semibold text-gray-700">Kinap AI</span>
+                                <div className="flex space-x-1">
+                                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* AI Chat Input */}
+              <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4 flex-shrink-0">
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 relative">
+                    <input
+                      type="text"
+                      value={aiInputMessage}
+                      onChange={(e) => setAiInputMessage(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && handleAISendMessage()}
+                      placeholder="Message Kinap AI..."
+                      className="w-full px-4 py-3 bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-full text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <button
+                    onClick={handleAISendMessage}
+                    disabled={!aiInputMessage.trim() || aiTyping}
+                    className="p-3 bg-blue-500 text-white rounded-full hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <Send className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+            </>
           ) : selectedGroup ? (
             <>
               {/* Chat Header */}
-              <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4 flex items-center justify-between">
+              <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4 flex items-center justify-between flex-shrink-0">
                 <div className="flex items-center gap-3">
                   {window.innerWidth < 1024 && (
                     <button
@@ -1709,77 +3492,262 @@ const CommunityPage: React.FC = () => {
                     </button>
                   )}
                   <div>
-                    <h2 className="font-semibold text-gray-900 dark:text-white">{selectedGroup.name}</h2>
+                    <h2 className="font-semibold text-gray-900 dark:text-white text-lg">{selectedGroup.name}</h2>
                     <p className="text-sm text-gray-600 dark:text-gray-400">{selectedGroup.members} members</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+                  <button 
+                    onClick={handleMessageSearch}
+                    className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                  >
                     <Search className="w-5 h-5 text-gray-500" />
                   </button>
-                  <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+                  <button 
+                    className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors relative"
+                    onClick={toggleChatOptions}
+                  >
                     <MoreVertical className="w-5 h-5 text-gray-500" />
                   </button>
                 </div>
               </div>
 
+              {/* Chat Options Dropdown */}
+              {showChatOptions && (
+                <div className="absolute top-16 right-4 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg min-w-48 chat-options-dropdown">
+                  <div className="py-1">
+                    <button
+                      onClick={toggleSelectMode}
+                      className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                    >
+                      <Check className="w-4 h-4" />
+                      Select messages
+                    </button>
+                    <button
+                      onClick={muteNotifications}
+                      className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                    >
+                      <Bell className="w-4 h-4" />
+                      {selectedGroup?.isMuted ? 'Unmute notifications' : 'Mute notifications'}
+                    </button>
+                    <div className="border-t border-gray-200 dark:border-gray-700 my-1"></div>
+                    <button
+                      onClick={clearChat}
+                      className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                    >
+                      <X className="w-4 h-4" />
+                      Clear chat
+                    </button>
+                    <button
+                      onClick={deleteChat}
+                      className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
+                    >
+                      <X className="w-4 h-4" />
+                      Delete chat
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Search Results */}
+              {showSearchResults && (
+                <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Search className="w-4 h-4 text-gray-500" />
+                    <span className="text-sm text-gray-600 dark:text-gray-400">
+                      {searchResults.length} result{searchResults.length !== 1 ? 's' : ''} for "{searchQuery}"
+                    </span>
+                  </div>
+                  <button
+                    onClick={clearSearch}
+                    className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                  >
+                    Clear
+                  </button>
+                </div>
+              )}
+
               {/* Messages */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                {selectedGroup.messages.map((message, index) => (
+              <div
+                className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0"
+                style={selectedWallpaper ? (selectedWallpaper.startsWith('#') ? { background: selectedWallpaper } : { backgroundImage: `url(${selectedWallpaper})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }) : { 
+                  background: '#efeae2',
+                  backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23d1d5db' fill-opacity='0.1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
+                }}
+              >
+                                {(showSearchResults ? searchResults : selectedGroup.messages).map((message: ChatMessage, index: number) => (
                   <div
                     key={index}
-                    className={`flex ${message.userId === activeUser.id ? 'justify-end' : 'justify-start'}`}
+                    className={`flex ${message.userId === activeUser.id ? 'justify-end' : 'justify-start'} mb-2 ${
+                      isSelectMode ? 'cursor-pointer' : ''
+                    }`}
+                    onClick={isSelectMode ? () => toggleMessageSelection(message.id) : undefined}
                   >
-                    <div
-                      className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                        message.userId === activeUser.id
-                          ? 'bg-ajira-primary text-white'
-                          : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-700'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-sm font-medium">
-                          {message.userId === activeUser.id ? 'You' : message.userName}
-                        </span>
-                        <div className="flex items-center gap-1">
-                          <span className="text-xs opacity-80">
-                            {new Date(message.timestamp).toLocaleTimeString([], {
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            })}
-                          </span>
-                          {message.userId === activeUser.id && settings.readReceipts && (
-                            <span className="text-xs">
-                              {message.status === 'read' ? '✓✓' : '✓'}
-                            </span>
-                          )}
+                    {message.messageType === 'system' ? (
+                      // System message (join notification)
+                      <div className="flex justify-center w-full my-2">
+                        <div className="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-xs px-4 py-2 rounded-full shadow-sm">
+                          {message.content}
                         </div>
                       </div>
-                      <p className="text-sm">{message.content}</p>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleStarMessage(message);
-                        }}
-                        className={`mt-1 text-xs transition-all duration-200 ${
-                          starredMessages.some(sm => sm.id === message.id) 
-                            ? 'text-yellow-500 opacity-100 scale-110' 
-                            : 'text-gray-400 hover:text-ajira-primary opacity-70 hover:opacity-100'
-                        }`}
-                        title={starredMessages.some(sm => sm.id === message.id) ? 'Unstar message' : 'Star message'}
-                      >
-                        {starredMessages.some(sm => sm.id === message.id) ? '★' : '☆'}
-                      </button>
-                    </div>
+                    ) : (
+                      <div className="max-w-xs lg:max-w-md">
+                        {/* Reply to message */}
+                        {message.replyTo && (
+                          <div className={`mb-2 px-3 py-2 rounded-lg text-xs border-l-4 ${
+                            message.userId === activeUser.id
+                              ? 'bg-white/30 text-white border-white/50'
+                              : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 border-gray-300'
+                          }`}>
+                            <div className="font-medium mb-1">Reply to message</div>
+                            <div className="truncate opacity-75">Original message content...</div>
+                          </div>
+                        )}
+                        
+                        <div
+                          className={`px-3 py-2 rounded-2xl shadow-sm max-w-xs lg:max-w-md ${
+                            message.userId === activeUser.id
+                              ? 'bg-[#dcf8c6] text-gray-900 ml-auto'
+                              : 'bg-white text-gray-900 shadow-md'
+                          } ${
+                            isSelectMode && selectedMessages.includes(message.id)
+                              ? 'ring-2 ring-ajira-primary ring-opacity-50'
+                              : ''
+                          }`}
+                        >
+                          {/* Message header */}
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="flex items-center gap-2">
+                              {isSelectMode && (
+                                <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${
+                                  selectedMessages.includes(message.id)
+                                    ? 'bg-ajira-primary border-ajira-primary'
+                                    : 'border-gray-300'
+                                }`}>
+                                  {selectedMessages.includes(message.id) && (
+                                    <Check className="w-3 h-3 text-white" />
+                                  )}
+                                </div>
+                              )}
+                              {message.userId !== activeUser.id && (
+                                <span className="text-sm font-semibold text-gray-700">
+                                  {message.userName}
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <span className="text-xs text-gray-500">
+                                {new Date(message.timestamp).toLocaleTimeString([], {
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </span>
+                              {message.userId === activeUser.id && (
+                                <span className="text-xs ml-1">
+                                  {message.status === 'read' ? (
+                                    <span className="text-blue-500">✓✓</span>
+                                  ) : message.status === 'delivered' ? (
+                                    <span className="text-gray-500">✓✓</span>
+                                  ) : (
+                                    <span className="text-gray-400">✓</span>
+                                  )}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          
+                          {/* Message content */}
+                          {message.messageType === 'image' ? (
+                            <div>
+                              <img 
+                                src={message.mediaUrl} 
+                                alt="Image" 
+                                className="rounded-lg max-w-full cursor-pointer hover:opacity-90 transition-opacity shadow-sm" 
+                                onClick={() => openMediaViewer({
+                                  type: 'image',
+                                  url: message.mediaUrl!,
+                                  fileName: message.content
+                                })}
+                              />
+                              {message.content && (
+                                <p className="text-sm mt-2 leading-relaxed">{message.content}</p>
+                              )}
+                            </div>
+                          ) : message.messageType === 'video' ? (
+                            <div>
+                              <video 
+                                src={message.mediaUrl} 
+                                controls 
+                                className="rounded-lg max-w-full cursor-pointer hover:opacity-90 transition-opacity shadow-sm"
+                                onClick={() => openMediaViewer({
+                                  type: 'video',
+                                  url: message.mediaUrl!,
+                                  fileName: message.content
+                                })}
+                              />
+                              {message.content && (
+                                <p className="text-sm mt-2 leading-relaxed">{message.content}</p>
+                              )}
+                            </div>
+                          ) : message.messageType === 'file' || message.messageType === 'document' ? (
+                            <div 
+                              className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors shadow-sm"
+                              onClick={() => openMediaViewer({
+                                type: 'document',
+                                url: message.mediaUrl!,
+                                fileName: message.content,
+                                fileSize: message.fileSize
+                              })}
+                            >
+                              <FileText className="w-8 h-8 text-gray-500" />
+                              <div className="flex-1">
+                                <div className="text-sm font-medium text-gray-900">{message.content}</div>
+                                <div className="text-xs text-gray-500 mt-1">{message.fileSize}</div>
+                              </div>
+                              <Download className="w-5 h-5 text-gray-500" />
+                            </div>
+                          ) : (
+                            <p className="text-sm leading-relaxed">{message.content}</p>
+                          )}
+                          
+                          {/* Message actions */}
+                          <div className="flex items-center justify-between mt-2">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleReply(message);
+                              }}
+                              className="text-xs text-gray-500 hover:text-gray-700 transition-colors"
+                            >
+                              Reply
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleStarMessage(message);
+                              }}
+                              className={`text-xs transition-all duration-200 ${
+                                starredMessages.some(sm => sm.id === message.id) 
+                                  ? 'text-yellow-500 opacity-100 scale-110' 
+                                  : 'text-gray-400 hover:text-yellow-500 opacity-70 hover:opacity-100'
+                              }`}
+                              title={starredMessages.some(sm => sm.id === message.id) ? 'Unstar message' : 'Star message'}
+                            >
+                              {starredMessages.some(sm => sm.id === message.id) ? '★' : '☆'}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))}
                 
                 {/* Typing indicator */}
                 {typingUsers.length > 0 && settings.typingIndicators && (
                   <div className="flex justify-start">
-                    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-4 py-2">
+                    <div className="bg-white border border-gray-200 rounded-lg px-3 py-2 shadow-sm">
                       <div className="flex items-center gap-1">
-                        <span className="text-sm text-gray-600 dark:text-gray-400">Someone is typing</span>
+                        <span className="text-sm text-gray-600">Someone is typing</span>
                         <div className="flex gap-1">
                           <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
                           <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
@@ -1792,33 +3760,153 @@ const CommunityPage: React.FC = () => {
               </div>
 
               {/* Message Input */}
-              <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4">
+              <div className="bg-white border-t border-gray-200 p-3">
+                {/* Reply to message */}
+                {replyToMessage && (
+                  <div className="bg-gray-100 rounded-lg p-2 mb-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <div className="text-xs text-gray-500">Reply to {replyToMessage.userName}</div>
+                        <div className="text-sm text-gray-700 truncate">{replyToMessage.content}</div>
+                      </div>
+                      <button
+                        onClick={cancelReply}
+                        className="text-gray-500 hover:text-gray-700"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+                
                 <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={newMessage}
-                    onChange={(e) => {
-                      setNewMessage(e.target.value);
-                      if (settings.typingIndicators) {
-                        handleTyping();
-                      }
-                    }}
-                    onKeyPress={(e) => {
-                      if (e.key === 'Enter' && settings.enterToSend) {
-                        handleSendMessage();
-                      }
-                    }}
-                    placeholder={settings.enterToSend ? "Type a message (Enter to send)" : "Type a message"}
-                    spellCheck={settings.spellCheck}
-                    className={`flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-ajira-primary ${chatInputClass}`}
-                  />
+                  {/* Attachment button */}
+                  <div className="relative">
+                    <button
+                      onClick={() => setShowAttachmentMenu(!showAttachmentMenu)}
+                      className="p-2 text-gray-500 hover:text-gray-700 transition-colors"
+                    >
+                      <Paperclip className="w-5 h-5" />
+                    </button>
+                    
+                    {/* Attachment menu */}
+                    {showAttachmentMenu && (
+                      <div className="attachment-menu absolute bottom-full left-0 mb-2 bg-white border border-gray-200 rounded-lg shadow-lg p-2 min-w-[200px]">
+                        <button
+                          onClick={() => {
+                            imageInputRef.current?.click();
+                            setShowAttachmentMenu(false);
+                          }}
+                          className="w-full flex items-center gap-2 px-3 py-2 hover:bg-gray-100 rounded text-left"
+                        >
+                          <Image className="w-4 h-4 text-green-500" />
+                          <span>Photo</span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            videoInputRef.current?.click();
+                            setShowAttachmentMenu(false);
+                          }}
+                          className="w-full flex items-center gap-2 px-3 py-2 hover:bg-gray-100 rounded text-left"
+                        >
+                          <Video className="w-4 h-4 text-green-500" />
+                          <span>Video</span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            documentInputRef.current?.click();
+                            setShowAttachmentMenu(false);
+                          }}
+                          className="w-full flex items-center gap-2 px-3 py-2 hover:bg-gray-100 rounded text-left"
+                        >
+                          <FileText className="w-4 h-4 text-green-500" />
+                          <span>Document</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Emoji button */}
+                  <button
+                    onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                    className="p-2 text-gray-500 hover:text-gray-700 transition-colors"
+                  >
+                    <Smile className="w-5 h-5" />
+                  </button>
+                  
+                  {/* Message input */}
+                  <div className="flex-1 relative">
+                    <input
+                      type="text"
+                      value={newMessage}
+                      onChange={(e) => {
+                        setNewMessage(e.target.value);
+                        if (settings.typingIndicators) {
+                          handleTyping();
+                        }
+                      }}
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter' && settings.enterToSend) {
+                          handleSendMessage();
+                        }
+                      }}
+                      placeholder="Type a message"
+                      spellCheck={settings.spellCheck}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    />
+                    
+                    {/* Emoji picker */}
+                    {showEmojiPicker && (
+                      <div className="emoji-picker absolute bottom-full left-0 mb-2 z-50">
+                        {/* @ts-ignore */}
+                        <Picker
+                          data={data}
+                          onEmojiSelect={(emoji: any) => addEmoji(emoji.native)}
+                          theme={isDark ? 'dark' : 'light'}
+                          previewPosition="none"
+                          skinTonePosition="search"
+                          style={{ width: 350 }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Send button */}
                   <button
                     onClick={handleSendMessage}
-                    className="px-4 py-2 bg-ajira-primary text-white rounded-lg hover:bg-ajira-primary/90 transition-colors"
+                    disabled={!newMessage.trim()}
+                    className={`p-2 rounded-full transition-colors ${
+                      newMessage.trim() 
+                        ? 'bg-green-500 hover:bg-green-600 text-white' 
+                        : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                    }`}
                   >
-                    Send
+                    <Send className="w-5 h-5" />
                   </button>
                 </div>
+                
+                {/* Hidden file inputs */}
+                <input
+                  ref={imageInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => handleFileInput(e, 'image')}
+                  className="hidden"
+                />
+                <input
+                  ref={videoInputRef}
+                  type="file"
+                  accept="video/*"
+                  onChange={(e) => handleFileInput(e, 'video')}
+                  className="hidden"
+                />
+                <input
+                  ref={documentInputRef}
+                  type="file"
+                  accept=".pdf,.doc,.docx,.txt,.rtf"
+                  onChange={(e) => handleFileInput(e, 'file')}
+                  className="hidden"
+                />
               </div>
             </>
           ) : (
@@ -2024,64 +4112,7 @@ const CommunityPage: React.FC = () => {
         </div>
       )}
 
-      {/* Create Group Modal */}
-      {showCreateGroup && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-96 max-w-[90vw]">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Create New Group</h3>
-            <form onSubmit={handleCreateGroup} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Group Name</label>
-                <input
-                  type="text"
-                  value={newGroup.name}
-                  onChange={(e) => setNewGroup(prev => ({ ...prev, name: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-ajira-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
-                <input
-                  type="text"
-                  value={newGroup.description}
-                  onChange={(e) => setNewGroup(prev => ({ ...prev, description: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-ajira-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Category</label>
-                <select
-                  value={newGroup.category}
-                  onChange={(e) => setNewGroup(prev => ({ ...prev, category: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-ajira-primary bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                  required
-                >
-                  <option value="">Select a category</option>
-                  {GROUP_CATEGORIES.map(category => (
-                    <option key={category} value={category}>{category}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowCreateGroup(false)}
-                  className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-ajira-primary text-white rounded-lg hover:bg-ajira-primary/90 transition-colors"
-                >
-                  Create Group
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+
 
       {/* Media Quality Selection Modal */}
       {showMediaQualityModal && (
@@ -2173,10 +4204,83 @@ const CommunityPage: React.FC = () => {
         </div>
       )}
 
+
+
+      {/* Success Toast Notification */}
+      {joinSuccess && (
+        <div className="fixed top-4 right-4 z-50 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg animate-in slide-in-from-right duration-300">
+          <div className="flex items-center gap-2">
+            <span className="text-lg">✓</span>
+            <span>Successfully joined {joinSuccess} group!</span>
+          </div>
+        </div>
+      )}
+
       {/* In the chat area, show an HD badge if selectedMediaQuality === 'hd' */}
       {selectedMediaQuality === 'hd' && (
         <div className="absolute top-2 right-2 z-20">
           <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-ajira-primary text-white shadow">HD Mode Active</span>
+        </div>
+      )}
+
+      {/* Full Screen Media Viewer */}
+      {viewingMedia && (
+        <div className="fixed inset-0 bg-black bg-opacity-95 flex items-center justify-center z-50">
+          <div className="relative w-full h-full flex items-center justify-center p-4">
+            {/* Close button */}
+            <button
+              onClick={closeMediaViewer}
+              className="absolute top-4 right-4 z-10 p-2 bg-black bg-opacity-50 text-white rounded-full hover:bg-opacity-70 transition-colors"
+            >
+              <X className="w-6 h-6" />
+            </button>
+
+            {/* Media content */}
+            <div className="max-w-full max-h-full flex items-center justify-center">
+              {viewingMedia.type === 'image' ? (
+                <img
+                  src={viewingMedia.url}
+                  alt={viewingMedia.fileName || 'Image'}
+                  className="max-w-full max-h-full object-contain"
+                />
+              ) : viewingMedia.type === 'video' ? (
+                <video
+                  src={viewingMedia.url}
+                  controls
+                  autoPlay
+                  className="max-w-full max-h-full object-contain"
+                />
+              ) : viewingMedia.type === 'document' ? (
+                <div className="bg-white rounded-lg p-8 max-w-md text-center">
+                  <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    {viewingMedia.fileName || 'Document'}
+                  </h3>
+                  {viewingMedia.fileSize && (
+                    <p className="text-sm text-gray-500 mb-4">{viewingMedia.fileSize}</p>
+                  )}
+                  <a
+                    href={viewingMedia.url}
+                    download={viewingMedia.fileName}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-ajira-primary text-white rounded-lg hover:bg-ajira-primary/90 transition-colors"
+                  >
+                    <Download className="w-4 h-4" />
+                    Download
+                  </a>
+                </div>
+              ) : null}
+            </div>
+
+            {/* File info overlay */}
+            {viewingMedia.fileName && (
+              <div className="absolute bottom-4 left-4 right-4 bg-black bg-opacity-50 text-white p-3 rounded-lg">
+                <p className="text-sm font-medium">{viewingMedia.fileName}</p>
+                {viewingMedia.fileSize && (
+                  <p className="text-xs text-gray-300">{viewingMedia.fileSize}</p>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

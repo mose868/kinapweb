@@ -32,6 +32,7 @@ const chatbotRoutes = require('./routes/chatbot');
 const marketplaceRoutes = require('./routes/marketplace');
 const authRoutes = require('./routes/auth');
 const sellerApplicationRoutes = require('./routes/sellerApplications');
+const verificationRoutes = require('./routes/verification');
 
 dotenv.config();
 
@@ -138,7 +139,82 @@ io.on('connection', (socket) => {
     console.log('User disconnected:', socket.id);
   });
 
-  // More events (typing, read, etc.) can be added here
+  // Enhanced real-time features for community hub
+  socket.on('user_typing', ({ groupId, userId, userName }) => {
+    socket.to(`group_${groupId}`).emit('user_typing', { groupId, userId, userName });
+  });
+
+  socket.on('user_stop_typing', ({ groupId, userId }) => {
+    socket.to(`group_${groupId}`).emit('user_stop_typing', { groupId, userId });
+  });
+
+  socket.on('message_read', ({ messageId, groupId, userId }) => {
+    socket.to(`group_${groupId}`).emit('message_read', { messageId, userId });
+  });
+
+  socket.on('message_delivered', ({ messageId, groupId, userId }) => {
+    socket.to(`group_${groupId}`).emit('message_delivered', { messageId, userId });
+  });
+
+  socket.on('user_online', ({ userId, userName, userAvatar }) => {
+    socket.broadcast.emit('user_online', { userId, userName, userAvatar });
+  });
+
+  socket.on('user_offline', ({ userId }) => {
+    socket.broadcast.emit('user_offline', { userId });
+  });
+
+  socket.on('reaction_added', ({ messageId, groupId, userId, reaction }) => {
+    socket.to(`group_${groupId}`).emit('reaction_added', { messageId, userId, reaction });
+  });
+
+  socket.on('message_edited', ({ messageId, groupId, newContent, userId }) => {
+    socket.to(`group_${groupId}`).emit('message_edited', { messageId, newContent, userId });
+  });
+
+  socket.on('message_deleted', ({ messageId, groupId, userId }) => {
+    socket.to(`group_${groupId}`).emit('message_deleted', { messageId, userId });
+  });
+
+  socket.on('file_upload_progress', ({ groupId, userId, fileName, progress }) => {
+    socket.to(`group_${groupId}`).emit('file_upload_progress', { userId, fileName, progress });
+  });
+
+  socket.on('voice_message_start', ({ groupId, userId }) => {
+    socket.to(`group_${groupId}`).emit('voice_message_start', { groupId, userId });
+  });
+
+  socket.on('voice_message_stop', ({ groupId, userId }) => {
+    socket.to(`group_${groupId}`).emit('voice_message_stop', { groupId, userId });
+  });
+
+  socket.on('call_request', ({ fromUserId, toUserId, callType }) => {
+    const recipientSocketId = onlineUsers.get(toUserId);
+    if (recipientSocketId) {
+      io.to(recipientSocketId).emit('incoming_call', { fromUserId, callType });
+    }
+  });
+
+  socket.on('call_accepted', ({ fromUserId, toUserId }) => {
+    const recipientSocketId = onlineUsers.get(toUserId);
+    if (recipientSocketId) {
+      io.to(recipientSocketId).emit('call_accepted', { fromUserId });
+    }
+  });
+
+  socket.on('call_rejected', ({ fromUserId, toUserId }) => {
+    const recipientSocketId = onlineUsers.get(toUserId);
+    if (recipientSocketId) {
+      io.to(recipientSocketId).emit('call_rejected', { fromUserId });
+    }
+  });
+
+  socket.on('call_ended', ({ fromUserId, toUserId }) => {
+    const recipientSocketId = onlineUsers.get(toUserId);
+    if (recipientSocketId) {
+      io.to(recipientSocketId).emit('call_ended', { fromUserId });
+    }
+  });
 });
 
 // Middleware
@@ -174,6 +250,7 @@ app.use('/api/marketplace', marketplaceRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/seller-applications', sellerApplicationRoutes);
 app.use('/api/mentor-applications', require('./routes/mentorApplications'));
+app.use('/api/verification', verificationRoutes);
 
 // Root health check
 app.get('/', (req, res) => {
@@ -183,13 +260,76 @@ app.get('/', (req, res) => {
 // MongoDB Connection & Server start
 const PORT = process.env.PORT || 5000;
 
-mongoose
-  .connect(process.env.MONGODB_URI)
-  .then(() => {
-    console.log('MongoDB connected');
-    server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-  })
-  .catch((err) => {
-    console.error('MongoDB connection error:', err);
-    process.exit(1);
-  }); 
+// Start server even if MongoDB fails (for Socket.IO and chatbot functionality)
+const startServer = () => {
+  server.listen(PORT, () => {
+    console.log(`🚀 Server running on port ${PORT}`);
+    console.log('🔌 Socket.IO ready for real-time messaging');
+    console.log('🤖 Chatbot and Kinap AI are ready!');
+  });
+};
+
+// MongoDB connection with retry logic
+const connectToMongoDB = async (retries = 3) => {
+  for (let i = 0; i < retries; i++) {
+    try {
+      console.log(`🔄 Attempting MongoDB connection (attempt ${i + 1}/${retries})...`);
+      
+      await mongoose.connect(process.env.MONGODB_URI, {
+        serverSelectionTimeoutMS: 30000, // 30 second timeout
+        socketTimeoutMS: 45000, // 45 second timeout
+        connectTimeoutMS: 30000, // 30 second connection timeout
+        maxPoolSize: 10, // Maximum number of connections in the pool
+        minPoolSize: 1, // Minimum number of connections in the pool
+        maxIdleTimeMS: 30000, // Maximum time a connection can remain idle
+        retryWrites: true,
+        w: 'majority',
+        useNewUrlParser: true,
+        useUnifiedTopology: true
+      });
+      
+      console.log('✅ MongoDB connected successfully');
+      return true;
+    } catch (err) {
+      console.warn(`⚠️ MongoDB connection attempt ${i + 1} failed:`, err.message);
+      
+      if (i < retries - 1) {
+        console.log(`⏳ Retrying in 5 seconds...`);
+        await new Promise(resolve => setTimeout(resolve, 5000));
+      }
+    }
+  }
+  return false;
+};
+
+// Handle MongoDB connection events
+mongoose.connection.on('error', (err) => {
+  console.error('❌ MongoDB connection error:', err);
+});
+
+mongoose.connection.on('disconnected', () => {
+  console.warn('⚠️ MongoDB disconnected');
+});
+
+mongoose.connection.on('reconnected', () => {
+  console.log('✅ MongoDB reconnected');
+});
+
+// Start server with MongoDB connection
+const startServerWithMongoDB = async () => {
+  const mongoConnected = await connectToMongoDB();
+  
+  if (!mongoConnected) {
+    console.warn('⚠️ Failed to connect to MongoDB after multiple attempts');
+    console.log('📝 Starting server without database (Socket.IO and chatbot will still work)');
+    console.log('🔧 MongoDB troubleshooting:');
+    console.log('   1. Check your internet connection');
+    console.log('   2. Verify MongoDB Atlas credentials');
+    console.log('   3. Check if IP is whitelisted in MongoDB Atlas');
+    console.log('   4. Verify connection string format');
+  }
+  
+  startServer();
+};
+
+startServerWithMongoDB(); 

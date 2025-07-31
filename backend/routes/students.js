@@ -3,7 +3,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const Student = require('../models/Student');
 const crypto = require('crypto');
-const transporter = require('../config/email');
+const { sendVerificationEmail, sendWelcomeEmail } = require('../services/emailService');
 const Group = require('../models/Group');
 
 const router = express.Router();
@@ -60,17 +60,9 @@ router.post('/register-student', async (req, res) => {
     student.verificationCodeExpires = Date.now() + 15 * 60 * 1000; // 15 minutes
     await student.save();
 
-    // Send verification email
+    // Send verification email using Brevo
     try {
-      await transporter.sendMail({
-        from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
-        to: student.email,
-        subject: 'Verify your Ajira Digital account',
-        html: `<p>Hello ${student.fullname},</p>
-               <p>Your verification code is:</p>
-               <h2 style="letter-spacing: 4px;">${verificationCode}</h2>
-               <p>This code expires in 15 minutes.</p>`,
-      });
+      await sendVerificationEmail(student.email, verificationCode, student.fullname);
     } catch (mailErr) {
       console.error('Error sending verification email', mailErr);
     }
@@ -104,6 +96,13 @@ router.post('/verify-code', async (req, res) => {
     student.verificationCodeExpires = undefined;
     await student.save();
 
+    // Send welcome email
+    try {
+      await sendWelcomeEmail(student.email, student.fullname);
+    } catch (mailErr) {
+      console.error('Error sending welcome email', mailErr);
+    }
+
     res.json({ message: 'Account verified successfully' });
   } catch (error) {
     console.error('Verify code error', error);
@@ -125,14 +124,7 @@ router.post('/resend-code', async (req, res) => {
     student.verificationCodeExpires = Date.now() + 15 * 60 * 1000;
     await student.save();
 
-    await transporter.sendMail({
-      from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
-      to: student.email,
-      subject: 'Your new Ajira Digital verification code',
-      html: `<p>Your new verification code:</p>
-             <h2>${verificationCode}</h2>
-             <p>Expires in 15 minutes.</p>`,
-    });
+    await sendVerificationEmail(student.email, verificationCode, student.fullname);
 
     res.json({ message: 'Verification code resent' });
   } catch (error) {
