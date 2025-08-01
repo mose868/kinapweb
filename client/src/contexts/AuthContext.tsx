@@ -6,9 +6,11 @@ import {
   updateUserProfile, 
   logoutUser, 
   verifyToken,
+  googleAuth,
   type User,
   type LoginCredentials,
-  type RegisterData
+  type RegisterData,
+  type GoogleAuthData
 } from '../api/auth';
 
 // Remove duplicate interface since we're importing it from auth.ts
@@ -18,6 +20,7 @@ interface AuthContextType {
   loading: boolean;
   error: string | null;
   login: (email: string, password: string) => Promise<void>;
+  googleLogin: (googleData: GoogleAuthData) => Promise<void>;
   register: (userData: RegisterData) => Promise<void>;
   logout: () => Promise<void>;
   updateProfile: (data: Partial<User>) => Promise<void>;
@@ -92,6 +95,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const googleLogin = async (googleData: GoogleAuthData) => {
+    try {
+      setError(null);
+      
+      const response = await googleAuth(googleData);
+      
+      localStorage.setItem('token', response.token);
+      localStorage.setItem('userData', JSON.stringify(response.user));
+      setUser(response.user);
+      
+    } catch (error: any) {
+      setError(error.message || 'Failed to login with Google');
+      throw error;
+    }
+  };
+
   const register = async (userData: RegisterData) => {
     try {
       setError(null);
@@ -146,6 +165,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     loading,
     error,
     login,
+    googleLogin,
     register,
     logout,
     updateProfile,

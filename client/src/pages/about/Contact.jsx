@@ -85,7 +85,7 @@ const Contact = () => {
       icon: <Mail className="w-6 h-6 text-ajira-orange" />,
       title: 'Email Us',
       details: [
-        'moseskimani414@gmail.com',
+        'kinapajira@gmail.com',
         'info@kinapajira.com'
       ]
     },
@@ -174,7 +174,7 @@ const Contact = () => {
                 Chat on WhatsApp
               </button>
               <a
-                href="mailto:moseskimani414@gmail.com"
+                href="mailto:kinapajira@gmail.com"
                 className="bg-white hover:bg-gray-100 text-ajira-primary px-4 sm:px-6 py-3 rounded-lg flex items-center justify-center transition-colors w-full sm:w-auto"
               >
                 <Mail className="w-5 h-5 mr-2" />
@@ -218,7 +218,7 @@ const Contact = () => {
                     <strong>✅ Message sent successfully!</strong>
                   </div>
                   <p className="text-sm mb-4">
-                    Thank you for contacting us! Your message has been sent to moseskimani414@gmail.com and we'll get back to you soon.
+                    Thank you for contacting us! Your message has been sent to kinapajira@gmail.com and we'll get back to you soon.
                   </p>
                   {whatsappLink && (
                     <div className="text-center">

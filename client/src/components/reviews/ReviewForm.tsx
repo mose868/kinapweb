@@ -1,8 +1,6 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useMutation, useQueryClient } from 'react-query';
-import { collection, addDoc, doc, updateDoc, serverTimestamp, increment } from 'firebase/firestore';
-import { db, COLLECTIONS } from '../../config/firebase';
-import { useAuth } from '../../contexts/AuthContext';
+import { useBetterAuthContext } from '../../contexts/BetterAuthContext';
 import { Star } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import type { Review, Order } from '../../types/marketplace';
@@ -13,7 +11,7 @@ interface ReviewFormProps {
 }
 
 const ReviewForm = ({ order, onSuccess }: ReviewFormProps) => {
-  const { user } = useAuth();
+  const { user } = useBetterAuthContext();
   const queryClient = useQueryClient();
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState('');
@@ -23,36 +21,23 @@ const ReviewForm = ({ order, onSuccess }: ReviewFormProps) => {
     async () => {
       if (!user) throw new Error('User not authenticated');
 
+      // Mock review submission
       const reviewData: Partial<Review> = {
         gigId: order.gigId,
         orderId: order.id,
-        buyerId: user.uid,
+        buyerId: user.id,
         buyerName: user.displayName || 'Anonymous',
         buyerAvatar: user.photoURL,
         rating,
         comment,
-        createdAt: serverTimestamp()
+        createdAt: new Date()
       };
 
-      // Add review
-      const reviewRef = await addDoc(collection(db, COLLECTIONS.REVIEWS), reviewData);
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
 
-      // Update order status
-      const orderRef = doc(db, COLLECTIONS.ORDERS, order.id);
-      await updateDoc(orderRef, {
-        status: 'completed',
-        completedDate: serverTimestamp()
-      });
-
-      // Update gig statistics
-      const gigRef = doc(db, COLLECTIONS.GIGS, order.gigId);
-      await updateDoc(gigRef, {
-        rating: rating, // This should be an average in a real application
-        reviews: increment(1),
-        completedOrders: increment(1)
-      });
-
-      return reviewRef.id;
+      // Return mock review ID
+      return 'mock-review-id-' + Date.now();
     },
     {
       onSuccess: () => {

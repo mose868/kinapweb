@@ -1,0 +1,6 @@
+2025/07/31-22:17:13.121 2f04 Creating DB C:\Users\PC\OneDrive - University of the People\kinapweb\backend\tokens\kinap-ajira-club\Default\IndexedDB\https_web.whatsapp.com_0.indexeddb.leveldb since it was missing.
+2025/07/31-22:17:13.178 2f04 Reusing MANIFEST C:\Users\PC\OneDrive - University of the People\kinapweb\backend\tokens\kinap-ajira-club\Default\IndexedDB\https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2025/07/31-22:17:52.458 309c Level-0 table #5: started
+2025/07/31-22:17:52.464 309c Level-0 table #5: 32043 bytes OK
+2025/07/31-22:17:52.476 309c Delete type=0 #3
+2025/07/31-22:17:52.477 2f04 Manual compaction at level-0 from '\x00\x04\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\x05\x00\x00\x00' @ 0 : 0; will stop at (end)

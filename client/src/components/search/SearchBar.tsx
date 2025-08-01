@@ -1,10 +1,7 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, X } from 'lucide-react';
-import { useQuery } from 'react-query';
-import { collection, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
-import { db, COLLECTIONS } from '../../config/firebase';
-import type { Gig } from '../../api/marketplace';
+import { useBetterAuthContext } from '../../contexts/BetterAuthContext';
 
 interface SearchBarProps {
   initialQuery?: string;
@@ -16,30 +13,24 @@ const SearchBar = ({ initialQuery = '', onSearch, className = '' }: SearchBarPro
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState(initialQuery);
   const [isOpen, setIsOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
 
-  // Fetch search suggestions
-  const { data: suggestions, isLoading } = useQuery(
-    ['search-suggestions', searchQuery],
-    async () => {
-      if (!searchQuery.trim() || searchQuery.length < 2) return [];
+  // Mock data for search suggestions
+  const mockSuggestions = [
+    { id: '1', title: 'Web Development', images: ['https://via.placeholder.com/50'], sellerName: 'John Doe' },
+    { id: '2', title: 'Graphic Design', images: ['https://via.placeholder.com/50'], sellerName: 'Jane Smith' },
+    { id: '3', title: 'SEO Services', images: ['https://via.placeholder.com/50'], sellerName: 'Mike Johnson' },
+    { id: '4', title: 'Content Writing', images: ['https://via.placeholder.com/50'], sellerName: 'Sarah Wilson' },
+    { id: '5', title: 'Digital Marketing', images: ['https://via.placeholder.com/50'], sellerName: 'David Brown' },
+  ];
 
-      const gigsRef = collection(db, COLLECTIONS.GIGS);
-      const constraints = [
-        where('title', '>=', searchQuery.toLowerCase()),
-        where('title', '<=', searchQuery.toLowerCase() + '\uf8ff'),
-        orderBy('title'),
-        limit(5)
-      ];
-
-      const q = query(gigsRef, ...constraints);
-      const snapshot = await getDocs(q);
-      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Gig));
-    },
-    {
-      enabled: searchQuery.length >= 2
-    }
-  );
+  // Get filtered suggestions
+  const suggestions = searchQuery.length >= 2 
+    ? mockSuggestions.filter(gig =>
+        gig.title.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : [];
 
   // Handle click outside to close suggestions
   useEffect(() => {

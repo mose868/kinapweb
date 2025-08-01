@@ -1,6 +1,6 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { useAuth } from '../../contexts/AuthContext';
+import { useBetterAuthContext } from '../../contexts/BetterAuthContext';
 import { FaPaperclip, FaSmile } from 'react-icons/fa';
 
 const SOCKET_URL = 'http://localhost:5000';
@@ -30,7 +30,7 @@ const demoChats = [
 ];
 
 const CommunityChat: React.FC = () => {
-  const { user, loading } = useAuth();
+  const { user, isLoading } = useBetterAuthContext();
   const [socket, setSocket] = useState<Socket | null>(null);
   const [messages, setMessages] = useState<any[]>([]);
   const [input, setInput] = useState('');
@@ -84,7 +84,7 @@ const CommunityChat: React.FC = () => {
     }
   };
 
-  if (loading) return <div>Loading chat...</div>;
+  if (isLoading) return <div>Loading chat...</div>;
   if (!user) return <div>Please log in to use chat.</div>;
 
   return (

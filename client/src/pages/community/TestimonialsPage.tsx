@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { useAuth } from '../../contexts/AuthContext'
+import { useBetterAuthContext } from '../../contexts/BetterAuthContext';
 import { Star, Quote, Filter, Search } from 'lucide-react'
 import LoadingState from '../../components/common/LoadingState'
 import ReactQuill from 'react-quill'
@@ -29,7 +29,7 @@ const CATEGORIES = [
 ]
 
 const TestimonialsPage = () => {
-  const { user } = useAuth()
+  const { user } = useBetterAuthContext()
   const [testimonials, setTestimonials] = useState<Testimonial[]>([])
   const [formData, setFormData] = useState({
     content: '',
@@ -154,90 +154,83 @@ const TestimonialsPage = () => {
     return <LoadingState message="Loading testimonials" description="Please wait while we fetch the testimonials" />
   }
 
-  // If no testimonials, show demo testimonials
+  // If no testimonials, show coming soon message
   if (!testimonials || testimonials.length === 0) {
-    const demoTestimonials = [
-      {
-        id: 'demo1',
-        userName: 'Jane Doe',
-        userRole: 'Web Developer',
-        content: 'Ajira Digital helped me land my first freelance job in 2025! The new AI-powered training modules are incredible. Highly recommend to anyone starting out.',
-        rating: 5,
-        category: 'Web Development',
-        impact: 'Landed first client worth $2,000',
-        createdAt: new Date(),
-      },
-      {
-        id: 'demo2',
-        userName: 'John Smith',
-        userRole: 'Digital Marketer',
-        content: 'The community and resources are top-notch. I learned so much about social media automation and AI tools in 2025. My business has grown 300%!',
-        rating: 5,
-        category: 'Digital Marketing',
-        impact: 'Business growth of 300%',
-        createdAt: new Date(),
-      },
-      {
-        id: 'demo3',
-        userName: 'Sarah Johnson',
-        userRole: 'Content Creator',
-        content: 'Amazing mentorship program! The 2025 content creation strategies helped me build a YouTube channel with 100K+ subscribers.',
-        rating: 5,
-        category: 'Content Creation',
-        impact: 'Built 100K+ subscriber channel',
-        createdAt: new Date(),
-      },
-      {
-        id: 'demo4',
-        userName: 'Michael Brown',
-        userRole: 'Data Analyst',
-        content: 'The AI and machine learning courses for 2025 are cutting-edge. I transitioned from basic data entry to advanced analytics.',
-        rating: 4,
-        category: 'Data Analysis',
-        impact: 'Career transition to analytics',
-        createdAt: new Date(),
-      },
-      {
-        id: 'demo5',
-        userName: 'Emily Davis',
-        userRole: 'Virtual Assistant',
-        content: 'Excellent training on automation tools and client management. Now I manage 15+ clients efficiently using 2025 productivity tools.',
-        rating: 5,
-        category: 'Virtual Assistant',
-        impact: 'Managing 15+ clients',
-        createdAt: new Date(),
-      },
-      {
-        id: 'demo6',
-        userName: 'David Wilson',
-        userRole: 'Freelance Writer',
-        content: 'The writing and SEO courses helped me increase my rates by 200%. The 2025 AI writing tools integration is fantastic!',
-        rating: 4,
-        category: 'Content Writing',
-        impact: 'Increased rates by 200%',
-        createdAt: new Date(),
-      }
-    ];
     return (
       <div className="max-w-7xl mx-auto px-2 sm:px-4 py-8 sm:py-12 w-full overflow-x-hidden">
-        <h1 className="text-4xl font-bold text-ajira-primary mb-4">Success Stories & Testimonials 2025 (Demo)</h1>
-        <p className="text-lg text-gray-600 mb-8">Experience the latest success stories from our 2025 cohort</p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-8 w-full">
-          {demoTestimonials.map(t => (
-            <div key={t.id} className="bg-white rounded-lg shadow p-6">
-              <div className="flex items-center mb-2">
-                <span className="font-bold text-lg mr-2">{t.userName}</span>
-                <span className="text-sm text-gray-500">({t.userRole})</span>
-              </div>
-              <div className="mb-2">{t.content}</div>
-              <div className="mb-2"><span className="font-semibold">Category:</span> {t.category}</div>
-              <div className="mb-2"><span className="font-semibold">Impact:</span> {t.impact}</div>
-              <div className="mb-2"><span className="font-semibold">Rating:</span> {t.rating} / 5</div>
-            </div>
-          ))}
+        <div className="text-center mb-12">
+          <h1 className="text-3xl sm:text-4xl font-bold text-ajira-primary mb-4">
+            🌟 Success Stories & Testimonials
+          </h1>
+          <p className="text-lg text-gray-600">
+            Real stories from real people who transformed their careers
+          </p>
         </div>
-        <div className="mt-8 text-center">
-          <p className="text-gray-500">Sign up or log in to share your own story!</p>
+
+        {/* Coming Soon Section */}
+        <div className="text-center py-16">
+          <div className="bg-white rounded-2xl shadow-lg p-8 sm:p-12 max-w-3xl mx-auto">
+            <div className="text-6xl mb-6">🎯</div>
+            <h2 className="text-2xl sm:text-3xl font-bold text-ajira-primary mb-4">
+              Inspiring Success Stories Coming Soon!
+            </h2>
+            <p className="text-gray-600 text-lg mb-8">
+              We're curating amazing success stories from our community members who have transformed their careers and lives through digital skills. Get ready to be inspired by real journeys of:
+            </p>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-8 text-left">
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                  <span className="text-green-600 text-xl">💼</span>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-gray-900 mb-1">Career Transitions</h3>
+                  <p className="text-gray-600 text-sm">From traditional jobs to thriving digital careers</p>
+                </div>
+              </div>
+              
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                  <span className="text-blue-600 text-xl">🚀</span>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-gray-900 mb-1">Freelance Success</h3>
+                  <p className="text-gray-600 text-sm">Building sustainable income streams online</p>
+                </div>
+              </div>
+              
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
+                  <span className="text-purple-600 text-xl">🏢</span>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-gray-900 mb-1">Business Growth</h3>
+                  <p className="text-gray-600 text-sm">Scaling small businesses with digital tools</p>
+                </div>
+              </div>
+              
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
+                  <span className="text-orange-600 text-xl">🎓</span>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-gray-900 mb-1">Skill Development</h3>
+                  <p className="text-gray-600 text-sm">Mastering in-demand digital skills</p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="bg-gradient-to-r from-ajira-primary/10 to-ajira-accent/10 rounded-lg p-6 mb-6">
+              <h3 className="font-semibold text-ajira-primary mb-2">Be Part of the Story</h3>
+              <p className="text-gray-700 text-sm">
+                When we launch, you'll be able to share your own success story and inspire others in the community. Your journey could be the motivation someone else needs to start their digital transformation.
+              </p>
+            </div>
+            
+            <p className="text-gray-500 text-sm">
+              We're working hard to bring you authentic, inspiring stories. Stay tuned for the launch! ✨
+            </p>
+          </div>
         </div>
       </div>
     );

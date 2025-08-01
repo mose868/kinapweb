@@ -1,4 +1,4 @@
-# Ajira Digital Club Platform
+# Ajira Digital KiNaP Club Platform
 
 A full-stack web application for managing the Ajira Digital Club platform.
 
@@ -43,7 +43,7 @@ A full-stack web application for managing the Ajira Digital Club platform.
 1. Clone the repository:
    ```bash
    git clone <repository-url>
-   cd ajira-digital-platform
+   cd ajira-digital-kinap-club
    ```
 
 2. Install dependencies:
@@ -86,7 +86,7 @@ PORT=5000
 NODE_ENV=development
 
 # MongoDB Configuration
-MONGODB_URI=mongodb://localhost:27017/ajira_digital
+MONGODB_URI=mongodb://localhost:27017/ajira_digital_kinap
 
 # JWT Configuration
 JWT_SECRET=your_jwt_secret_key_here
@@ -206,7 +206,7 @@ npm install
 3. Create .env file in server directory:
 ```env
 PORT=5000
-MONGODB_URI=mongodb://localhost:27017/ajira_digital
+MONGODB_URI=mongodb://localhost:27017/ajira_digital_kinap
 JWT_SECRET=your_jwt_secret_key
 JWT_EXPIRES_IN=90d
 ```

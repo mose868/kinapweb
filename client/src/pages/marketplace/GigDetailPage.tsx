@@ -1,16 +1,10 @@
 import React, { useState } from 'react'
-import { useParams, Link, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from 'react-query'
-import { doc, getDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore'
-import { db, COLLECTIONS } from '../../config/firebase'
-import type { UserProfile } from '../../types/marketplace'
-import { Star, Clock, RefreshCw, CheckCircle, MessageCircle, Share2, Flag, Eye, ArrowLeft } from 'lucide-react'
-import { useAuth } from '../../contexts/AuthContext'
-// @ts-ignore
-import ImageGallery from 'react-image-gallery'
-import 'react-image-gallery/styles/css/image-gallery.css'
 import { toast } from 'react-hot-toast'
-import { fetchGigById, type Gig } from '../../api/marketplace'
+import { Star, Clock, User, CheckCircle } from 'lucide-react'
+import { useBetterAuthContext } from '../../contexts/BetterAuthContext'
+import { fetchGigById } from '../../api/marketplace'
 
 // Format price as KES
 function formatKES(amount: number) {
@@ -19,7 +13,7 @@ function formatKES(amount: number) {
 
 const GigDetailPage: React.FC = () => {
   const { gigId } = useParams<{ gigId: string }>()
-  const { user } = useAuth()
+  const { user } = useBetterAuthContext()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [selectedPackage, setSelectedPackage] = useState<'basic' | 'standard' | 'premium'>('basic')

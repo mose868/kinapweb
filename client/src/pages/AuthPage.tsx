@@ -1,32 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { useMutation } from 'react-query'
-import axios from 'axios'
-import { Loader2, Mail, Lock, User, Eye, EyeOff, AlertCircle } from 'lucide-react'
+import { Loader2, Mail, Lock, User, Eye, EyeOff, AlertCircle, Fingerprint } from 'lucide-react'
 import type { UserRole } from '../types/marketplace'
 import LoadingState from '../components/common/LoadingState'
-
-const TEMP_MAIL_DOMAINS = [
-  'tempmail', 'mailinator', '10minutemail', 'guerrillamail', 'yopmail', 'dispostable', 'maildrop', 'fakeinbox', 'trashmail', 'getnada', 'sharklasers', 'spamgourmet', 'mailnesia', 'mintemail', 'throwawaymail', 'mailcatch', 'spambox', 'mailnull', 'mytempemail', 'tempail', 'moakt', 'emailondeck', 'mail-temp', 'inboxkitten', 'mailsac', 'mailpoof', 'mail.tm', 'temp-mail', 'tempinbox', 'mail7', 'easytrashmail', 'mailbox52', 'spambog', 'spam4.me', 'dropmail', 'mailcatch.com', 'mailnesia.com', 'yopmail.com', 'mailinator.com', '10minutemail.com', 'guerrillamail.com', 'dispostable.com', 'getnada.com', 'sharklasers.com', 'spamgourmet.com', 'maildrop.cc', 'fakeinbox.com', 'trashmail.com', 'mintemail.com', 'throwawaymail.com', 'mytempemail.com', 'moakt.com', 'emailondeck.com', 'mail-temp.com', 'inboxkitten.com', 'mailsac.com', 'mailpoof.com', 'mail.tm', 'temp-mail.org', 'tempinbox.com', 'mail7.io', 'easytrashmail.com', 'mailbox52.com', 'spambog.com', 'spam4.me', 'dropmail.me'
-];
-
-const INTEREST_OPTIONS = [
-  'Web Development',
-  'Mobile App Development',
-  'Digital Marketing',
-  'Data Science',
-  'Content Creation',
-  'Graphic Design',
-  'Cybersecurity',
-  'E-commerce',
-  'Freelancing',
-  'UI/UX Design',
-  'Blockchain',
-  'Cloud Computing',
-  'Other'
-];
-
-const BASEURL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
+import { useBetterAuthContext } from '../contexts/BetterAuthContext'
+import BiometricAuth from '../components/auth/BiometricAuth'
 
 interface FormData {
   email: string
@@ -34,7 +12,6 @@ interface FormData {
   confirmPassword?: string
   displayName: string
   role: UserRole
-  idNumber?: string
   phoneNumber?: string
   course?: string
   year?: string
@@ -47,19 +24,35 @@ interface FormData {
 }
 
 const AuthPage = () => {
-  // ALL HOOKS FIRST - NEVER CHANGE THE ORDER OF HOOKS
   const navigate = useNavigate()
   const location = useLocation()
-  const from = (location.state as any)?.from?.pathname || '/'
+  const from = location.state?.from?.pathname || '/'
+  
+  const {
+    user,
+    isLoading,
+    error: authError,
+    isAuthenticated,
+    signIn,
+    signUp,
+    signInWithGoogle,
+    signOut
+  } = useBetterAuthContext()
 
   const [isSignUp, setIsSignUp] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
+  const [showBiometric, setShowBiometric] = useState(false)
+  const [biometricMode, setBiometricMode] = useState<'register' | 'verify'>('register')
+
   const [formData, setFormData] = useState<FormData>({
     email: '',
     password: '',
     confirmPassword: '',
     displayName: '',
-    role: 'buyer',
-    idNumber: '',
+    role: 'student',
     phoneNumber: '',
     course: '',
     year: '',
@@ -68,717 +61,370 @@ const AuthPage = () => {
     experienceLevel: '',
     preferredLearningMode: '',
     otherInfo: '',
-    interests: [],
-  })
-  const [showPassword, setShowPassword] = useState(false)
-  const [error, setError] = useState('')
-  const [info, setInfo] = useState('')
-  const [showReset, setShowReset] = useState(false)
-  const [resetEmail, setResetEmail] = useState('')
-  const [showResend, setShowResend] = useState(false)
-  const [showVerification, setShowVerification] = useState(false)
-  const [verificationCode, setVerificationCode] = useState('')
-  const [registeredEmail, setRegisteredEmail] = useState('')
-
-  // Helper function to detect temp mail - MUST BE BEFORE useMutation
-  const isTempMail = (email: string) => {
-    const domain = email.split('@')[1]?.toLowerCase() || ''
-    return TEMP_MAIL_DOMAINS.some(temp => domain.includes(temp))
-  }
-
-  // Sign up mutation - ALWAYS CALLED IN SAME ORDER
-  const signUpMutation = useMutation(async () => {
-    if (isTempMail(formData.email)) {
-      throw new Error('Temporary/disposable email addresses are not allowed.')
-    }
-    
-    // Build payload exactly matching the backend model
-    const studentData = {
-      fullname: formData.displayName,
-      idNo: formData.idNumber,
-      course: formData.course,
-      year: formData.year,
-      skills: formData.skills || '',
-      experience: formData.experienceLevel,
-      email: formData.email,
-      phone: formData.phoneNumber,
-      password: formData.password,
-      interests: Array.isArray(formData.interests) ? formData.interests : [],
-    }
-
-    try {
-      const response = await axios.post(`${BASEURL}/students/register-student`, studentData, {
-        headers: {
-          'Content-Type': 'application/json',
-        }
-      })
-
-      const data = response.data
-      
-      // Save email to localStorage for future use
-      localStorage.setItem('userEmail', formData.email)
-      
-      // Notify of auth update so nav can refresh if we ever auto-login at signup later
-      window.dispatchEvent(new Event('authUpdated'))
-      
-      // Show verification form after successful registration
-      setRegisteredEmail(formData.email)
-      setShowVerification(true)
-      setInfo('Registration successful! Please check your email for the verification code.')
-      setError('')
-    } catch (error: any) {
-      if (error.response?.data?.message) {
-        throw new Error(error.response.data.message)
-      }
-      throw new Error('Registration failed')
-    }
+    interests: []
   })
 
-  // Verify code mutation
-  const verifyCodeMutation = useMutation(async () => {
-    try {
-      const response = await axios.post(`${BASEURL}/students/verify-code`, {
-        email: registeredEmail,
-        code: verificationCode,
-      }, {
-        headers: {
-          'Content-Type': 'application/json',
-        }
-      })
-
-      setInfo('Account verified successfully! Sign in to complete your profile.')
-      setShowVerification(false)
-      setIsSignUp(false)
-      setError('')
-      setVerificationCode('')
-    } catch (error: any) {
-      if (error.response?.data?.message) {
-        throw new Error(error.response.data.message)
-      }
-      throw new Error('Verification failed')
-    }
-  })
-
-  // Resend code mutation
-  const resendCodeMutation = useMutation(async () => {
-    try {
-      const response = await axios.post(`${BASEURL}/students/resend-code`, {
-        email: registeredEmail,
-      }, {
-        headers: {
-          'Content-Type': 'application/json',
-        }
-      })
-
-      setInfo('Verification code resent! Please check your email.')
-      setError('')
-    } catch (error: any) {
-      if (error.response?.data?.message) {
-        throw new Error(error.response.data.message)
-      }
-      throw new Error('Failed to resend code')
-    }
-  })
-
-  // Sign in mutation - ALWAYS CALLED IN SAME ORDER
-  const signInMutation = useMutation(async () => {
-    try {
-      const response = await axios.post(`${BASEURL}/students/login-student`, {
-        email: formData.email,
-        password: formData.password,
-      }, {
-        headers: {
-          'Content-Type': 'application/json',
-        }
-      })
-
-      const data = response.data
-      
-      // Persist session details the same way AuthContext expects
-      localStorage.setItem('token', data.token)
-      
-      // Build basic user object; full profile will be fetched on Profile page
-      const userToStore = {
-        email: formData.email,
-        fullname: formData.displayName || formData.email.split('@')[0],
-      }
-      try {
-        localStorage.setItem('userData', JSON.stringify(userToStore))
-      } catch (err) {
-        console.warn('Unable to stringify user object:', err)
-      }
-      
-      // Fall-back to at least store the email (used elsewhere in the UI)
-      localStorage.setItem('userEmail', data.user?.email || formData.email)
-      
-      // Notify of auth update so nav can refresh if we ever auto-login at signup later
-      window.dispatchEvent(new Event('authUpdated'))
-      
-      // Navigate to profile page after login
-      navigate('/profile')
-    } catch (error: any) {
-      // If account not verified, show verification form
-      if (error.response?.data?.message?.includes('not verified')) {
-        setRegisteredEmail(formData.email)
-        setShowVerification(true)
-        setError('')
-        setInfo('Please verify your account. Check your email for the verification code.')
-        return
-      }
-      if (error.response?.data?.message) {
-        throw new Error(error.response.data.message)
-      }
-      throw new Error('Login failed')
-    }
-  })
-
-  // useEffect hooks - ALWAYS CALLED IN SAME ORDER
+  // Redirect if already authenticated
   useEffect(() => {
-    const searchParams = new URLSearchParams(location.search)
-    const isRegisterMode = searchParams.get('mode') === 'register'
-    if (isRegisterMode) {
-      setIsSignUp(true)
+    if (isAuthenticated && user) {
+      navigate(from, { replace: true })
     }
-  }, [location.search])
+  }, [isAuthenticated, user, navigate, from])
 
+  // Handle auth errors
+  useEffect(() => {
+    if (authError) {
+      setError(authError.message || 'Authentication failed')
+    }
+  }, [authError])
 
-
-  // EARLY RETURNS ONLY AFTER ALL HOOKS
-
-  // Event handlers
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value, type, multiple, options } = e.target as any;
-    if (name === 'interests' && multiple) {
-      setFormData(prev => ({ ...prev, interests: Array.from(options).filter((o: any) => o.selected).map((o: any) => o.value) }));
-    } else {
-      setFormData(prev => ({ ...prev, [name]: value }));
-    }
+    const { name, value } = e.target
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError('')
-    if (isSignUp && formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match.')
-      return
-    }
+    setError(null)
+    setSuccess(null)
+
     try {
       if (isSignUp) {
-        await signUpMutation.mutateAsync()
+        // Validate password confirmation
+        if (formData.password !== formData.confirmPassword) {
+          setError('Passwords do not match')
+          return
+        }
+
+        // Sign up with Better Auth
+        const result = await signUp(formData.email, formData.password, {
+          displayName: formData.displayName,
+          role: formData.role,
+          phoneNumber: formData.phoneNumber,
+          course: formData.course,
+          year: formData.year,
+          skills: formData.skills,
+          ajiraGoals: formData.ajiraGoals,
+          experienceLevel: formData.experienceLevel,
+          preferredLearningMode: formData.preferredLearningMode,
+          otherInfo: formData.otherInfo,
+          interests: formData.interests
+        })
+
+        if (result?.error) {
+          setError(result.error)
+        } else {
+          setSuccess('Account created successfully! Redirecting...')
+          setTimeout(() => {
+            navigate(from, { replace: true })
+          }, 2000)
+        }
       } else {
-        await signInMutation.mutateAsync()
+        // Sign in with Better Auth
+        const result = await signIn(formData.email, formData.password)
+        
+        if (result?.error) {
+          setError(result.error)
+        } else {
+          setSuccess('Signed in successfully! Redirecting...')
+          setTimeout(() => {
+            navigate(from, { replace: true })
+          }, 2000)
+        }
       }
-    } catch (err: any) {
-      setError(err.message || 'Authentication failed. Please try again.')
+    } catch (error: any) {
+      setError(error.message || 'Authentication failed')
     }
   }
 
-  const handlePasswordReset = (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    setError('Password reset functionality is not available yet.');
-  }
-
-  const handleVerifyCode = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError('')
-    if (!verificationCode.trim()) {
-      setError('Please enter the verification code.')
-      return
-    }
+  const handleGoogleSignIn = async () => {
     try {
-      await verifyCodeMutation.mutateAsync()
-    } catch (err: any) {
-      setError(err.message || 'Verification failed. Please try again.')
+      setError(null)
+      const result = await signInWithGoogle()
+      
+      if (result?.error) {
+        setError(result.error)
+      } else {
+        setSuccess('Google sign-in successful! Redirecting...')
+        setTimeout(() => {
+          navigate(from, { replace: true })
+        }, 2000)
+      }
+    } catch (error: any) {
+      setError(error.message || 'Google sign-in failed')
     }
   }
 
-  const handleResendCode = async () => {
-    setError('')
-    try {
-      await resendCodeMutation.mutateAsync()
-    } catch (err: any) {
-      setError(err.message || 'Failed to resend code. Please try again.')
-    }
+  // Biometric authentication handlers
+  const handleBiometricRegister = () => {
+    setBiometricMode('register')
+    setShowBiometric(true)
   }
 
-  const handleResendVerification = () => {
-    setError('Email verification is not required for this login method.')
+  const handleBiometricVerify = () => {
+    setBiometricMode('verify')
+    setShowBiometric(true)
+  }
+
+  const handleBiometricSuccess = () => {
+    setShowBiometric(false)
+    navigate(from, { replace: true })
+  }
+
+  const handleBiometricCancel = () => {
+    setShowBiometric(false)
+  }
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin text-ajira-primary mx-auto mb-4" />
+          <p className="text-gray-600">Loading authentication...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-kenya-white via-gray-50 to-kenya-green/10 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="flex justify-center mb-6">
-          <img src="/logo.jpeg" alt="KiNaP Ajira Club" className="h-16 w-auto drop-shadow-lg rounded-lg" />
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-ajira-primary/5 via-white to-ajira-secondary/5 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full space-y-8">
+        <div className="text-center">
+          <img src="/logo.jpeg" alt="KiNaP Ajira Club" className="h-16 w-auto drop-shadow-lg rounded-lg mx-auto mb-4" />
+          <h2 className="text-3xl font-bold text-gray-900">
+            {isSignUp ? 'Join KiNaP Ajira Digital Club' : 'Welcome back to KiNaP Ajira'}
+          </h2>
+          <p className="mt-2 text-sm text-gray-600">
+            {isSignUp ? 'Already a member?' : "New to Ajira Digital?"}{' '}
+            <button
+              onClick={() => setIsSignUp(!isSignUp)}
+              className="font-medium text-ajira-accent hover:text-ajira-accent/80 transition-colors"
+            >
+              {isSignUp ? 'Sign in here' : 'Sign up here'}
+            </button>
+          </p>
         </div>
-        <h2 className="mt-6 text-center text-3xl font-bold text-kenya-black">
-          {showVerification ? 'Verify Your Account' : isSignUp ? 'Join KiNaP Ajira Digital Club' : 'Welcome back to KiNaP Ajira'}
-        </h2>
-        <p className="mt-2 text-center text-sm text-gray-600">
-          {showVerification ? 'Enter the code sent to your email' : isSignUp ? 'Start your digital transformation journey' : 'Continue your digital journey'}{' '}
-          <br />
-          {showVerification ? '' : isSignUp ? 'Already a member?' : "New to Ajira Digital?"}{' '}
-          {!showVerification && (
-          <button
-            onClick={() => { 
-              setIsSignUp(!isSignUp); 
-              setError(''); 
-              setInfo(''); 
-              setShowResend(false); 
-              setShowVerification(false); 
-              setVerificationCode(''); 
-              setRegisteredEmail('') 
-            }}
-            className="font-medium text-kenya-red hover:text-kenya-green transition-colors"
-          >
-            {isSignUp ? 'Sign in here' : 'Join the club'}
-          </button>
+
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center gap-2">
+            <AlertCircle className="w-5 h-5 text-red-500" />
+            <span className="text-red-700 text-sm">{error}</span>
+          </div>
         )}
-        </p>
-      </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-4 shadow-xl border border-kenya-green/20 sm:rounded-xl sm:px-10">
-          {/* Error/Info Messages */}
-          {error && (
-            <div className="mb-4 bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg flex items-start">
-              <AlertCircle className="w-5 h-5 mr-2 mt-0.5 flex-shrink-0" />
-              <div className="flex-1">
-                <p className="text-sm">{error}</p>
-                {error.includes('not verified') && !showVerification && (
-                  <button
-                    onClick={() => {
-                      setRegisteredEmail(formData.email)
-                      setShowVerification(true)
-                      setError('')
-                      setInfo('Please check your email for the verification code.')
-                    }}
-                    className="mt-2 text-sm text-red-700 hover:text-red-800 underline"
-                  >
-                    Enter verification code now
-                  </button>
-                )}
-              </div>
-            </div>
-          )}
-          {info && (
-            <div className="mb-4 bg-green-50 border border-green-200 text-green-600 px-4 py-3 rounded-lg">
-              <p className="text-sm">{info}</p>
-            </div>
-          )}
+        {success && (
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center gap-2">
+            <AlertCircle className="w-5 h-5 text-green-500" />
+            <span className="text-green-700 text-sm">{success}</span>
+          </div>
+        )}
 
-          {/* Password Reset Form */}
-          {showReset ? (
-            <form onSubmit={handlePasswordReset} className="space-y-6">
-              <div>
-                <label htmlFor="resetEmail" className="block text-sm font-medium text-gray-700">
-                  Email address
-                </label>
-                <div className="mt-1 relative">
-                  <input
-                    id="resetEmail"
-                    name="resetEmail"
-                    type="email"
-                    required
-                    value={resetEmail}
-                    onChange={(e) => setResetEmail(e.target.value)}
-                    className="appearance-none block w-full px-4 py-2 pl-10 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-ajira-accent/50 focus:border-transparent"
-                  />
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                </div>
-              </div>
-              <div className="flex items-center justify-between">
-                <button
-                  type="submit"
-                  className="w-full flex justify-center py-2 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-ajira-accent hover:bg-ajira-orange-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ajira-accent"
-                >
-                  Send Reset Link
-                </button>
-              </div>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Email Field */}
+          <div>
+            <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+              Email Address
+            </label>
+            <div className="relative mt-1">
+              <input
+                type="email"
+                id="email"
+                name="email"
+                required
+                value={formData.email}
+                onChange={handleChange}
+                className="appearance-none block w-full px-4 py-2 pl-10 pr-3 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-ajira-accent/50 focus:border-transparent"
+                placeholder="Enter your email"
+              />
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+            </div>
+          </div>
+
+          {/* Password Field */}
+          <div>
+            <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+              Password
+            </label>
+            <div className="relative mt-1">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                id="password"
+                name="password"
+                required
+                value={formData.password}
+                onChange={handleChange}
+                className="appearance-none block w-full px-4 py-2 pl-10 pr-10 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-ajira-accent/50 focus:border-transparent"
+                placeholder="Enter your password"
+              />
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
               <button
                 type="button"
-                onClick={() => setShowReset(false)}
-                className="w-full text-sm text-ajira-accent hover:text-ajira-accent/80"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
               >
-                Back to Sign In
+                {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
               </button>
-            </form>
-          ) : showVerification ? (
-            <form onSubmit={handleVerifyCode} className="space-y-6">
-              <div>
-                <h3 className="text-lg font-medium text-gray-900 mb-4">
-                  Verify Your Email
-                </h3>
-                <p className="text-sm text-gray-600 mb-4">
-                  We've sent a 6-digit verification code to <strong>{registeredEmail}</strong>
-                </p>
-                <label htmlFor="verificationCode" className="block text-sm font-medium text-gray-700">
-                  Verification Code
-                </label>
-                <div className="mt-1">
-                  <input
-                    id="verificationCode"
-                    name="verificationCode"
-                    type="text"
-                    maxLength={6}
-                    required
-                    value={verificationCode}
-                    onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, ''))}
-                    placeholder="Enter 6-digit code"
-                    className="appearance-none block w-full px-4 py-2 text-center text-2xl tracking-widest border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-ajira-accent/50 focus:border-transparent"
-                  />
-                </div>
-              </div>
-              <div>
-                <button
-                  type="submit"
-                  disabled={verifyCodeMutation.isLoading}
-                  className="w-full flex justify-center py-2 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-gradient-to-r from-kenya-red to-kenya-green hover:from-kenya-green hover:to-kenya-red focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-kenya-red disabled:opacity-50 transition-all duration-300"
-                >
-                  {verifyCodeMutation.isLoading ? (
-                    <>
-                      <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                      Verifying...
-                    </>
-                  ) : (
-                    'Verify Code'
-                  )}
-                </button>
-              </div>
-              <div className="text-center">
-                <p className="text-sm text-gray-600">
-                  Didn't receive the code?{' '}
-                  <button
-                    type="button"
-                    onClick={handleResendCode}
-                    disabled={resendCodeMutation.isLoading}
-                    className="text-ajira-accent hover:text-ajira-accent/80 font-medium disabled:opacity-50"
-                  >
-                    {resendCodeMutation.isLoading ? 'Sending...' : 'Resend Code'}
-                  </button>
-                </p>
+            </div>
+          </div>
+
+          {/* Confirm Password Field (Sign Up Only) */}
+          {isSignUp && (
+            <div>
+              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
+                Confirm Password
+              </label>
+              <div className="relative mt-1">
+                <input
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  required
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  className="appearance-none block w-full px-4 py-2 pl-10 pr-10 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-ajira-accent/50 focus:border-transparent"
+                  placeholder="Confirm your password"
+                />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
                 <button
                   type="button"
-                  onClick={() => {
-                    setShowVerification(false)
-                    setIsSignUp(true)
-                    setVerificationCode('')
-                  }}
-                  className="mt-2 text-sm text-gray-500 hover:text-gray-700"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                 >
-                  Back to Sign Up
+                  {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                 </button>
               </div>
-            </form>
-          ) : (
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Sign Up Fields */}
-              {isSignUp && (
-                <>
-                  <div>
-                    <label htmlFor="displayName" className="block text-sm font-medium text-gray-700">
-                      Full Name
-                    </label>
-                    <div className="mt-1 relative">
-                      <input
-                        id="displayName"
-                        name="displayName"
-                        type="text"
-                        required
-                        value={formData.displayName}
-                        onChange={handleChange}
-                        className="appearance-none block w-full px-4 py-2 pl-10 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-ajira-accent/50 focus:border-transparent"
-                      />
-                      <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label htmlFor="idNumber" className="block text-sm font-medium text-gray-700">
-                      ID Number
-                    </label>
-                    <div className="mt-1 relative">
-                      <input
-                        id="idNumber"
-                        name="idNumber"
-                        type="text"
-                        required
-                        value={formData.idNumber}
-                        onChange={handleChange}
-                        className="appearance-none block w-full px-4 py-2 pl-10 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-ajira-accent/50 focus:border-transparent"
-                      />
-                      <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label htmlFor="phoneNumber" className="block text-sm font-medium text-gray-700">
-                      Phone Number
-                    </label>
-                    <div className="mt-1 relative">
-                      <input
-                        id="phoneNumber"
-                        name="phoneNumber"
-                        type="tel"
-                        required
-                        value={formData.phoneNumber}
-                        onChange={handleChange}
-                        className="appearance-none block w-full px-4 py-2 pl-10 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-ajira-accent/50 focus:border-transparent"
-                      />
-                      <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label htmlFor="course" className="block text-sm font-medium text-gray-700">
-                      What course are you studying at KiNaP?
-                    </label>
-                    <select
-                      id="course"
-                      name="course"
-                      value={formData.course}
-                      onChange={handleChange}
-                      className="mt-1 block w-full pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-2 focus:ring-ajira-accent/50 focus:border-transparent sm:text-sm rounded-lg"
-                    >
-                      <option value="">Select your course</option>
-                      <option value="computer-science">Computer Science</option>
-                      <option value="building-tech">Building Tech</option>
-                      <option value="hospitality">Hospitality</option>
-                      <option value="human-resource">Human Resource</option>
-                      <option value="civil-engineering">Civil Engineering</option>
-                      <option value="business-management">Business Management</option>
-                      <option value="it">IT</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label htmlFor="year" className="block text-sm font-medium text-gray-700">
-                      Which year/level are you in?
-                    </label>
-                    <select
-                      id="year"
-                      name="year"
-                      value={formData.year}
-                      onChange={handleChange}
-                      className="mt-1 block w-full pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-2 focus:ring-ajira-accent/50 focus:border-transparent sm:text-sm rounded-lg"
-                    >
-                      <option value="">Select your year</option>
-                      <option value="1st-year">1st Year</option>
-                      <option value="2nd-year">2nd Year</option>
-                      <option value="3rd-year">3rd Year</option>
-                      <option value="4th-year">4th Year</option>
-                      <option value="graduate">Graduate</option>
-                      <option value="alumni">Alumni</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label htmlFor="experienceLevel" className="block text-sm font-medium text-gray-700">
-                      What is your experience level?
-                    </label>
-                    <select
-                      id="experienceLevel"
-                      name="experienceLevel"
-                      value={formData.experienceLevel}
-                      onChange={handleChange}
-                      className="mt-1 block w-full pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-2 focus:ring-ajira-accent/50 focus:border-transparent sm:text-sm rounded-lg"
-                    >
-                      <option value="">Select experience level</option>
-                      <option value="beginner">Beginner</option>
-                      <option value="intermediate">Intermediate</option>
-                      <option value="advanced">Advanced</option>
-                    </select>
-                  </div>
-
-                  {/* Remove the skills input and only use the interests dropdown */}
-                  {/* <div>
-                    <label htmlFor="skills" className="block text-sm font-medium text-gray-700">
-                      Digital Skills & Interests
-                    </label>
-                    <div className="mt-1 relative">
-                      <input
-                        id="skills"
-                        name="skills"
-                        type="text"
-                        required
-                        value={formData.skills}
-                        onChange={handleChange}
-                        placeholder="e.g., Web Development, Graphic Design, Digital Marketing"
-                        className="appearance-none block w-full px-4 py-2 pl-10 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-ajira-accent/50 focus:border-transparent"
-                      />
-                      <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                    </div>
-                  </div> */}
-                </>
-              )}
-
-              {isSignUp && (
-                <div>
-                  <label htmlFor="interests" className="block text-sm font-medium text-gray-700">
-                    What are your main digital interests? (Select all that apply)
-                  </label>
-                  <select
-                    id="interests"
-                    name="interests"
-                    multiple
-                    value={formData.interests}
-                    onChange={handleChange}
-                    className="mt-1 block w-full pl-3 pr-10 py-2 text-base border border-gray-300 focus:outline-none focus:ring-2 focus:ring-ajira-accent/50 focus:border-transparent sm:text-sm rounded-lg"
-                    required
-                  >
-                    {INTEREST_OPTIONS.map(opt => (
-                      <option key={opt} value={opt}>{opt}</option>
-                    ))}
-                  </select>
-                  <p className="text-xs text-gray-500 mt-1">Hold Ctrl (Windows) or Cmd (Mac) to select multiple.</p>
-                </div>
-              )}
-
-              {/* Common Fields */}
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                  Email address
-                </label>
-                <div className="mt-1 relative">
-                  <input
-                    id="email"
-                    name="email"
-                    type="email"
-                    autoComplete="email"
-                    required
-                    value={formData.email}
-                    onChange={handleChange}
-                    className="appearance-none block w-full px-4 py-2 pl-10 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-ajira-accent/50 focus:border-transparent"
-                  />
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                </div>
-              </div>
-
-              <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                  Password
-                </label>
-                <div className="mt-1 relative">
-                  <input
-                    id="password"
-                    name="password"
-                    type={showPassword ? 'text' : 'password'}
-                    autoComplete={isSignUp ? 'new-password' : 'current-password'}
-                    required
-                    value={formData.password}
-                    onChange={handleChange}
-                    className="appearance-none block w-full px-4 py-2 pl-10 pr-10 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-ajira-accent/50 focus:border-transparent"
-                  />
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-ajira-accent"
-                    tabIndex={-1}
-                  >
-                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                  </button>
-                </div>
-                {!isSignUp && (
-                  <button
-                    type="button"
-                    onClick={() => setShowReset(true)}
-                    className="text-xs text-ajira-accent hover:underline mt-1 float-right"
-                  >
-                    Forgot password?
-                  </button>
-                )}
-                {!isSignUp && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setRegisteredEmail(formData.email)
-                      setShowVerification(true)
-                      setError('')
-                      setInfo('Please check your email for the verification code.')
-                    }}
-                    className="text-xs text-ajira-accent hover:underline mt-1 block"
-                  >
-                    Need to verify your account?
-                  </button>
-                )}
-              </div>
-
-              {isSignUp && (
-                <div>
-                  <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
-                    Confirm Password
-                  </label>
-                  <div className="mt-1 relative">
-                    <input
-                      id="confirmPassword"
-                      name="confirmPassword"
-                      type={showPassword ? 'text' : 'password'}
-                      autoComplete="new-password"
-                      required
-                      value={formData.confirmPassword}
-                      onChange={handleChange}
-                      className="appearance-none block w-full px-4 py-2 pl-10 pr-10 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-ajira-accent/50 focus:border-transparent"
-                    />
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                  </div>
-                </div>
-              )}
-
-              <div>
-                <button
-                  type="submit"
-                  disabled={signUpMutation.isLoading || signInMutation.isLoading}
-                  className="w-full flex justify-center py-2 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-gradient-to-r from-kenya-red to-kenya-green hover:from-kenya-green hover:to-kenya-red focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-kenya-red disabled:opacity-50 transition-all duration-300"
-                >
-                  {(signUpMutation.isLoading || signInMutation.isLoading) ? (
-                    <>
-                      <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                      {isSignUp ? 'Creating account...' : 'Signing in...'}
-                    </>
-                  ) : (
-                    isSignUp ? 'Create Account' : 'Sign In'
-                  )}
-                </button>
-              </div>
-            </form>
+            </div>
           )}
 
-          <div className="relative my-6">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300" />
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-white text-gray-500">Or continue with</span>
-            </div>
-          </div>
+          {/* Additional Fields for Sign Up */}
+          {isSignUp && (
+            <>
+              <div>
+                <label htmlFor="displayName" className="block text-sm font-medium text-gray-700">
+                  Full Name
+                </label>
+                <div className="relative mt-1">
+                  <input
+                    type="text"
+                    id="displayName"
+                    name="displayName"
+                    required
+                    value={formData.displayName}
+                    onChange={handleChange}
+                    className="appearance-none block w-full px-4 py-2 pl-10 pr-3 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-ajira-accent/50 focus:border-transparent"
+                    placeholder="Enter your full name"
+                  />
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                </div>
+              </div>
 
-          <div className="mt-6">
-            <button
-              onClick={() => { /* Google sign-in logic */ }}
-              className="w-full flex justify-center items-center py-2 px-4 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ajira-accent"
-            >
-              <img
-                src="/images/google-logo.svg"
-                alt="Google"
-                className="h-5 w-5 mr-2"
-              />
-              Google
-            </button>
-          </div>
+              <div>
+                <label htmlFor="phoneNumber" className="block text-sm font-medium text-gray-700">
+                  Phone Number
+                </label>
+                <input
+                  type="tel"
+                  id="phoneNumber"
+                  name="phoneNumber"
+                  value={formData.phoneNumber}
+                  onChange={handleChange}
+                  className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-ajira-accent/50 focus:border-transparent"
+                  placeholder="+254 700 000 000"
+                />
+              </div>
 
-          {showResend && (
-            <div className="mt-6 text-center">
+              <div>
+                <label htmlFor="role" className="block text-sm font-medium text-gray-700">
+                  Role
+                </label>
+                <select
+                  id="role"
+                  name="role"
+                  value={formData.role}
+                  onChange={handleChange}
+                  className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-ajira-accent/50 focus:border-transparent"
+                >
+                  <option value="student">Student</option>
+                  <option value="mentor">Mentor</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+            </>
+          )}
+
+          {/* Alternative Authentication Methods */}
+          <div className="mt-4">
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-300" />
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 bg-white text-gray-500">Or continue with</span>
+              </div>
+            </div>
+
+            <div className="mt-4 space-y-3">
+              {/* Google Sign-In Button */}
               <button
-                onClick={handleResendVerification}
-                className="text-sm text-ajira-accent hover:text-ajira-accent/80"
+                type="button"
+                onClick={handleGoogleSignIn}
+                className="w-full flex justify-center items-center py-2 px-4 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ajira-accent transition-all duration-300"
               >
-                Resend verification email
+                <img 
+                  src="/images/google-logo.svg" 
+                  alt="Google" 
+                  className="w-5 h-5 mr-2"
+                />
+                {isSignUp ? 'Sign up with Google' : 'Sign in with Google'}
+              </button>
+
+              {/* Biometric Authentication Button */}
+              <button
+                type="button"
+                onClick={isSignUp ? handleBiometricRegister : handleBiometricVerify}
+                className="w-full flex justify-center items-center py-2 px-4 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ajira-accent transition-all duration-300"
+              >
+                <Fingerprint className="w-5 h-5 mr-2 text-ajira-primary" />
+                {isSignUp ? 'Setup Biometric Auth' : 'Use Biometric Login'}
               </button>
             </div>
-          )}
-        </div>
+          </div>
+
+          {/* Submit Button */}
+          <div>
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full flex justify-center py-2 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-gradient-to-r from-kenya-red to-kenya-green hover:from-kenya-green hover:to-kenya-red focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-kenya-red disabled:opacity-50 transition-all duration-300"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                  {isSignUp ? 'Creating account...' : 'Signing in...'}
+                </>
+              ) : (
+                isSignUp ? 'Create Account' : 'Sign In'
+              )}
+            </button>
+          </div>
+        </form>
       </div>
+
+      {/* Biometric Authentication Modal */}
+      {showBiometric && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <BiometricAuth
+              mode={biometricMode}
+              onSuccess={handleBiometricSuccess}
+              onCancel={handleBiometricCancel}
+            />
+          </div>
+        </div>
+      )}
     </div>
   )
 }

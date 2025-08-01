@@ -7,7 +7,8 @@ const axiosInstance = axios.create({
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json'
-  }
+  },
+  timeout: 10000, // 10 second timeout
 });
 
 // Request interceptor
@@ -26,7 +27,9 @@ axiosInstance.interceptors.request.use(
 
 // Response interceptor
 axiosInstance.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    return response;
+  },
   async (error) => {
     const originalRequest = error.config;
 
@@ -34,7 +37,11 @@ axiosInstance.interceptors.response.use(
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
       localStorage.removeItem('token');
-      window.location.href = '/login';
+      localStorage.removeItem('userData');
+      // Use a more gentle redirect
+      setTimeout(() => {
+        window.location.href = '/auth';
+      }, 100);
       return;
     }
 

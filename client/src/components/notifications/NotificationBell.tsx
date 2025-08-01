@@ -1,7 +1,6 @@
-import { useState, useRef, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useRef, useEffect } from 'react';
 import { useQuery } from 'react-query';
-import { useAuth } from '../../contexts/AuthContext';
+import { useBetterAuthContext } from '../../contexts/BetterAuthContext';
 import { Bell, MessageSquare, Package, Star, DollarSign, AlertCircle } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -17,34 +16,52 @@ interface Notification {
 }
 
 const NotificationBell = () => {
-  const { user } = useAuth();
+  const { user } = useBetterAuthContext();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Fetch recent notifications
+  // Mock notifications data
   const { data: notifications } = useQuery(
-    ['notifications', user?.uid],
+    ['notifications', user?.id],
     async () => {
       if (!user) return [];
 
-      const notificationsRef = collection(db, COLLECTIONS.NOTIFICATIONS);
-      const q = query(
-        notificationsRef,
-        where('userId', '==', user.uid),
-        where('isRead', '==', false),
-        orderBy('createdAt', 'desc'),
-        limit(5)
-      );
-
-      const snapshot = await getDocs(q);
-      return snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      } as Notification));
+      // Return mock notifications for now
+      return [
+        {
+          id: '1',
+          userId: user.id,
+          type: 'message' as const,
+          title: 'New message from Sarah',
+          message: 'Hey! I loved your portfolio work. Can we discuss a project?',
+          isRead: false,
+          createdAt: new Date(Date.now() - 2 * 60 * 1000) // 2 minutes ago
+        },
+        {
+          id: '2',
+          userId: user.id,
+          type: 'order' as const,
+          title: 'Order completed',
+          message: 'Your graphic design project has been delivered successfully.',
+          isRead: false,
+          createdAt: new Date(Date.now() - 60 * 60 * 1000) // 1 hour ago
+        },
+        {
+          id: '3',
+          userId: user.id,
+          type: 'review' as const,
+          title: 'New review received',
+          message: 'Michael gave you a 5-star review for web development.',
+          isRead: true,
+          createdAt: new Date(Date.now() - 3 * 60 * 60 * 1000) // 3 hours ago
+        }
+      ];
     },
     {
       enabled: !!user,
-      refetchInterval: 30000 // Refetch every 30 seconds
+      refetchInterval: 120000, // Refetch every 2 minutes instead of 30 seconds
+      staleTime: 60000, // Consider data fresh for 1 minute
+      cacheTime: 300000, // Keep in cache for 5 minutes
     }
   );
 

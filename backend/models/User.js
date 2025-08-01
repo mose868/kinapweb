@@ -4,7 +4,7 @@ const Schema = mongoose.Schema;
 const UserSchema = new Schema({
   username: { type: String, required: true, unique: true },
   email: { type: String, required: true, unique: true },
-  password: { type: String, required: true }, // hashed
+  password: { type: String }, // Optional for Google OAuth users
   displayName: { type: String },
   avatar: { type: String },
   phoneNumber: { type: String },
@@ -30,6 +30,50 @@ const UserSchema = new Schema({
   mentors: [{ type: Schema.Types.ObjectId, ref: 'User' }],
   mentees: [{ type: Schema.Types.ObjectId, ref: 'User' }],
   groups: [{ type: Schema.Types.ObjectId, ref: 'Group' }],
+  
+  // Google OAuth fields
+  googleId: { type: String, unique: true, sparse: true },
+  googleEmail: { type: String },
+  authProvider: { type: String, enum: ['local', 'google'], default: 'local' },
+  
+  // Biometric Authentication Fields
+  biometricEnabled: { type: Boolean, default: false },
+  biometricCredentials: [{
+    id: { type: String, required: true },
+    type: { 
+      type: String, 
+      enum: ['fingerprint', 'face-recognition', 'voice-recognition', 'iris-scan', 'palm-print'],
+      required: true 
+    },
+    publicKey: { type: String, required: true },
+    createdAt: { type: Date, default: Date.now },
+    lastUsed: { type: Date },
+    isActive: { type: Boolean, default: true }
+  }],
+  
+  // Biometric authentication history
+  biometricAuthHistory: [{
+    timestamp: { type: Date, default: Date.now },
+    method: { 
+      type: String, 
+      enum: ['fingerprint', 'face-recognition', 'voice-recognition', 'iris-scan', 'palm-print'] 
+    },
+    success: { type: Boolean },
+    ipAddress: { type: String },
+    userAgent: { type: String },
+    location: { type: String },
+    details: { type: Schema.Types.Mixed }
+  }],
+  
+  // Login history for security monitoring
+  loginHistory: [{
+    timestamp: { type: Date, default: Date.now },
+    ipAddress: { type: String },
+    userAgent: { type: String },
+    location: { type: String },
+    success: { type: Boolean },
+    method: { type: String, enum: ['password', 'google', 'biometric'] }
+  }]
 }, { timestamps: true });
 
 module.exports = mongoose.model('User', UserSchema); 

@@ -27,6 +27,10 @@ export interface User {
     url: string;
   }>;
   isVerified?: boolean;
+  // Google OAuth fields
+  googleId?: string;
+  googleEmail?: string;
+  authProvider?: 'local' | 'google';
   createdAt: string;
   updatedAt: string;
 }
@@ -54,6 +58,14 @@ export interface RegisterData {
   languages?: string[];
 }
 
+export interface GoogleAuthData {
+  googleId: string;
+  email: string;
+  displayName?: string;
+  avatar?: string;
+  googleEmail?: string;
+}
+
 export interface AuthResponse {
   user: User;
   token: string;
@@ -78,6 +90,29 @@ export const loginUser = async (credentials: LoginCredentials): Promise<AuthResp
     return await response.json();
   } catch (error) {
     console.error('Login error:', error);
+    throw error;
+  }
+};
+
+// Google OAuth login/signup
+export const googleAuth = async (googleData: GoogleAuthData): Promise<AuthResponse> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/auth/google`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(googleData),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Google authentication failed');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Google auth error:', error);
     throw error;
   }
 };

@@ -10,6 +10,9 @@ import {
   HowItWorksSection, 
   PopularServicesSection 
 } from '../../components/marketplace/FiverrLikeFeatures';
+import { useBetterAuthContext } from '../../contexts/BetterAuthContext';
+import ProfileCompletionBanner from '../../components/common/ProfileCompletionBanner';
+import { checkProfileRequirements } from '../../utils/profileCompletion';
 
 // Exact Fiverr-like categories with subcategories - Updated with Ajira colors
 const fiverCategories = [
@@ -119,6 +122,14 @@ const MarketplacePage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [stats, setStats] = useState<any>(null);
+
+  // Profile completion check
+  const { user } = useBetterAuthContext();
+  const [profileData, setProfileData] = useState({});
+  const [showProfileBanner, setShowProfileBanner] = useState(true);
+
+  // Check profile completion for marketplace access
+  const profileCheck = checkProfileRequirements(profileData, 'marketplace');
 
   // Fetch gigs from API
   useEffect(() => {
@@ -317,6 +328,19 @@ const MarketplacePage = () => {
           </div>
         </div>
       </section>
+
+      {/* Profile Completion Banner */}
+      {showProfileBanner && !profileCheck.allowed && (
+        <section className="bg-white border-b border-ajira-gray-200">
+          <div className="max-w-7xl mx-auto px-4 py-4">
+            <ProfileCompletionBanner
+              profileData={profileData}
+              feature="marketplace"
+              onComplete={() => setShowProfileBanner(false)}
+            />
+          </div>
+        </section>
+      )}
 
       {/* Enhanced Category Navigation */}
       <section className="bg-white border-b border-ajira-gray-200 sticky top-0 z-40 shadow-ajira">

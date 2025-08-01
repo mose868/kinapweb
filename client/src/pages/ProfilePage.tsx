@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useMutation } from 'react-query'
-import { useAuth } from '../contexts/AuthContext'
+import { useBetterAuthContext } from '../contexts/BetterAuthContext'
 import { 
   Camera, 
   Package, 
@@ -58,12 +58,12 @@ interface ClubMemberProfile {
 }
 
 const ProfilePage = () => {
-  const { user } = useAuth()
+  const { user, isLoading } = useBetterAuthContext()
   const [isEditing, setIsEditing] = useState(false)
   const [activeTab, setActiveTab] = useState('overview')
   
   const [formData, setFormData] = useState<ClubMemberProfile>({
-    displayName: user?.name || '',
+    displayName: user?.displayName || user?.name || '',
     email: user?.email || '',
     photoURL: '',
     bio: '',
@@ -88,14 +88,56 @@ const ProfilePage = () => {
     lastActive: new Date().toISOString()
   })
 
+  // Show loading state while auth is initializing
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin text-ajira-primary mx-auto mb-4" />
+          <p className="text-gray-600">Loading profile...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Show login prompt if not authenticated
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <User className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Please Log In</h2>
+          <p className="text-gray-600 mb-4">
+            Please log in to view and manage your Ajira Digital KiNaP Club profile.
+          </p>
+          <a
+            href="/auth"
+            className="inline-flex items-center px-4 py-2 bg-ajira-primary text-white rounded-lg hover:bg-ajira-primary/90 transition-colors"
+          >
+            Go to Login
+          </a>
+        </div>
+      </div>
+    )
+  }
+
   // Fetch latest profile from backend using email
   useEffect(() => {
+    let isMounted = true;
+    let hasFetched = false;
+    
     const fetchProfile = async () => {
-      if (!user?.email) return
+      if (!user?.email || hasFetched) return
+      
+      hasFetched = true;
+      
       try {
         const res = await axios.post(`${BASEURL}/students/get-profile`, { email: user.email }, {
           headers: { 'Content-Type': 'application/json' }
         })
+        
+        if (!isMounted) return;
+        
         const profile = res.data
         console.log('Loaded profile data:', profile)
         console.log('PhotoURL from backend:', profile.photoURL)
@@ -125,10 +167,17 @@ const ProfilePage = () => {
           lastActive: profile.lastActive || prev.lastActive
         }))
       } catch (err) {
-        console.warn('Failed to load profile', err)
+        if (isMounted) {
+          console.warn('Failed to load profile', err)
+        }
       }
     }
+    
     fetchProfile()
+    
+    return () => {
+      isMounted = false;
+    }
   }, [user?.email])
 
   // Calculate profile completion percentage
@@ -363,27 +412,6 @@ const ProfilePage = () => {
     'Data & Analytics': ['Data Analysis', 'Excel', 'Python', 'SQL', 'Power BI', 'Tableau'],
     'Writing & Content': ['Content Writing', 'Copywriting', 'Technical Writing', 'Blog Writing', 'Translation'],
     'Business': ['Project Management', 'Business Analysis', 'Consulting', 'Virtual Assistant']
-  }
-
-  if (!user) {
-    return (
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        <div className="bg-white rounded-lg shadow-lg p-8 text-center">
-          <div className="text-ajira-primary mb-4">
-            <User className="w-16 h-16 mx-auto" />
-          </div>
-          <h2 className="text-2xl font-bold text-ajira-primary mb-4">
-            Club Member Profile
-          </h2>
-          <p className="text-gray-600 mb-6">
-            Please log in to view and manage your Ajira Digital KiNaP Club profile.
-          </p>
-          <button className="bg-ajira-accent text-white px-6 py-3 rounded-lg hover:bg-ajira-accent/90">
-            Sign In
-          </button>
-        </div>
-      </div>
-    )
   }
 
   return (

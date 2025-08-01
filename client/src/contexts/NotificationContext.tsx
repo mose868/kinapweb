@@ -1,19 +1,30 @@
+import { useBetterAuthContext } from './BetterAuthContext';
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { useAuth } from './AuthContext';
-import type { Notification } from '../types/marketplace';
+
+interface Notification {
+  id: string;
+  title: string;
+  message: string;
+  type: 'success' | 'error' | 'warning' | 'info';
+  timestamp: Date;
+  read: boolean;
+}
 
 interface NotificationContextType {
   notifications: Notification[];
+  addNotification: (notification: Omit<Notification, 'id' | 'timestamp' | 'read'>) => void;
+  markAsRead: (id: string) => void;
+  markAllAsRead: () => void;
+  removeNotification: (id: string) => void;
+  clearAll: () => void;
   unreadCount: number;
-  markAsRead: (notificationId: string) => Promise<void>;
-  markAllAsRead: () => Promise<void>;
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
 export const useNotifications = () => {
   const context = useContext(NotificationContext);
-  if (context === undefined) {
+  if (!context) {
     throw new Error('useNotifications must be used within a NotificationProvider');
   }
   return context;
@@ -23,41 +34,77 @@ interface NotificationProviderProps {
   children: ReactNode;
 }
 
-export const NotificationProvider = ({ children }: NotificationProviderProps) => {
-  const { user } = useAuth();
+export const NotificationProvider: React.FC<NotificationProviderProps> = ({ children }) => {
+  const { user } = useBetterAuthContext();
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
-  // Subscribe to notifications
+  // Load notifications from localStorage when user changes
   useEffect(() => {
-    if (!user) {
-      setNotifications([]);
-      return;
+    if (user?.email) {
+      const savedNotifications = localStorage.getItem(`notifications_${user.email}`);
+      if (savedNotifications) {
+        try {
+          const parsed = JSON.parse(savedNotifications);
+          setNotifications(parsed.map((n: any) => ({
+            ...n,
+            timestamp: new Date(n.timestamp)
+          })));
+        } catch (error) {
+          console.error('Error loading notifications:', error);
+        }
+      }
     }
+  }, [user?.email]);
 
-    // Placeholder for the removed firebase logic
-    const newNotifications = [];
-    setNotifications(newNotifications);
-  }, [user]);
+  // Save notifications to localStorage when they change
+  useEffect(() => {
+    if (user?.email) {
+      localStorage.setItem(`notifications_${user.email}`, JSON.stringify(notifications));
+    }
+  }, [notifications, user?.email]);
 
-  const unreadCount = notifications.filter(n => !n.isRead).length;
-
-  const markAsRead = async (notificationId: string) => {
-    // Placeholder for the removed firebase logic
-    console.error('Error marking notification as read:');
-    throw new Error('Mark as read functionality not implemented');
+  const addNotification = (notification: Omit<Notification, 'id' | 'timestamp' | 'read'>) => {
+    const newNotification: Notification = {
+      ...notification,
+      id: Date.now().toString(),
+      timestamp: new Date(),
+      read: false,
+    };
+    setNotifications(prev => [newNotification, ...prev]);
   };
 
-  const markAllAsRead = async () => {
-    // Placeholder for the removed firebase logic
-    console.error('Error marking all notifications as read:');
-    throw new Error('Mark all as read functionality not implemented');
+  const markAsRead = (id: string) => {
+    setNotifications(prev =>
+      prev.map(notification =>
+        notification.id === id ? { ...notification, read: true } : notification
+      )
+    );
   };
 
-  const value = {
+  const markAllAsRead = () => {
+    setNotifications(prev =>
+      prev.map(notification => ({ ...notification, read: true }))
+    );
+  };
+
+  const removeNotification = (id: string) => {
+    setNotifications(prev => prev.filter(notification => notification.id !== id));
+  };
+
+  const clearAll = () => {
+    setNotifications([]);
+  };
+
+  const unreadCount = notifications.filter(notification => !notification.read).length;
+
+  const value: NotificationContextType = {
     notifications,
-    unreadCount,
+    addNotification,
     markAsRead,
-    markAllAsRead
+    markAllAsRead,
+    removeNotification,
+    clearAll,
+    unreadCount,
   };
 
   return (

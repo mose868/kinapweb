@@ -1,6 +1,5 @@
-import { useState } from 'react'
-import { useMutation } from 'react-query'
-import { useAuth } from '../../contexts/AuthContext'
+import React, { useState, useRef } from 'react';
+import { useBetterAuthContext } from '../../contexts/BetterAuthContext';
 import { Loader2, Youtube } from 'lucide-react'
 
 interface VideoUploadProps {
@@ -8,7 +7,7 @@ interface VideoUploadProps {
 }
 
 const VideoUpload = ({ onSuccess }: VideoUploadProps) => {
-  const { user } = useAuth()
+  const { user } = useBetterAuthContext()
   const [formData, setFormData] = useState({
     title: '',
     description: '',

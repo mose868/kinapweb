@@ -112,4 +112,80 @@ export const formatFileSize = (bytes: number): string => {
   const i = Math.floor(Math.log(bytes) / Math.log(k));
 
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
+};
+
+// Chat persistence utilities
+export const ChatStorage = {
+  // Chatbot messages
+  saveChatbotMessages: (messages: any[]) => {
+    try {
+      localStorage.setItem('kinap-chatbot-messages', JSON.stringify(messages));
+    } catch (error) {
+      console.error('Error saving chatbot messages:', error);
+    }
+  },
+
+  loadChatbotMessages: () => {
+    try {
+      const saved = localStorage.getItem('kinap-chatbot-messages');
+      return saved ? JSON.parse(saved) : [];
+    } catch (error) {
+      console.error('Error loading chatbot messages:', error);
+      return [];
+    }
+  },
+
+  clearChatbotMessages: () => {
+    try {
+      localStorage.removeItem('kinap-chatbot-messages');
+    } catch (error) {
+      console.error('Error clearing chatbot messages:', error);
+    }
+  },
+
+  // Community chat messages
+  saveCommunityGroups: (groups: any[]) => {
+    try {
+      localStorage.setItem('kinap-community-groups', JSON.stringify(groups));
+    } catch (error) {
+      console.error('Error saving community groups:', error);
+    }
+  },
+
+  loadCommunityGroups: () => {
+    try {
+      const saved = localStorage.getItem('kinap-community-groups');
+      return saved ? JSON.parse(saved) : [];
+    } catch (error) {
+      console.error('Error loading community groups:', error);
+      return [];
+    }
+  },
+
+  clearCommunityGroups: () => {
+    try {
+      localStorage.removeItem('kinap-community-groups');
+    } catch (error) {
+      console.error('Error clearing community groups:', error);
+    }
+  },
+
+  // Chat settings
+  saveChatSettings: (settings: any) => {
+    try {
+      localStorage.setItem('kinap-chat-settings', JSON.stringify(settings));
+    } catch (error) {
+      console.error('Error saving chat settings:', error);
+    }
+  },
+
+  loadChatSettings: () => {
+    try {
+      const saved = localStorage.getItem('kinap-chat-settings');
+      return saved ? JSON.parse(saved) : null;
+    } catch (error) {
+      console.error('Error loading chat settings:', error);
+      return null;
+    }
+  }
 }; 

@@ -5,13 +5,14 @@ import { QueryClient, QueryClientProvider } from 'react-query'
 import { HelmetProvider } from 'react-helmet-async'
 import App from './App.tsx'
 import './styles/index.css'
-import { AuthProvider } from './contexts/AuthContext'
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       refetchOnWindowFocus: false,
       retry: 1,
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      cacheTime: 10 * 60 * 1000, // 10 minutes
     },
   },
 })
@@ -20,11 +21,9 @@ ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <HelmetProvider>
       <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <BrowserRouter>
-            <App />
-          </BrowserRouter>
-        </AuthProvider>
+        <BrowserRouter>
+          <App />
+        </BrowserRouter>
       </QueryClientProvider>
     </HelmetProvider>
   </React.StrictMode>,

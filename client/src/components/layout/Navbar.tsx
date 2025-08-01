@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { Search, X, User, LogOut, Settings, Bell, Menu, ChevronDown, Info, Users, BookOpen, Briefcase, Globe, Star, Award, MessageCircle, UserCheck, HelpCircle, ChevronRight, Camera, Moon, Sun } from 'lucide-react';
-import { useAuth } from '../../contexts/AuthContext';
+import { useBetterAuthContext } from '../../contexts/BetterAuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 
 const Navbar = () => {
@@ -23,7 +23,7 @@ const Navbar = () => {
   const notificationRef = useRef<HTMLDivElement>(null);
   const dropdownRefs = useRef<(HTMLDivElement | null)[]>([]);
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user, signOut } = useBetterAuthContext();
   const { theme, setTheme, isDark } = useTheme();
 
   // Calculate unread notifications count
@@ -234,7 +234,7 @@ const Navbar = () => {
 
   const handleSignOut = async () => {
     try {
-      await logout();
+      await signOut();
       setUserDropdownOpen(false);
       setNotificationDropdownOpen(false);
       setMobileMenuOpen(false);

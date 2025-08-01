@@ -13,9 +13,20 @@ import {
   TrendingUp
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { useBetterAuthContext } from '../../contexts/BetterAuthContext'
+import ProfileCompletionBanner from '../../components/common/ProfileCompletionBanner'
+import { checkProfileRequirements } from '../../utils/profileCompletion'
 
 const AmbassadorPage = () => {
   const [activeTab, setActiveTab] = useState('overview')
+  const [showProfileBanner, setShowProfileBanner] = useState(true)
+  
+  // Profile completion check
+  const { user } = useBetterAuthContext()
+  const [profileData, setProfileData] = useState({})
+  
+  // Check profile completion for ambassador access
+  const profileCheck = checkProfileRequirements(profileData, 'ambassador')
 
   const ambassadorBenefits = [
     {
@@ -125,6 +136,19 @@ const AmbassadorPage = () => {
           </div>
         </div>
       </section>
+
+      {/* Profile Completion Banner */}
+      {showProfileBanner && !profileCheck.allowed && (
+        <section className="bg-white border-b">
+          <div className="container-custom px-2 sm:px-4 w-full">
+            <ProfileCompletionBanner
+              profileData={profileData}
+              feature="ambassador"
+              onComplete={() => setShowProfileBanner(false)}
+            />
+          </div>
+        </section>
+      )}
 
       {/* Navigation Tabs */}
       <section className="bg-white border-b">

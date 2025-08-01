@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMutation } from 'react-query'
-import { useAuth } from '../../contexts/AuthContext'
+import { useBetterAuthContext } from '../../contexts/BetterAuthContext'
 import type { Gig } from '../../api/marketplace'
 
 type GigPackage = {
@@ -50,7 +50,7 @@ const DEFAULT_PACKAGE: GigPackage = {
 
 const CreateGigPage = () => {
   const navigate = useNavigate()
-  const { user } = useAuth()
+  const { user } = useBetterAuthContext()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
 

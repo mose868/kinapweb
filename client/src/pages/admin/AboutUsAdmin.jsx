@@ -287,7 +287,7 @@ const AboutUsAdmin = () => {
                   value={formData.contactInfo.email}
                   onChange={handleChange}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ajira-primary/50 focus:border-transparent"
-                  placeholder="info@ajirakinap.com"
+                  placeholder="kinapajira@gmail.com"
                 />
               </div>
 
@@ -301,7 +301,7 @@ const AboutUsAdmin = () => {
                   value={formData.contactInfo.phone}
                   onChange={handleChange}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ajira-primary/50 focus:border-transparent"
-                  placeholder="+254 700 000 000"
+                  placeholder="+254 792 343 958"
                 />
               </div>
 

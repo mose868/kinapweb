@@ -99,6 +99,13 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
+    // Check if user has password (not Google OAuth only)
+    if (user.authProvider === 'google' && !user.password) {
+      return res.status(401).json({ 
+        message: 'This account was created with Google. Please use Google Sign-In.' 
+      });
+    }
+
     // Check password
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
@@ -111,6 +118,20 @@ router.post('/login', async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
+
+    // Log login attempt
+    const loginEntry = {
+      timestamp: new Date(),
+      ipAddress: req.ip,
+      userAgent: req.get('User-Agent'),
+      location: 'Unknown',
+      success: true,
+      method: 'password'
+    };
+
+    await User.findByIdAndUpdate(user._id, {
+      $push: { loginHistory: loginEntry }
+    });
 
     // Remove password from response
     const userResponse = user.toObject();
@@ -125,6 +146,120 @@ router.post('/login', async (req, res) => {
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({ message: 'Login failed' });
+  }
+});
+
+// Google OAuth routes
+router.post('/google', async (req, res) => {
+  try {
+    const { googleId, email, displayName, avatar, googleEmail } = req.body;
+
+    if (!googleId || !email) {
+      return res.status(400).json({ message: 'Google ID and email are required' });
+    }
+
+    // Check if user already exists
+    let user = await User.findOne({ 
+      $or: [{ googleId }, { email }] 
+    });
+
+    if (user) {
+      // User exists, update Google info if needed
+      if (!user.googleId) {
+        user.googleId = googleId;
+        user.authProvider = 'google';
+        user.googleEmail = googleEmail;
+        if (!user.avatar && avatar) {
+          user.avatar = avatar;
+        }
+        await user.save();
+      }
+
+      // Generate JWT token
+      const token = jwt.sign(
+        { userId: user._id, email: user.email },
+        process.env.JWT_SECRET,
+        { expiresIn: '7d' }
+      );
+
+      // Log login attempt
+      const loginEntry = {
+        timestamp: new Date(),
+        ipAddress: req.ip,
+        userAgent: req.get('User-Agent'),
+        location: 'Unknown',
+        success: true,
+        method: 'google'
+      };
+
+      await User.findByIdAndUpdate(user._id, {
+        $push: { loginHistory: loginEntry }
+      });
+
+      // Remove password from response
+      const userResponse = user.toObject();
+      delete userResponse.password;
+
+      res.json({
+        message: 'Google login successful',
+        user: userResponse,
+        token
+      });
+    } else {
+      // Create new user
+      const username = email.split('@')[0] + '_' + Math.random().toString(36).substr(2, 5);
+      
+      const userData = {
+        username,
+        email,
+        displayName: displayName || email.split('@')[0],
+        avatar,
+        googleId,
+        googleEmail,
+        authProvider: 'google',
+        role: 'student',
+        isVerified: true, // Google accounts are pre-verified
+        languages: ['English']
+      };
+
+      user = new User(userData);
+      await user.save();
+
+      // Generate JWT token
+      const token = jwt.sign(
+        { userId: user._id, email: user.email },
+        process.env.JWT_SECRET,
+        { expiresIn: '7d' }
+      );
+
+      // Log signup attempt
+      const loginEntry = {
+        timestamp: new Date(),
+        ipAddress: req.ip,
+        userAgent: req.get('User-Agent'),
+        location: 'Unknown',
+        success: true,
+        method: 'google'
+      };
+
+      await User.findByIdAndUpdate(user._id, {
+        $push: { loginHistory: loginEntry }
+      });
+
+      // Remove password from response
+      const userResponse = user.toObject();
+      delete userResponse.password;
+
+      res.status(201).json({
+        message: 'Google signup successful',
+        user: userResponse,
+        token
+      });
+    }
+
+  } catch (error) {
+    console.error('Google OAuth error:', error);
+    res.status(500).json({ message: 'Google authentication failed' });
   }
 });
 

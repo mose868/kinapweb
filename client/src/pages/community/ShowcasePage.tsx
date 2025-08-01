@@ -1,6 +1,6 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
-import { useAuth } from '../../contexts/AuthContext';
+import { useBetterAuthContext } from '../../contexts/BetterAuthContext';
 import LoadingState from '../../components/common/LoadingState'
 
 const PROFILES_COLLECTION = 'showcase_profiles';
@@ -36,7 +36,7 @@ interface ShowcaseProfile {
 }
 
 const ShowcasePage = () => {
-  const { user, loading: authLoading } = useAuth();
+  const { user, isLoading: authLoading } = useBetterAuthContext();
   const queryClient = useQueryClient();
   const [editMode, setEditMode] = useState(false);
   const [profileForm, setProfileForm] = useState<{
@@ -175,69 +175,118 @@ const ShowcasePage = () => {
     return <div className="text-center py-12 text-red-500">Error loading profiles.</div>;
   }
 
-  // If user is not available, show demo mode
+  // If user is not available, show coming soon message
   if (!user) {
-    // Demo profiles
-    const demoProfiles = [
-      {
-        id: '1',
-        userId: 'demo1',
-        name: 'Jane Doe',
-        avatar: 'https://randomuser.me/api/portraits/women/44.jpg',
-        bio: 'Web developer and designer.',
-        skills: ['React', 'Node.js', 'UI/UX'],
-        achievements: 'Built 20+ websites for clients.',
-        journey: 'Started as a freelancer, now runs a small agency.',
-        portfolioLinks: [{ title: 'Portfolio', url: 'https://janedoe.dev' }],
-        socialLinks: [{ platform: 'LinkedIn', url: 'https://linkedin.com/in/janedoe' }],
-        availability: 'available',
-        location: 'Nairobi',
-        languages: ['English', 'Swahili'],
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-      {
-        id: '2',
-        userId: 'demo2',
-        name: 'John Smith',
-        avatar: 'https://randomuser.me/api/portraits/men/32.jpg',
-        bio: 'Digital marketer and content creator.',
-        skills: ['SEO', 'Content Writing', 'Social Media'],
-        achievements: 'Grew 10+ brands online.',
-        journey: 'Started as a blogger, now a marketing consultant.',
-        portfolioLinks: [{ title: 'Blog', url: 'https://johnsmith.blog' }],
-        socialLinks: [{ platform: 'Twitter', url: 'https://twitter.com/johnsmith' }],
-        availability: 'busy',
-        location: 'Mombasa',
-        languages: ['English'],
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      }
-    ];
     return (
-      <div className="max-w-5xl mx-auto px-2 sm:px-4 py-8 w-full overflow-x-hidden">
-        <h1 className="text-3xl font-bold mb-6">Showcase Profiles (Demo)</h1>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-8 w-full">
-          {demoProfiles.map(profile => (
-            <div key={profile.id} className="bg-white rounded-lg shadow p-6 flex flex-col items-center">
-              <img src={profile.avatar} alt={profile.name} className="w-24 h-24 rounded-full mb-4" />
-              <h2 className="text-xl font-semibold mb-2">{profile.name}</h2>
-              <p className="text-gray-600 mb-2">{profile.bio}</p>
-              <div className="mb-2">
-                <span className="font-semibold">Skills:</span> {profile.skills.join(', ')}
-              </div>
-              <div className="mb-2">
-                <span className="font-semibold">Location:</span> {profile.location}
-              </div>
-              <div className="mb-2">
-                <span className="font-semibold">Languages:</span> {profile.languages.join(', ')}
-              </div>
-              <a href={profile.portfolioLinks[0].url} target="_blank" rel="noopener noreferrer" className="text-ajira-accent underline">{profile.portfolioLinks[0].title}</a>
-            </div>
-          ))}
+      <div className="max-w-7xl mx-auto px-2 sm:px-4 py-8 sm:py-12 w-full overflow-x-hidden">
+        <div className="text-center mb-12">
+          <h1 className="text-3xl sm:text-4xl font-extrabold text-ajira-primary mb-4 tracking-tight">
+            🎨 Creative Portfolio Showcase
+          </h1>
+          <p className="text-lg text-gray-600">
+            Where talent meets opportunity - showcase your best work to the world
+          </p>
         </div>
-        <div className="mt-8 text-center">
-          <p className="text-gray-500">Sign up or log in to create your own profile and connect with others!</p>
+
+        {/* Coming Soon Section */}
+        <div className="text-center py-16">
+          <div className="bg-white rounded-2xl shadow-lg p-8 sm:p-12 max-w-4xl mx-auto">
+            <div className="text-6xl mb-6">✨</div>
+            <h2 className="text-2xl sm:text-3xl font-bold text-ajira-primary mb-4">
+              Your Digital Portfolio Hub is Coming Soon!
+            </h2>
+            <p className="text-gray-600 text-lg mb-8">
+              We're building a stunning showcase platform where creative professionals can display their work, connect with clients, and grow their careers. Get ready to:
+            </p>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8 text-left">
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
+                  <span className="text-white text-xl">🎨</span>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-gray-900 mb-1">Showcase Your Work</h3>
+                  <p className="text-gray-600 text-sm">Display your best projects with stunning visuals and detailed descriptions</p>
+                </div>
+              </div>
+              
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-full flex items-center justify-center flex-shrink-0">
+                  <span className="text-white text-xl">👤</span>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-gray-900 mb-1">Build Your Brand</h3>
+                  <p className="text-gray-600 text-sm">Create a professional profile that tells your unique story</p>
+                </div>
+              </div>
+              
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
+                  <span className="text-white text-xl">🤝</span>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-gray-900 mb-1">Connect & Collaborate</h3>
+                  <p className="text-gray-600 text-sm">Network with other professionals and find exciting opportunities</p>
+                </div>
+              </div>
+              
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-orange-600 rounded-full flex items-center justify-center flex-shrink-0">
+                  <span className="text-white text-xl">💼</span>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-gray-900 mb-1">Get Discovered</h3>
+                  <p className="text-gray-600 text-sm">Attract clients and employers with your impressive portfolio</p>
+                </div>
+              </div>
+              
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 bg-gradient-to-br from-red-500 to-red-600 rounded-full flex items-center justify-center flex-shrink-0">
+                  <span className="text-white text-xl">📈</span>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-gray-900 mb-1">Track Your Growth</h3>
+                  <p className="text-gray-600 text-sm">Monitor views, connections, and engagement with analytics</p>
+                </div>
+              </div>
+              
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-full flex items-center justify-center flex-shrink-0">
+                  <span className="text-white text-xl">🚀</span>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-gray-900 mb-1">Launch Your Career</h3>
+                  <p className="text-gray-600 text-sm">Take your professional journey to the next level</p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="bg-gradient-to-r from-ajira-primary/10 via-ajira-accent/10 to-ajira-secondary/10 rounded-xl p-6 mb-6">
+              <h3 className="font-semibold text-ajira-primary mb-2">Perfect For:</h3>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+                <span className="text-gray-700">🎨 Designers</span>
+                <span className="text-gray-700">💻 Developers</span>
+                <span className="text-gray-700">📝 Writers</span>
+                <span className="text-gray-700">📊 Analysts</span>
+                <span className="text-gray-700">🎬 Creators</span>
+                <span className="text-gray-700">📱 Marketers</span>
+                <span className="text-gray-700">🔧 Engineers</span>
+                <span className="text-gray-700">💡 Consultants</span>
+              </div>
+            </div>
+            
+            <div className="bg-ajira-primary/5 rounded-lg p-4 mb-6">
+              <h3 className="font-semibold text-ajira-primary mb-2">Why Choose Our Showcase?</h3>
+              <p className="text-gray-700 text-sm">
+                Unlike generic portfolio sites, our platform is specifically designed for the Ajira Digital community. 
+                Connect with like-minded professionals, showcase your digital skills, and grow your network in a supportive environment.
+              </p>
+            </div>
+            
+            <p className="text-gray-500 text-sm">
+              We're putting the finishing touches on your portfolio paradise. Get ready to shine! ✨
+            </p>
+          </div>
         </div>
       </div>
     );
@@ -452,64 +501,47 @@ const ShowcasePage = () => {
         🚀 Project Showcase
       </h1>
 
-      {/* My Profile Section */}
-      {myProfile && (
-        <section className="mb-16">
-          <div className="bg-white rounded-2xl shadow-lg p-4 sm:p-8 flex flex-col md:flex-row items-center gap-6 sm:gap-8 w-full">
-            <img src={myProfile.avatar || '/default-avatar.png'} className="w-32 sm:w-40 h-32 sm:h-40 rounded-full object-cover border-4 border-ajira-primary shadow" />
-            <div className="flex-1">
-              <h2 className="text-xl sm:text-2xl font-bold text-ajira-primary mb-2">{myProfile.name}</h2>
-              <p className="text-gray-600 mb-4">{myProfile.bio}</p>
-              <div className="flex flex-wrap gap-2 mb-4">
-                {myProfile.skills?.map(skill => (
-                  <span key={skill} className="bg-ajira-accent/10 text-ajira-accent px-3 py-1 rounded-full text-sm font-medium">{skill}</span>
-                        ))}
-                      </div>
-              <div className="flex gap-4">
-                <button className="bg-ajira-accent text-white px-6 py-2 rounded-lg font-semibold shadow hover:bg-ajira-accent/90 transition">Edit Profile</button>
-                </div>
+      {/* Coming Soon Section */}
+      <div className="text-center py-16">
+        <div className="bg-white rounded-2xl shadow-lg p-8 sm:p-12 max-w-2xl mx-auto">
+          <div className="text-6xl mb-6">🚧</div>
+          <h2 className="text-2xl sm:text-3xl font-bold text-ajira-primary mb-4">
+            Coming Soon!
+          </h2>
+          <p className="text-gray-600 text-lg mb-6">
+            We're working hard to bring you an amazing project showcase where you can:
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8 text-left">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-ajira-accent/10 rounded-full flex items-center justify-center">
+                <span className="text-ajira-accent text-lg">👤</span>
+              </div>
+              <span className="text-gray-700">Create your professional profile</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-ajira-accent/10 rounded-full flex items-center justify-center">
+                <span className="text-ajira-accent text-lg">💼</span>
+              </div>
+              <span className="text-gray-700">Showcase your projects</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-ajira-accent/10 rounded-full flex items-center justify-center">
+                <span className="text-ajira-accent text-lg">🤝</span>
+              </div>
+              <span className="text-gray-700">Connect with other professionals</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-ajira-accent/10 rounded-full flex items-center justify-center">
+                <span className="text-ajira-accent text-lg">💬</span>
+              </div>
+              <span className="text-gray-700">Collaborate on projects</span>
             </div>
           </div>
-        </section>
-      )}
-
-      {/* Other Profiles Section */}
-      <section>
-        <h2 className="text-2xl font-bold text-ajira-primary mb-8">Connect with Professionals</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-8 w-full">
-          {profiles?.map(profile => (
-            <div key={profile.id} className="bg-white rounded-2xl shadow-lg p-6 flex flex-col items-center hover:shadow-xl transition">
-              <img src={profile.avatar || '/default-avatar.png'} className="w-20 sm:w-24 h-20 sm:h-24 rounded-full object-cover border-2 border-ajira-accent mb-4" />
-              <h3 className="text-base sm:text-lg font-bold text-ajira-primary mb-1">{profile.name}</h3>
-              <p className="text-gray-600 text-center mb-2 text-sm sm:text-base">{profile.bio}</p>
-              <div className="flex flex-wrap gap-1 mb-3">
-                {profile.skills.slice(0, 3).map(skill => (
-                  <span key={skill} className="bg-ajira-accent/10 text-ajira-accent px-2 py-0.5 rounded-full text-xs">{skill}</span>
-                    ))}
-                    {profile.skills.length > 3 && (
-                  <span className="text-gray-400 text-xs">+{profile.skills.length - 3} more</span>
-                )}
-              </div>
-              <div className="flex gap-2 mt-2">
-                {profile.portfolioLinks && profile.portfolioLinks[0]?.url && (
-                  <a href={profile.portfolioLinks[0].url} target="_blank" rel="noopener noreferrer" className="text-ajira-accent underline text-xs flex items-center gap-1">
-                    <span>🔗</span>Portfolio
-                  </a>
-                )}
-                {profile.socialLinks?.map(link => (
-                  <a key={link.platform} href={link.url} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-ajira-accent text-xl">
-                    <i className={`fab fa-${link.platform.toLowerCase()}`}></i>
-                  </a>
-                ))}
-              </div>
-              <div className="flex gap-2 mt-4">
-                <button className="bg-ajira-accent text-white px-4 py-1.5 rounded font-medium text-sm shadow hover:bg-ajira-accent/90 transition">Connect</button>
-                <button className="bg-ajira-primary text-white px-4 py-1.5 rounded font-medium text-sm shadow hover:bg-ajira-primary/90 transition">Message</button>
-              </div>
-            </div>
-          ))}
+          <p className="text-gray-500 text-sm">
+            Stay tuned! We'll notify you as soon as the showcase is ready.
+          </p>
         </div>
-      </section>
+      </div>
     </div>
   );
 };

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from 'react-query';
-import { useAuth } from '../../contexts/AuthContext';
+import { useBetterAuthContext } from '../../contexts/BetterAuthContext';
 import type { Order } from '../../types/marketplace';
 import { Clock, Search, Filter } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
@@ -10,14 +10,14 @@ type OrderFilter = 'all' | 'active' | 'delivered' | 'completed' | 'cancelled';
 type OrderRole = 'buyer' | 'seller';
 
 const OrdersList = () => {
-  const { user } = useAuth();
+  const { user } = useBetterAuthContext();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<OrderFilter>('all');
   const [roleFilter, setRoleFilter] = useState<OrderRole>('buyer');
 
   // Fetch orders
   const { data: orders, isLoading } = useQuery(
-    ['orders', user?.uid, roleFilter, statusFilter],
+    ['orders', user?.id, roleFilter, statusFilter],
     async () => {
       if (!user) return [];
       // Placeholder: return empty array or mock data

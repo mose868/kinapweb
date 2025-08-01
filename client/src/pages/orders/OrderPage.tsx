@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
-import { useAuth } from '../../contexts/AuthContext';
+import { useBetterAuthContext } from '../../contexts/BetterAuthContext';
 import type { Order, Message, Deliverable } from '../../types/marketplace';
 import { Clock, Send, Upload, Download, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
 import { toast } from 'react-hot-toast';
@@ -9,7 +9,7 @@ import { formatDistanceToNow } from 'date-fns';
 
 const OrderPage = () => {
   const { orderId } = useParams<{ orderId: string }>();
-  const { user } = useAuth();
+  const { user } = useBetterAuthContext();
   const queryClient = useQueryClient();
   const [message, setMessage] = useState('');
   const [files, setFiles] = useState<File[]>([]);

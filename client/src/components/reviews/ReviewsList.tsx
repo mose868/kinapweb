@@ -1,9 +1,6 @@
-import { useState } from 'react';
-import { useQuery } from 'react-query';
-import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
-import { db, COLLECTIONS } from '../../config/firebase';
-import { Star, ThumbsUp, Flag } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
+import React from 'react';
+import { useBetterAuthContext } from '../../contexts/BetterAuthContext';
+import { Star } from 'lucide-react';
 import type { Review } from '../../types/marketplace';
 
 interface ReviewsListProps {
@@ -12,38 +9,58 @@ interface ReviewsListProps {
 }
 
 const ReviewsList = ({ gigId, showFilters = true }: ReviewsListProps) => {
-  const [ratingFilter, setRatingFilter] = useState<number | null>(null);
-  const [sortBy, setSortBy] = useState<'recent' | 'helpful'>('recent');
+  const [ratingFilter, setRatingFilter] = React.useState<number | null>(null);
+  const [sortBy, setSortBy] = React.useState<'recent' | 'helpful'>('recent');
 
-  // Fetch reviews
-  const { data: reviews, isLoading } = useQuery(
-    ['reviews', gigId, ratingFilter],
-    async () => {
-      const reviewsRef = collection(db, COLLECTIONS.REVIEWS);
-      const constraints = [
-        where('gigId', '==', gigId),
-        orderBy(sortBy === 'recent' ? 'createdAt' : 'helpfulVotes', 'desc')
-      ];
-
-      if (ratingFilter !== null) {
-        constraints.push(where('rating', '==', ratingFilter));
-      }
-
-      const q = query(reviewsRef, ...constraints);
-      const snapshot = await getDocs(q);
-      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Review));
-    }
-  );
+  // Mock data for reviews
+  const mockReviews: Review[] = [
+    {
+      id: '1',
+      gigId: gigId,
+      buyerId: 'user1',
+      buyerName: 'John Doe',
+      buyerAvatar: 'https://via.placeholder.com/50',
+      rating: 5,
+      comment: 'Excellent service! Highly recommend.',
+      helpfulVotes: 10,
+      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2), // 2 days ago
+      response: 'Thank you for your kind words!',
+    },
+    {
+      id: '2',
+      gigId: gigId,
+      buyerId: 'user2',
+      buyerName: 'Jane Smith',
+      buyerAvatar: 'https://via.placeholder.com/50',
+      rating: 4,
+      comment: 'Good but could be better.',
+      helpfulVotes: 5,
+      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 1), // 1 day ago
+      response: null,
+    },
+    {
+      id: '3',
+      gigId: gigId,
+      buyerId: 'user3',
+      buyerName: 'Peter Jones',
+      buyerAvatar: 'https://via.placeholder.com/50',
+      rating: 3,
+      comment: 'Average experience.',
+      helpfulVotes: 2,
+      createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3), // 3 days ago
+      response: null,
+    },
+  ];
 
   // Calculate rating distribution
-  const ratingDistribution = reviews?.reduce((acc, review) => {
+  const ratingDistribution = mockReviews.reduce((acc, review) => {
     acc[review.rating] = (acc[review.rating] || 0) + 1;
     return acc;
   }, {} as Record<number, number>) || {};
 
-  const totalReviews = reviews?.length || 0;
+  const totalReviews = mockReviews.length || 0;
   const averageRating = totalReviews > 0
-    ? reviews?.reduce((sum, review) => sum + review.rating, 0)! / totalReviews
+    ? mockReviews.reduce((sum, review) => sum + review.rating, 0)! / totalReviews
     : 0;
 
   const getDate = (createdAt: any) => {
@@ -143,109 +160,78 @@ const ReviewsList = ({ gigId, showFilters = true }: ReviewsListProps) => {
       )}
 
       {/* Reviews List */}
-      {isLoading ? (
-        <div className="space-y-4">
-          {[...Array(3)].map((_, i) => (
-            <div key={i} className="bg-white rounded-lg shadow-sm p-6 animate-pulse">
-              <div className="flex items-center gap-4 mb-4">
-                <div className="w-12 h-12 bg-gray-200 rounded-full" />
-                <div className="flex-1">
-                  <div className="h-4 bg-gray-200 rounded w-1/4 mb-2" />
-                  <div className="h-3 bg-gray-200 rounded w-1/3" />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <div className="h-4 bg-gray-200 rounded w-3/4" />
-                <div className="h-4 bg-gray-200 rounded w-1/2" />
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : reviews?.length === 0 ? (
-        <div className="bg-white rounded-lg shadow-sm p-8 text-center">
-          <h3 className="text-lg font-medium text-gray-900 mb-2">
-            No reviews yet
-          </h3>
-          <p className="text-gray-600">
-            Be the first to review this service
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {reviews?.map((review) => (
-            <div key={review.id} className="bg-white rounded-lg shadow-sm p-6">
-              {/* Review Header */}
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center gap-4">
-                  {review.buyerAvatar ? (
-                    <img
-                      src={review.buyerAvatar}
-                      alt={review.buyerName}
-                      className="w-12 h-12 rounded-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center">
-                      <span className="text-xl text-gray-600">
-                        {review.buyerName[0]}
-                      </span>
+      <div className="space-y-4">
+        {mockReviews?.map((review) => (
+          <div key={review.id} className="bg-white rounded-lg shadow-sm p-6">
+            {/* Review Header */}
+            <div className="flex items-start justify-between mb-4">
+              <div className="flex items-center gap-4">
+                {review.buyerAvatar ? (
+                  <img
+                    src={review.buyerAvatar}
+                    alt={review.buyerName}
+                    className="w-12 h-12 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center">
+                    <span className="text-xl text-gray-600">
+                      {review.buyerName[0]}
+                    </span>
+                  </div>
+                )}
+                <div>
+                  <h4 className="font-medium text-gray-900">
+                    {review.buyerName}
+                  </h4>
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <div className="flex items-center">
+                      {[1, 2, 3, 4, 5].map((value) => (
+                        <Star
+                          key={value}
+                          className={`w-4 h-4 ${
+                            value <= review.rating
+                              ? 'text-yellow-400 fill-current'
+                              : 'text-gray-300'
+                          }`}
+                        />
+                      ))}
                     </div>
-                  )}
-                  <div>
-                    <h4 className="font-medium text-gray-900">
-                      {review.buyerName}
-                    </h4>
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <div className="flex items-center">
-                        {[1, 2, 3, 4, 5].map((value) => (
-                          <Star
-                            key={value}
-                            className={`w-4 h-4 ${
-                              value <= review.rating
-                                ? 'text-yellow-400 fill-current'
-                                : 'text-gray-300'
-                            }`}
-                          />
-                        ))}
-                      </div>
-                      <span>•</span>
-                      <span>
-                        {formatDistanceToNow(getDate(review.createdAt), { addSuffix: true })}
-                      </span>
-                    </div>
+                    <span>•</span>
+                    <span>
+                      {new Date(review.createdAt).toLocaleDateString()}
+                    </span>
                   </div>
                 </div>
               </div>
-
-              {/* Review Content */}
-              <p className="text-gray-600 mb-4">{review.comment}</p>
-
-              {/* Review Actions */}
-              <div className="flex items-center gap-4 text-sm">
-                <button className="flex items-center gap-1 text-gray-600 hover:text-ajira-primary">
-                  <ThumbsUp size={16} />
-                  <span>Helpful</span>
-                </button>
-                <button className="flex items-center gap-1 text-gray-600 hover:text-red-500">
-                  <Flag size={16} />
-                  <span>Report</span>
-                </button>
-              </div>
-
-              {/* Seller Response */}
-              {review.response && (
-                <div className="mt-4 pl-4 border-l-2 border-gray-200">
-                  <p className="text-sm font-medium text-gray-900 mb-1">
-                    Seller's Response
-                  </p>
-                  <p className="text-sm text-gray-600">
-                    {review.response}
-                  </p>
-                </div>
-              )}
             </div>
-          ))}
-        </div>
-      )}
+
+            {/* Review Content */}
+            <p className="text-gray-600 mb-4">{review.comment}</p>
+
+            {/* Review Actions */}
+            <div className="flex items-center gap-4 text-sm">
+              <button className="flex items-center gap-1 text-gray-600 hover:text-ajira-primary">
+                <span>Helpful</span>
+              </button>
+              <button className="flex items-center gap-1 text-gray-600 hover:text-red-500">
+                <span>Report</span>
+              </button>
+            </div>
+
+            {/* Seller Response */}
+            {review.response && (
+              <div className="mt-4 pl-4 border-l-2 border-gray-200">
+                <p className="text-sm font-medium text-gray-900 mb-1">
+                  Seller's Response
+                </p>
+                <p className="text-sm text-gray-600">
+                  {review.response}
+                </p>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
     </div>
   );
 };

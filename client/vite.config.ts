@@ -12,7 +12,8 @@ export default defineConfig({
     },
   },
   server: {
-    port: 5173,
+    port: 3000,
+    host: true,
     proxy: {
       '/api': {
         target: 'http://localhost:5000',
@@ -23,5 +24,22 @@ export default defineConfig({
   },
   optimizeDeps: {
     include: ['@babel/runtime/helpers/esm/assertThisInitialized', '@babel/runtime/helpers/esm/inherits']
-  }
+  },
+  build: {
+    outDir: 'dist',
+    sourcemap: false,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom'],
+          router: ['react-router-dom'],
+          ui: ['lucide-react'],
+        },
+      },
+    },
+  },
+  define: {
+    // Disable React StrictMode in production to prevent double rendering
+    __DEV__: JSON.stringify(process.env.NODE_ENV === 'development'),
+  },
 }) 
