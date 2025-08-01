@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { 
   ChevronLeft, 
   ChevronRight, 
@@ -18,6 +18,12 @@ import {
   Plus
 } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useBetterAuthContext } from '../../contexts/BetterAuthContext';
+import ProfileCompletionBanner from '../../components/common/ProfileCompletionBanner';
+import { checkProfileRequirements, type ProfileData } from '../../utils/profileCompletion';
+import EmojiPicker from '../../components/common/EmojiPicker';
+import FileUpload from '../../components/common/FileUpload';
+import { geminiAI, fallbackResponses } from '../../services/geminiAI';
 
 type Theme = 'light' | 'dark' | 'system';
 
@@ -271,6 +277,18 @@ const CommunityPage: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [settingsSearchQuery, setSettingsSearchQuery] = useState('');
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showFileUpload, setShowFileUpload] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState<any[]>([]);
+  const [isConnected, setIsConnected] = useState(false);
+  const [isAIProcessing, setIsAIProcessing] = useState(false);
+  const eventSourceRef = useRef<EventSource | null>(null);
+  const reconnectTimeoutRef = useRef<number | null>(null);
+
+  // Profile completion check
+  const { user } = useBetterAuthContext();
+  const [profileData, setProfileData] = useState<ProfileData>({});
+  const [showProfileBanner, setShowProfileBanner] = useState(true);
 
   const [settings, setSettings] = useState({
     darkTheme: false,
@@ -305,6 +323,11 @@ const CommunityPage: React.FC = () => {
 
   const menuRef = useRef<HTMLButtonElement>(null);
 
+  // Refs for scrolling
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const isUserScrollingRef = useRef(false);
+
   // 1. Add state for media quality
   const [showMediaQualityModal, setShowMediaQualityModal] = useState(false);
   const [selectedMediaQuality, setSelectedMediaQuality] = useState(() => localStorage.getItem('kinap-media-quality') || 'standard');
@@ -317,6 +340,8 @@ const CommunityPage: React.FC = () => {
       ? JSON.parse(saved)
       : { photos: true, audio: true, videos: false, documents: false };
   });
+  const [showChatMenu, setShowChatMenu] = useState(false);
+  const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
 
   // Demo data
   const demoUsers: User[] = [
@@ -327,15 +352,46 @@ const CommunityPage: React.FC = () => {
 
   const activeUser = demoUsers[0];
 
+  // Check profile completion for community access - memoized to prevent unnecessary re-renders
+  const profileCheck = useMemo(() => {
+    return checkProfileRequirements(profileData, 'community');
+  }, [profileData]);
+
   const demoGroups: ChatGroup[] = [
+    {
+      id: 'kinap-ai',
+      name: 'Kinap AI',
+      description: 'Your AI assistant',
+      avatar: 'https://via.placeholder.com/40/8B5CF6/FFFFFF?text=AI',
+      members: 1,
+      lastMessage: "I'm Kinap AI, your friendly assistant! I'm currently in basic mode, but I'd love to chat with you about anything! What's on your mind?",
+      lastMessageTime: new Date(Date.now() - 180000),
+      unreadCount: 0,
+      messages: [
+        {
+          id: 'ai-welcome',
+          userId: 'kinap-ai',
+          userName: 'Kinap AI',
+          userAvatar: 'https://via.placeholder.com/40/8B5CF6/FFFFFF?text=AI',
+          message: "I'm Kinap AI, your friendly assistant! I'm currently in basic mode, but I'd love to chat with you about anything! What's on your mind?",
+          timestamp: new Date(Date.now() - 180000),
+          messageType: 'text',
+          status: 'read' as const,
+          content: "I'm Kinap AI, your friendly assistant! I'm currently in basic mode, but I'd love to chat with you about anything! What's on your mind?"
+        }
+      ],
+      admins: ['kinap-ai'],
+      type: 'direct',
+      category: 'AI Assistant'
+    },
     {
       id: '1',
       name: 'Web Development',
       description: 'Web development discussions',
       avatar: 'https://via.placeholder.com/40',
       members: 15,
-      lastMessage: 'Check out this new React tutorial...',
-      lastMessageTime: new Date(),
+      lastMessage: 'Hi John!',
+      lastMessageTime: new Date(Date.now() - 3600000),
       unreadCount: 2,
       messages: [
         {
@@ -346,7 +402,7 @@ const CommunityPage: React.FC = () => {
           message: 'Hello everyone!',
           timestamp: new Date(Date.now() - 3600000),
           messageType: 'text',
-          status: 'read',
+          status: 'read' as const,
           content: 'Hello everyone!'
         },
         {
@@ -357,7 +413,7 @@ const CommunityPage: React.FC = () => {
           message: 'Hi John!',
           timestamp: new Date(Date.now() - 1800000),
           messageType: 'text',
-          status: 'read',
+          status: 'read' as const,
           content: 'Hi John!'
         }
       ],
@@ -371,7 +427,7 @@ const CommunityPage: React.FC = () => {
       description: 'Mobile app development discussions',
       avatar: 'https://via.placeholder.com/40',
       members: 8,
-      lastMessage: 'Anyone working with Flutter?',
+      lastMessage: 'No messages yet',
       lastMessageTime: new Date(Date.now() - 1200000),
       unreadCount: 0,
       messages: [],
@@ -406,8 +462,6 @@ const CommunityPage: React.FC = () => {
       setSelectedRingtone(savedRingtone);
     }
 
-
-
     // Load wallpaper preference
     const savedWallpaper = localStorage.getItem('kinap-wallpaper');
     if (savedWallpaper) {
@@ -425,28 +479,67 @@ const CommunityPage: React.FC = () => {
       }
     }
 
-    // Load chat groups with messages
-    const savedGroups = localStorage.getItem('kinap-chat-groups');
-    if (savedGroups) {
-      try {
-        const parsedGroups = JSON.parse(savedGroups);
-        // Convert date strings back to Date objects
-        const groupsWithDates = parsedGroups.map((group: any) => ({
-          ...group,
-          lastMessageTime: new Date(group.lastMessageTime),
-          messages: group.messages.map((msg: any) => ({
-            ...msg,
-            timestamp: new Date(msg.timestamp)
-          }))
-        }));
-        setGroups(groupsWithDates);
-      } catch (error) {
-        console.error('Error loading chat groups:', error);
-      }
-    } else {
+    // Load chat groups and messages from MongoDB
+    loadChatGroupsAndMessages();
+  }, []);
+
+  // Function to load chat groups and messages from MongoDB
+  const loadChatGroupsAndMessages = async () => {
+    try {
+      // First, set demo groups as initial state
+      setGroups(demoGroups);
+
+      // Load messages for each group from MongoDB
+      const groupsWithMessages = await Promise.all(
+        demoGroups.map(async (group) => {
+          try {
+            const response = await fetch(`http://localhost:5000/api/chat-messages/group/${group.id}`);
+            if (response.ok) {
+              const data = await response.json();
+              if (data.success && data.messages.length > 0) {
+                // Convert MongoDB messages to frontend format
+                const messages = data.messages.map((msg: any) => ({
+                  id: msg.messageId,
+                  userId: msg.userId,
+                  userName: msg.userName,
+                  userAvatar: msg.userAvatar,
+                  message: msg.message,
+                  timestamp: new Date(msg.timestamp),
+                  messageType: msg.messageType,
+                  status: msg.status,
+                  content: msg.content,
+                  mediaUrl: msg.mediaUrl,
+                  fileName: msg.fileName,
+                  fileSize: msg.fileSize,
+                  fileType: msg.fileType,
+                  duration: msg.duration,
+                  isEdited: msg.isEdited,
+                  reactions: msg.reactions
+                }));
+
+                return {
+                  ...group,
+                  messages: messages,
+                  lastMessage: messages[messages.length - 1]?.content || 'No messages yet',
+                  lastMessageTime: messages[messages.length - 1]?.timestamp || new Date(),
+                  unreadCount: 0
+                };
+              }
+            }
+          } catch (error) {
+            console.error(`Error loading messages for group ${group.id}:`, error);
+          }
+          return group;
+        })
+      );
+
+      setGroups(groupsWithMessages);
+    } catch (error) {
+      console.error('Error loading chat groups and messages:', error);
+      // Fallback to demo groups if loading fails
       setGroups(demoGroups);
     }
-  }, []);
+  };
 
   // Save settings to localStorage whenever they change
   useEffect(() => {
@@ -488,6 +581,12 @@ const CommunityPage: React.FC = () => {
           setShowMainMenu(false);
         }
       }
+      
+      // Close chat menu when clicking outside
+      const target = event.target as HTMLElement;
+      if (!target.closest('.chat-menu-dropdown')) {
+        setShowChatMenu(false);
+      }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
@@ -515,16 +614,394 @@ const CommunityPage: React.FC = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // Scroll to bottom function - simplified to prevent shaking
+  const scrollToBottom = useCallback(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'auto' });
+    }
+  }, []);
+
   // Functions
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (!newMessage.trim() || !selectedGroup) return;
 
     const processedMessage = settings.replaceTextWithEmoji 
-      ? newMessage.replace(/:\/\)/g, '😊').replace(/lol/g, '😂')
+      ? newMessage
+          .replace(/:\/\)/g, '😊')
+          .replace(/lol/g, '😂')
+          .replace(/rofl/g, '🤣')
+          .replace(/omg/g, '😱')
+          .replace(/wow/g, '😮')
+          .replace(/cool/g, '😎')
+          .replace(/sad/g, '😢')
+          .replace(/cry/g, '😭')
+          .replace(/love/g, '❤️')
+          .replace(/heart/g, '❤️')
+          .replace(/thumbs up/g, '👍')
+          .replace(/thumbs down/g, '👎')
+          .replace(/ok/g, '👌')
+          .replace(/fire/g, '🔥')
+          .replace(/100/g, '💯')
+          .replace(/clap/g, '👏')
+          .replace(/pray/g, '🙏')
+          .replace(/eyes/g, '👀')
+          .replace(/brain/g, '🧠')
+          .replace(/party/g, '🎉')
+          .replace(/music/g, '🎵')
+          .replace(/coffee/g, '☕')
+          .replace(/pizza/g, '🍕')
+          .replace(/beer/g, '🍺')
+          .replace(/wine/g, '🍷')
+          .replace(/cake/g, '🎂')
+          .replace(/gift/g, '🎁')
+          .replace(/star/g, '⭐')
+          .replace(/moon/g, '🌙')
+          .replace(/sun/g, '☀️')
+          .replace(/rain/g, '🌧️')
+          .replace(/snow/g, '❄️')
+          .replace(/rocket/g, '🚀')
+          .replace(/car/g, '🚗')
+          .replace(/plane/g, '✈️')
+          .replace(/boat/g, '🚢')
+          .replace(/train/g, '🚂')
+          .replace(/bike/g, '🚲')
+          .replace(/walk/g, '🚶')
+          .replace(/run/g, '🏃')
+          .replace(/sleep/g, '😴')
+          .replace(/wake/g, '😴')
+          .replace(/work/g, '💼')
+          .replace(/study/g, '📚')
+          .replace(/code/g, '💻')
+          .replace(/bug/g, '🐛')
+          .replace(/fix/g, '🔧')
+          .replace(/test/g, '🧪')
+          .replace(/deploy/g, '🚀')
+          .replace(/git/g, '📝')
+          .replace(/merge/g, '🔀')
+          .replace(/commit/g, '💾')
+          .replace(/push/g, '⬆️')
+          .replace(/pull/g, '⬇️')
+          .replace(/branch/g, '🌿')
+          .replace(/repo/g, '📦')
+          .replace(/api/g, '🔌')
+          .replace(/db/g, '🗄️')
+          .replace(/server/g, '🖥️')
+          .replace(/client/g, '💻')
+          .replace(/frontend/g, '🎨')
+          .replace(/backend/g, '⚙️')
+          .replace(/fullstack/g, '🔄')
+          .replace(/devops/g, '🔧')
+          .replace(/cloud/g, '☁️')
+          .replace(/docker/g, '🐳')
+          .replace(/kubernetes/g, '☸️')
+          .replace(/aws/g, '☁️')
+          .replace(/azure/g, '☁️')
+          .replace(/gcp/g, '☁️')
+          .replace(/react/g, '⚛️')
+          .replace(/vue/g, '💚')
+          .replace(/angular/g, '🅰️')
+          .replace(/node/g, '🟢')
+          .replace(/python/g, '🐍')
+          .replace(/java/g, '☕')
+          .replace(/javascript/g, '📜')
+          .replace(/typescript/g, '📘')
+          .replace(/html/g, '🌐')
+          .replace(/css/g, '🎨')
+          .replace(/sql/g, '🗄️')
+          .replace(/mongodb/g, '🍃')
+          .replace(/postgres/g, '🐘')
+          .replace(/mysql/g, '🐬')
+          .replace(/redis/g, '🔴')
+          .replace(/elasticsearch/g, '🔍')
+          .replace(/kafka/g, '📨')
+          .replace(/rabbitmq/g, '🐰')
+          .replace(/nginx/g, '🌐')
+          .replace(/apache/g, '🦅')
+          .replace(/linux/g, '🐧')
+          .replace(/windows/g, '🪟')
+          .replace(/mac/g, '🍎')
+          .replace(/ios/g, '📱')
+          .replace(/android/g, '🤖')
+          .replace(/flutter/g, '🦋')
+          .replace(/swift/g, '🐦')
+          .replace(/kotlin/g, '🔶')
+          .replace(/dart/g, '🎯')
+          .replace(/go/g, '🐹')
+          .replace(/rust/g, '🦀')
+          .replace(/c\+\+/g, '⚡')
+          .replace(/c#/g, '🔷')
+          .replace(/php/g, '🐘')
+          .replace(/ruby/g, '💎')
+          .replace(/scala/g, '🔴')
+          .replace(/haskell/g, 'λ')
+          .replace(/lisp/g, '📝')
+          .replace(/prolog/g, '🔍')
+          .replace(/erlang/g, '📞')
+          .replace(/elixir/g, '💜')
+          .replace(/clojure/g, '🍃')
+          .replace(/f#/g, '🔷')
+          .replace(/ocaml/g, '🐫')
+          .replace(/nim/g, '👑')
+          .replace(/zig/g, '⚡')
+          .replace(/v/g, '🔵')
+          .replace(/crystal/g, '💎')
+          .replace(/julia/g, '🔷')
+          .replace(/r/g, '📊')
+          .replace(/matlab/g, '📈')
+          .replace(/octave/g, '📊')
+          .replace(/sas/g, '📊')
+          .replace(/spss/g, '📊')
+          .replace(/stata/g, '📊')
+          .replace(/excel/g, '📊')
+          .replace(/tableau/g, '📊')
+          .replace(/powerbi/g, '📊')
+          .replace(/looker/g, '📊')
+          .replace(/metabase/g, '📊')
+          .replace(/grafana/g, '📊')
+          .replace(/kibana/g, '📊')
+          .replace(/datadog/g, '🐕')
+          .replace(/newrelic/g, '📊')
+          .replace(/sentry/g, '🚨')
+          .replace(/loggly/g, '📝')
+          .replace(/papertrail/g, '📝')
+          .replace(/sumologic/g, '📊')
+          .replace(/splunk/g, '📊')
+          .replace(/prometheus/g, '📊')
+          .replace(/influxdb/g, '📊')
+          .replace(/timescaledb/g, '📊')
+          .replace(/clickhouse/g, '📊')
+          .replace(/bigquery/g, '📊')
+          .replace(/snowflake/g, '❄️')
+          .replace(/redshift/g, '📊')
+          .replace(/databricks/g, '📊')
+          .replace(/airflow/g, '🌪️')
+          .replace(/luigi/g, '🍕')
+          .replace(/prefect/g, '🌊')
+          .replace(/dagster/g, '💎')
+          .replace(/mlflow/g, '🧪')
+          .replace(/kubeflow/g, '☸️')
+          .replace(/tensorflow/g, '🧠')
+          .replace(/pytorch/g, '🔥')
+          .replace(/keras/g, '🧠')
+          .replace(/scikit/g, '🔬')
+          .replace(/pandas/g, '🐼')
+          .replace(/numpy/g, '🔢')
+          .replace(/matplotlib/g, '📊')
+          .replace(/seaborn/g, '📊')
+          .replace(/plotly/g, '📊')
+          .replace(/bokeh/g, '📊')
+          .replace(/dash/g, '📊')
+          .replace(/streamlit/g, '📊')
+          .replace(/gradio/g, '📊')
+          .replace(/fastapi/g, '⚡')
+          .replace(/django/g, '🐍')
+          .replace(/flask/g, '🍶')
+          .replace(/express/g, '🚂')
+          .replace(/koa/g, '🌲')
+          .replace(/hapi/g, '🎯')
+          .replace(/sails/g, '⛵')
+          .replace(/meteor/g, '☄️')
+          .replace(/strapi/g, '🎯')
+          .replace(/ghost/g, '👻')
+          .replace(/wordpress/g, '📝')
+          .replace(/drupal/g, '💧')
+          .replace(/joomla/g, '🎯')
+          .replace(/magento/g, '🛒')
+          .replace(/shopify/g, '🛒')
+          .replace(/woocommerce/g, '🛒')
+          .replace(/prestashop/g, '🛒')
+          .replace(/opencart/g, '🛒')
+          .replace(/oscommerce/g, '🛒')
+          .replace(/zencart/g, '🛒')
+          .replace(/bigcommerce/g, '🛒')
+          .replace(/squarespace/g, '🛒')
+          .replace(/wix/g, '🛒')
+          .replace(/webflow/g, '🛒')
+          .replace(/bubble/g, '🛒')
+          .replace(/airtable/g, '📊')
+          .replace(/notion/g, '📝')
+          .replace(/slack/g, '💬')
+          .replace(/discord/g, '🎮')
+          .replace(/teams/g, '👥')
+          .replace(/zoom/g, '📹')
+          .replace(/meet/g, '📹')
+          .replace(/skype/g, '📞')
+          .replace(/telegram/g, '📱')
+          .replace(/signal/g, '📱')
+          .replace(/whatsapp/g, '📱')
+          .replace(/wechat/g, '📱')
+          .replace(/line/g, '📱')
+          .replace(/kakao/g, '📱')
+          .replace(/viber/g, '📱')
+          .replace(/snapchat/g, '👻')
+          .replace(/instagram/g, '📷')
+          .replace(/facebook/g, '📘')
+          .replace(/twitter/g, '🐦')
+          .replace(/linkedin/g, '💼')
+          .replace(/github/g, '🐙')
+          .replace(/gitlab/g, '🦊')
+          .replace(/bitbucket/g, '🪣')
+          .replace(/jira/g, '🎯')
+          .replace(/confluence/g, '📚')
+          .replace(/trello/g, '📋')
+          .replace(/asana/g, '📋')
+          .replace(/monday/g, '📋')
+          .replace(/clickup/g, '📋')
+          .replace(/roam/g, '🧠')
+          .replace(/obsidian/g, '💎')
+          .replace(/logseq/g, '📝')
+          .replace(/remnote/g, '📝')
+          .replace(/roamresearch/g, '🧠')
+          .replace(/amplenote/g, '📝')
+          .replace(/bear/g, '🐻')
+          .replace(/ulysses/g, '📝')
+          .replace(/scrivener/g, '📝')
+          .replace(/typora/g, '📝')
+          .replace(/markdown/g, '📝')
+          .replace(/latex/g, '📝')
+          .replace(/mathjax/g, '📝')
+          .replace(/katex/g, '📝')
+          .replace(/mermaid/g, '📊')
+          .replace(/plantuml/g, '📊')
+          .replace(/drawio/g, '📊')
+          .replace(/figma/g, '🎨')
+          .replace(/sketch/g, '🎨')
+          .replace(/adobe/g, '🎨')
+          .replace(/photoshop/g, '🎨')
+          .replace(/illustrator/g, '🎨')
+          .replace(/indesign/g, '🎨')
+          .replace(/premiere/g, '🎬')
+          .replace(/aftereffects/g, '🎬')
+          .replace(/blender/g, '🎬')
+          .replace(/maya/g, '🎬')
+          .replace(/3dsmax/g, '🎬')
+          .replace(/cinema4d/g, '🎬')
+          .replace(/houdini/g, '🎬')
+          .replace(/nuke/g, '🎬')
+          .replace(/davinci/g, '🎬')
+          .replace(/finalcut/g, '🎬')
+          .replace(/imovie/g, '🎬')
+          .replace(/openshot/g, '🎬')
+          .replace(/kdenlive/g, '🎬')
+          .replace(/shotcut/g, '🎬')
+          .replace(/lightworks/g, '🎬')
+          .replace(/resolve/g, '🎬')
+          .replace(/vegas/g, '🎬')
+          .replace(/camtasia/g, '🎬')
+          .replace(/obs/g, '🎬')
+          .replace(/streamlabs/g, '🎬')
+          .replace(/xsplit/g, '🎬')
+          .replace(/wirecast/g, '🎬')
+          .replace(/vimeo/g, '🎬')
+          .replace(/youtube/g, '📺')
+          .replace(/twitch/g, '🎮')
+          .replace(/mixer/g, '🎮')
+          .replace(/tiktok/g, '📱')
+          .replace(/pinterest/g, '📌')
+          .replace(/reddit/g, '🤖')
+          .replace(/hackernews/g, '📰')
+          .replace(/producthunt/g, '🚀')
+          .replace(/indiehackers/g, '🚀')
+          .replace(/devto/g, '📝')
+          .replace(/medium/g, '📝')
+          .replace(/substack/g, '📝')
+          .replace(/hashnode/g, '📝')
+          .replace(/squarespace/g, '🛒')
+          .replace(/wix/g, '🛒')
+          .replace(/webflow/g, '🛒')
+          .replace(/bubble/g, '🛒')
+          .replace(/airtable/g, '📊')
+          .replace(/slack/g, '💬')
+          .replace(/discord/g, '🎮')
+          .replace(/teams/g, '👥')
+          .replace(/zoom/g, '📹')
+          .replace(/meet/g, '📹')
+          .replace(/skype/g, '📞')
+          .replace(/telegram/g, '📱')
+          .replace(/signal/g, '📱')
+          .replace(/whatsapp/g, '📱')
+          .replace(/wechat/g, '📱')
+          .replace(/line/g, '📱')
+          .replace(/kakao/g, '📱')
+          .replace(/viber/g, '📱')
+          .replace(/snapchat/g, '👻')
+          .replace(/instagram/g, '📷')
+          .replace(/facebook/g, '📘')
+          .replace(/twitter/g, '🐦')
+          .replace(/linkedin/g, '💼')
+          .replace(/github/g, '🐙')
+          .replace(/gitlab/g, '🦊')
+          .replace(/bitbucket/g, '🪣')
+          .replace(/jira/g, '🎯')
+          .replace(/confluence/g, '📚')
+          .replace(/trello/g, '📋')
+          .replace(/asana/g, '📋')
+          .replace(/monday/g, '📋')
+          .replace(/clickup/g, '📋')
+          .replace(/roam/g, '🧠')
+          .replace(/obsidian/g, '💎')
+          .replace(/logseq/g, '📝')
+          .replace(/remnote/g, '📝')
+          .replace(/roamresearch/g, '🧠')
+          .replace(/amplenote/g, '📝')
+          .replace(/bear/g, '🐻')
+          .replace(/ulysses/g, '📝')
+          .replace(/scrivener/g, '📝')
+          .replace(/typora/g, '📝')
+          .replace(/markdown/g, '📝')
+          .replace(/latex/g, '📝')
+          .replace(/mathjax/g, '📝')
+          .replace(/katex/g, '📝')
+          .replace(/mermaid/g, '📊')
+          .replace(/plantuml/g, '📊')
+          .replace(/drawio/g, '📊')
+          .replace(/figma/g, '🎨')
+          .replace(/sketch/g, '🎨')
+          .replace(/adobe/g, '🎨')
+          .replace(/photoshop/g, '🎨')
+          .replace(/illustrator/g, '🎨')
+          .replace(/indesign/g, '🎨')
+          .replace(/premiere/g, '🎬')
+          .replace(/aftereffects/g, '🎬')
+          .replace(/blender/g, '🎬')
+          .replace(/maya/g, '🎬')
+          .replace(/3dsmax/g, '🎬')
+          .replace(/cinema4d/g, '🎬')
+          .replace(/houdini/g, '🎬')
+          .replace(/nuke/g, '🎬')
+          .replace(/davinci/g, '🎬')
+          .replace(/finalcut/g, '🎬')
+          .replace(/imovie/g, '🎬')
+          .replace(/openshot/g, '🎬')
+          .replace(/kdenlive/g, '🎬')
+          .replace(/shotcut/g, '🎬')
+          .replace(/lightworks/g, '🎬')
+          .replace(/resolve/g, '🎬')
+          .replace(/vegas/g, '🎬')
+          .replace(/camtasia/g, '🎬')
+          .replace(/obs/g, '🎬')
+          .replace(/streamlabs/g, '🎬')
+          .replace(/xsplit/g, '🎬')
+          .replace(/wirecast/g, '🎬')
+          .replace(/vimeo/g, '🎬')
+          .replace(/youtube/g, '📺')
+          .replace(/twitch/g, '🎮')
+          .replace(/mixer/g, '🎮')
+          .replace(/tiktok/g, '📱')
+          .replace(/pinterest/g, '📌')
+          .replace(/reddit/g, '🤖')
+          .replace(/hackernews/g, '📰')
+          .replace(/producthunt/g, '🚀')
+          .replace(/indiehackers/g, '🚀')
+          .replace(/devto/g, '📝')
+          .replace(/medium/g, '📝')
+          .replace(/substack/g, '📝')
+          .replace(/hashnode/g, '📝')
       : newMessage;
 
+    const messageId = Date.now().toString();
     const message: ChatMessage = {
-      id: Date.now().toString(),
+      id: messageId,
       userId: activeUser.id,
       userName: activeUser.name,
       userAvatar: activeUser.avatar,
@@ -534,6 +1011,33 @@ const CommunityPage: React.FC = () => {
       status: 'sent',
       content: processedMessage
     };
+
+    // Save message to MongoDB
+    try {
+      const saveResponse = await fetch('http://localhost:5000/api/chat-messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messageId: messageId,
+          groupId: selectedGroup.id,
+          userId: activeUser.id,
+          userName: activeUser.name,
+          userAvatar: activeUser.avatar,
+          message: processedMessage,
+          content: processedMessage,
+          messageType: 'text',
+          status: 'sent'
+        })
+      });
+
+      if (!saveResponse.ok) {
+        console.error('Failed to save message to MongoDB');
+      }
+    } catch (error) {
+      console.error('Error saving message to MongoDB:', error);
+    }
 
     setGroups(prev => prev.map(group => 
       group.id === selectedGroup.id 
@@ -569,18 +1073,166 @@ const CommunityPage: React.FC = () => {
         ));
       }, 1000);
     }
+
+    // AI Response for Kinap AI chat
+    if (selectedGroup.name === 'Kinap AI') {
+      console.log('Starting AI response for Kinap AI...');
+      React.startTransition(() => {
+        setIsAIProcessing(true);
+      });
+
+      // Get user profile data for context
+      const userProfile = {
+        name: user?.displayName || 'Student',
+        course: user?.course || 'Not specified',
+        year: user?.year || 'Not specified',
+        skills: user?.skills || []
+      };
+
+      console.log('User profile:', userProfile);
+      console.log('Message to send:', processedMessage);
+
+      // Use backend API instead of direct Gemini calls
+      try {
+        const response = await fetch('http://localhost:5000/api/chatbot/chat', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            message: processedMessage,
+            userProfile: userProfile,
+            conversationHistory: selectedGroup.messages.map(msg => ({
+              role: msg.userId === activeUser.id ? 'user' : 'assistant',
+              content: msg.content || msg.message
+            }))
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log('Backend AI response received:', data);
+        
+        const aiMessageId = Date.now().toString() + '-ai';
+        const aiMessage: ChatMessage = {
+          id: aiMessageId,
+          userId: 'kinap-ai',
+          userName: 'Kinap AI',
+          userAvatar: 'https://via.placeholder.com/40/8B5CF6/FFFFFF?text=AI',
+          message: data.message || data.response || data.text,
+          timestamp: new Date(),
+          messageType: 'text',
+          status: 'sent' as const,
+          content: data.message || data.response || data.text
+        };
+
+        // Save AI message to MongoDB
+        try {
+          const aiSaveResponse = await fetch('http://localhost:5000/api/chat-messages', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              messageId: aiMessageId,
+              groupId: selectedGroup.id,
+              userId: 'kinap-ai',
+              userName: 'Kinap AI',
+              userAvatar: 'https://via.placeholder.com/40/8B5CF6/FFFFFF?text=AI',
+              message: data.message || data.response || data.text,
+              content: data.message || data.response || data.text,
+              messageType: 'text',
+              status: 'sent',
+              isAIMessage: true,
+              userProfile: userProfile
+            })
+          });
+
+          if (!aiSaveResponse.ok) {
+            console.error('Failed to save AI message to MongoDB');
+          }
+        } catch (error) {
+          console.error('Error saving AI message to MongoDB:', error);
+        }
+
+        React.startTransition(() => {
+          setGroups(prev => prev.map(group => 
+            group.id === selectedGroup.id 
+              ? { ...group, messages: [...group.messages, aiMessage] }
+              : group
+          ));
+
+          setSelectedGroup(prev => prev ? { ...prev, messages: [...prev.messages, aiMessage] } : null);
+          setIsAIProcessing(false);
+        });
+
+        // Play incoming sound for AI response
+        if (settings.incomingSounds) {
+          playRingtone('notification');
+        }
+      } catch (error) {
+        console.error('Backend AI Error:', error);
+        
+        // Fallback response if backend fails
+        const fallbackResponse = fallbackResponses.default[Math.floor(Math.random() * fallbackResponses.default.length)];
+        
+        const aiMessage: ChatMessage = {
+          id: Date.now().toString() + '-ai',
+          userId: 'kinap-ai',
+          userName: 'Kinap AI',
+          userAvatar: 'https://via.placeholder.com/40/8B5CF6/FFFFFF?text=AI',
+          message: fallbackResponse,
+          timestamp: new Date(),
+          messageType: 'text',
+          status: 'sent' as const,
+          content: fallbackResponse
+        };
+
+        React.startTransition(() => {
+          setGroups(prev => prev.map(group => 
+            group.id === selectedGroup.id 
+              ? { ...group, messages: [...group.messages, aiMessage] }
+              : group
+          ));
+
+          setSelectedGroup(prev => prev ? { ...prev, messages: [...prev.messages, aiMessage] } : null);
+          setIsAIProcessing(false);
+        });
+
+        // Play incoming sound for AI response
+        if (settings.incomingSounds) {
+          playRingtone('notification');
+        }
+      }
+    }
   };
 
-  const handleTyping = () => {
+  const handleTyping = useCallback(() => {
     if (!selectedGroup || !settings.typingIndicators) return;
     
     if (!typingUsers.includes(activeUser.id)) {
       setTypingUsers(prev => [...prev, activeUser.id]);
     }
     
-    setTimeout(() => {
+    // Clear existing timeout to prevent multiple timeouts
+    const timeoutId = setTimeout(() => {
       setTypingUsers(prev => prev.filter(id => id !== activeUser.id));
     }, 3000);
+    
+    return () => clearTimeout(timeoutId);
+  }, [selectedGroup, settings.typingIndicators, typingUsers, activeUser.id]);
+
+  const handleEmojiSelect = (emoji: string) => {
+    setNewMessage(prev => prev + emoji);
+    setShowEmojiPicker(false);
+  };
+
+  const handleFileSelect = (files: any[]) => {
+    setSelectedFiles(files);
+    setShowFileUpload(false);
   };
 
   const toggleStarMessage = (message: ChatMessage) => {
@@ -767,7 +1419,9 @@ const CommunityPage: React.FC = () => {
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                toggleSetting(setting.id as keyof typeof settings);
+                // Map the setting ID to the correct settings property
+                const settingKey = setting.id === 'spell_check' ? 'spellCheck' : 'replaceTextWithEmoji';
+                toggleSetting(settingKey as keyof typeof settings);
               }}
               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
                 (setting.id === 'spell_check' ? settings.spellCheck : settings.replaceTextWithEmoji)
@@ -801,11 +1455,56 @@ const CommunityPage: React.FC = () => {
   };
 
   const handleToggleAutoDownload = (type: 'photos' | 'audio' | 'videos' | 'documents') => {
-    setMediaAutoDownload(prev => {
+    setMediaAutoDownload((prev: any) => {
       const updated = { ...prev, [type]: !prev[type] };
       localStorage.setItem('kinap-media-auto-download', JSON.stringify(updated));
       return updated;
     });
+  };
+
+  // Function to handle chat deletion
+  const handleDeleteChat = () => {
+    if (selectedGroup) {
+      setShowDeleteConfirmModal(true);
+    }
+  };
+
+  // Function to confirm and execute chat deletion
+  const confirmDeleteChat = async () => {
+    if (!selectedGroup) return;
+
+    try {
+      // Delete messages from MongoDB
+      const response = await fetch(`http://localhost:5000/api/chat-messages/group/${selectedGroup.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: activeUser.id
+        })
+      });
+
+      if (response.ok) {
+        // Clear messages from local state
+        setGroups(prev => prev.map(group => 
+          group.id === selectedGroup.id 
+            ? { ...group, messages: [] }
+            : group
+        ));
+
+        setSelectedGroup(prev => prev ? { ...prev, messages: [] } : null);
+        
+        // Show success message
+        console.log('Chat deleted successfully');
+      } else {
+        console.error('Failed to delete chat');
+      }
+    } catch (error) {
+      console.error('Error deleting chat:', error);
+    } finally {
+      setShowDeleteConfirmModal(false);
+    }
   };
 
   return (
@@ -961,11 +1660,11 @@ const CommunityPage: React.FC = () => {
               >
                 <div className="flex items-center justify-between">
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-medium text-gray-900 dark:text-white truncate">{group.name}</h3>
+                      <h3 className="font-medium text-gray-900 dark:text-white truncate">{group.name}</h3>
                     <p className="text-sm text-gray-600 dark:text-gray-400 truncate">
                       {group.messages.length > 0
-                        ? group.messages[group.messages.length - 1].content
-                        : 'No messages yet'}
+                          ? group.messages[group.messages.length - 1].content
+                          : 'No messages yet'}
                     </p>
                   </div>
                   <div className="text-xs text-gray-600 dark:text-gray-400 font-medium ml-2">
@@ -1004,8 +1703,8 @@ const CommunityPage: React.FC = () => {
             </div>
           </div>
 
-          {/* New Chat Button */}
-          <div className="p-3 sm:p-4 border-t border-gray-200 dark:border-gray-700 flex-shrink-0 hidden lg:block">
+          {/* New Chat Button - Hidden */}
+          <div className="p-3 sm:p-4 border-t border-gray-200 dark:border-gray-700 flex-shrink-0 hidden">
             <button
               onClick={() => setShowCreateGroup(true)}
               className="w-full bg-ajira-primary text-white p-3 rounded-full hover:bg-ajira-primary/90 transition-colors flex items-center justify-center"
@@ -1254,14 +1953,64 @@ const CommunityPage: React.FC = () => {
                   <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
                     <Search className="w-5 h-5 text-gray-500" />
                   </button>
-                  <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
-                    <MoreVertical className="w-5 h-5 text-gray-500" />
-                  </button>
+                  <div className="relative">
+                    <button 
+                      onClick={() => setShowChatMenu(!showChatMenu)}
+                      className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                    >
+                      <MoreVertical className="w-5 h-5 text-gray-500" />
+                    </button>
+                    
+                    {/* Chat Menu Dropdown */}
+                    {showChatMenu && (
+                      <div className="chat-menu-dropdown absolute right-0 top-full mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-[100] animate-in slide-in-from-top-2 duration-200">
+                        <button
+                          onClick={() => {
+                            setShowChatMenu(false);
+                            // Add search functionality here
+                          }}
+                          className="w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-900 dark:text-white font-medium rounded-t-lg"
+                        >
+                          Search messages
+                        </button>
+                        <button
+                          onClick={() => {
+                            setShowChatMenu(false);
+                            handleDeleteChat();
+                          }}
+                          className="w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 text-red-600 dark:text-red-400 font-medium rounded-b-lg"
+                        >
+                          Delete chat
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
               {/* Messages */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              <div 
+                ref={messagesContainerRef}
+                className="flex-1 overflow-y-auto p-4 space-y-4 scroll-smooth relative"
+                style={{ 
+                  scrollBehavior: 'smooth',
+                  maxHeight: 'calc(100vh - 200px)' // Ensure proper height on all devices
+                }}
+              >
+                {/* Scroll to Bottom Button */}
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    scrollToBottom();
+                  }}
+                  className="fixed bottom-20 right-6 z-50 p-3 bg-ajira-primary text-white rounded-full shadow-lg hover:bg-ajira-primary/90 transition-all duration-200 hover:scale-110"
+                  title="Scroll to bottom"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                  </svg>
+                </button>
                 {selectedGroup.messages.map((message, index) => (
                   <div
                     key={index}
@@ -1293,20 +2042,20 @@ const CommunityPage: React.FC = () => {
                         </div>
                       </div>
                       <p className="text-sm">{message.content}</p>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleStarMessage(message);
-                        }}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleStarMessage(message);
+                          }}
                         className={`mt-1 text-xs transition-all duration-200 ${
-                          starredMessages.some(sm => sm.id === message.id) 
-                            ? 'text-yellow-500 opacity-100 scale-110' 
-                            : 'text-gray-400 hover:text-ajira-primary opacity-70 hover:opacity-100'
-                        }`}
-                        title={starredMessages.some(sm => sm.id === message.id) ? 'Unstar message' : 'Star message'}
-                      >
-                        {starredMessages.some(sm => sm.id === message.id) ? '★' : '☆'}
-                      </button>
+                            starredMessages.some(sm => sm.id === message.id) 
+                              ? 'text-yellow-500 opacity-100 scale-110' 
+                              : 'text-gray-400 hover:text-ajira-primary opacity-70 hover:opacity-100'
+                          }`}
+                          title={starredMessages.some(sm => sm.id === message.id) ? 'Unstar message' : 'Star message'}
+                        >
+                          {starredMessages.some(sm => sm.id === message.id) ? '★' : '☆'}
+                        </button>
                     </div>
                   </div>
                 ))}
@@ -1326,43 +2075,117 @@ const CommunityPage: React.FC = () => {
                     </div>
                   </div>
                 )}
+
+                {/* Scroll anchor for auto-scrolling */}
+                <div ref={messagesEndRef} />
               </div>
 
               {/* Message Input */}
-              <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4">
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={newMessage}
-                    onChange={(e) => {
-                      setNewMessage(e.target.value);
-                      if (settings.typingIndicators) {
-                        handleTyping();
-                      }
-                    }}
-                    onKeyPress={(e) => {
-                      if (e.key === 'Enter' && settings.enterToSend) {
-                        handleSendMessage();
-                      }
-                    }}
-                    placeholder={settings.enterToSend ? "Type a message (Enter to send)" : "Type a message"}
-                    spellCheck={settings.spellCheck}
-                    className={`flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-ajira-primary ${chatInputClass}`}
-                  />
-                  <button
-                    onClick={handleSendMessage}
-                    className="px-4 py-2 bg-ajira-primary text-white rounded-lg hover:bg-ajira-primary/90 transition-colors"
+              <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4 relative">
+                {/* File Upload Modal */}
+                {showFileUpload && (
+                  <div className="absolute bottom-full left-0 right-0 mb-2 bg-white border border-gray-200 rounded-lg shadow-lg p-4">
+                    <FileUpload
+                      onFileSelect={handleFileSelect}
+                      multiple={false}
+                      maxFiles={1}
+                      maxSize={50}
+                      uploadContext="chat"
+                      uploadedBy="user"
+                    />
+                  </div>
+                )}
+
+                                  <div className="flex items-end gap-3">
+                    <div className="relative">
+                      <button 
+                        onClick={() => setShowFileUpload(!showFileUpload)}
+                      className="p-2 text-gray-500 hover:text-gray-700 transition-colors"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                        </svg>
+                      </button>
+                    </div>
+                  
+                  <div className="flex-1 relative">
+                    <textarea
+                      value={newMessage}
+                      onChange={(e) => {
+                        setNewMessage(e.target.value);
+                        if (settings.typingIndicators) {
+                          handleTyping();
+                        }
+                      }}
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey && settings.enterToSend) {
+                          e.preventDefault();
+                          handleSendMessage();
+                        }
+                      }}
+                      placeholder="Type a message..."
+                      rows={1}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-2xl focus:outline-none focus:ring-2 focus:ring-ajira-primary/50 focus:border-transparent resize-none text-sm leading-relaxed bg-gray-50 placeholder-gray-500 transition-all duration-200"
+                      style={{
+                        minHeight: '44px',
+                        maxHeight: '120px'
+                      }}
+                    />
+                    
+                    {/* Emoji Picker */}
+                    {showEmojiPicker && (
+                      <div className="absolute bottom-full left-0 mb-2">
+                        <EmojiPicker
+                          onEmojiSelect={handleEmojiSelect}
+                          onClose={() => setShowEmojiPicker(false)}
+                          position="top"
+                        />
+                      </div>
+                    )}
+                  </div>
+                  
+                  <button 
+                    onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                    className="p-2 text-gray-500 hover:text-gray-700 transition-colors"
                   >
-                    Send
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
                   </button>
+                  
+                  {newMessage.trim() ? (
+                    <button
+                      onClick={handleSendMessage}
+                      className="p-3 bg-gradient-to-r from-ajira-primary to-ajira-secondary text-white rounded-full hover:from-ajira-primary/90 hover:to-ajira-secondary/90 transition-all duration-200 shadow-lg hover:shadow-xl"
+                      aria-label="Send message"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                      </svg>
+                    </button>
+                  ) : (
+                    <button className="p-3 text-gray-500 hover:text-gray-700 transition-colors">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
+                
+                <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
+                  <span>Press Enter to send, Shift+Enter for new line</span>
+                  <span className="flex items-center gap-1">
+                    <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                    Online
+                  </span>
                 </div>
               </div>
             </>
           ) : (
             <div className="flex-1 flex items-center justify-center">
               <div className="text-center">
-                <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Welcome to Community Hub</h3>
-                <p className="text-gray-600 dark:text-gray-400">Select a group to start chatting</p>
+                    <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Welcome to Community Hub</h3>
+                    <p className="text-gray-600 dark:text-gray-400">Select a group to start chatting</p>
               </div>
             </div>
           )}
@@ -1704,6 +2527,32 @@ const CommunityPage: React.FC = () => {
                 className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
               >
                 Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Chat Confirmation Modal */}
+      {showDeleteConfirmModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-96 max-w-[90vw]">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Delete Chat</h3>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
+              Are you sure you want to delete all messages in this chat? This action cannot be undone.
+            </p>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setShowDeleteConfirmModal(false)}
+                className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeleteChat}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              >
+                Delete Chat
               </button>
             </div>
           </div>
