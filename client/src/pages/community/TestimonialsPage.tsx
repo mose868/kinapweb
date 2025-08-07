@@ -157,6 +157,7 @@ const TestimonialsPage = () => {
   // If no testimonials, show coming soon message
   if (!testimonials || testimonials.length === 0) {
     return (
+<<<<<<< HEAD
       <div className="max-w-7xl mx-auto px-2 sm:px-4 py-8 sm:py-12 w-full overflow-x-hidden">
         <div className="text-center mb-12">
           <h1 className="text-3xl sm:text-4xl font-bold text-ajira-primary mb-4">
@@ -231,6 +232,82 @@ const TestimonialsPage = () => {
               We're working hard to bring you authentic, inspiring stories. Stay tuned for the launch! ✨
             </p>
           </div>
+=======
+      <div className="max-w-5xl mx-auto px-4 py-16 text-center">
+        <div className="bg-gradient-to-br from-ajira-primary/10 via-ajira-accent/10 to-ajira-secondary/10 rounded-3xl p-12 shadow-2xl">
+          <div className="text-7xl mb-8">🌟</div>
+          <h1 className="text-4xl md:text-6xl font-bold text-ajira-primary mb-6">
+            Success Stories & Testimonials
+          </h1>
+          <div className="text-xl md:text-2xl text-gray-700 mb-10 leading-relaxed">
+            <p className="mb-6">
+              <span className="font-bold text-ajira-accent">Incredible transformations are about to unfold!</span>
+            </p>
+            <p className="text-lg text-gray-600">
+              We're building a powerful platform where success stories will inspire and motivate the next generation of digital professionals.
+            </p>
+          </div>
+          
+          <div className="grid md:grid-cols-3 gap-8 mb-12 text-left">
+            <div className="bg-white/90 rounded-2xl p-8 shadow-xl transform hover:scale-105 transition-all duration-300">
+              <div className="text-4xl mb-4">💫</div>
+              <h3 className="text-xl font-bold text-ajira-primary mb-3">Share Your Journey</h3>
+              <p className="text-gray-600 leading-relaxed">Inspire others by sharing your transformation story, achievements, and the impact Ajira Digital had on your career.</p>
+            </div>
+            
+            <div className="bg-white/90 rounded-2xl p-8 shadow-xl transform hover:scale-105 transition-all duration-300">
+              <div className="text-4xl mb-4">🔥</div>
+              <h3 className="text-xl font-bold text-ajira-primary mb-3">Discover Inspiration</h3>
+              <p className="text-gray-600 leading-relaxed">Read authentic success stories from real professionals who transformed their lives through digital skills and opportunities.</p>
+            </div>
+            
+            <div className="bg-white/90 rounded-2xl p-8 shadow-xl transform hover:scale-105 transition-all duration-300">
+              <div className="text-4xl mb-4">🚀</div>
+              <h3 className="text-xl font-bold text-ajira-primary mb-3">Build Community</h3>
+              <p className="text-gray-600 leading-relaxed">Connect with like-minded professionals, celebrate achievements, and be part of a supportive network of digital innovators.</p>
+            </div>
+          </div>
+          
+          <div className="bg-gradient-to-r from-ajira-primary/20 to-ajira-accent/20 rounded-3xl p-10 border-2 border-ajira-primary/30">
+            <p className="text-2xl font-bold text-ajira-primary mb-6">
+              🎊 Coming Soon - Get Ready to Be Inspired!
+            </p>
+            <p className="text-lg text-gray-700 mb-8 leading-relaxed">
+              Our team is crafting an extraordinary testimonials platform that will showcase the incredible journeys of our community members. 
+              Prepare to be amazed by the stories of transformation, growth, and success that will soon grace these pages!
+            </p>
+            <div className="flex flex-col sm:flex-row gap-6 justify-center">
+              <button className="bg-gradient-to-r from-ajira-accent to-ajira-accent/80 text-white px-10 py-4 rounded-2xl font-bold text-xl hover:from-ajira-accent/90 hover:to-ajira-accent/70 transition-all transform hover:scale-105 shadow-2xl">
+                Join the Waitlist
+              </button>
+              <button className="bg-gradient-to-r from-ajira-primary to-ajira-primary/80 text-white px-10 py-4 rounded-2xl font-bold text-xl hover:from-ajira-primary/90 hover:to-ajira-primary/70 transition-all transform hover:scale-105 shadow-2xl">
+                Explore More
+              </button>
+            </div>
+          </div>
+          
+          <div className="mt-12 bg-white/80 rounded-2xl p-8 shadow-lg">
+            <h3 className="text-2xl font-bold text-ajira-primary mb-4">What's Coming?</h3>
+            <div className="grid md:grid-cols-2 gap-6 text-left">
+              <div>
+                <h4 className="font-semibold text-ajira-accent mb-2">✨ Interactive Storytelling</h4>
+                <p className="text-gray-600">Rich multimedia testimonials with videos, images, and detailed success journeys.</p>
+              </div>
+              <div>
+                <h4 className="font-semibold text-ajira-accent mb-2">🏆 Achievement Showcase</h4>
+                <p className="text-gray-600">Highlight specific milestones, income growth, and career transformations.</p>
+              </div>
+              <div>
+                <h4 className="font-semibold text-ajira-accent mb-2">🤝 Community Engagement</h4>
+                <p className="text-gray-600">Like, comment, and connect with success stories that inspire you.</p>
+              </div>
+              <div>
+                <h4 className="font-semibold text-ajira-accent mb-2">📊 Impact Analytics</h4>
+                <p className="text-gray-600">Track and visualize the real impact of Ajira Digital on careers and lives.</p>
+              </div>
+            </div>
+          </div>
+>>>>>>> e9211fa7b760e0d7aafaab53a5aacf86a3b4640a
         </div>
       </div>
     );

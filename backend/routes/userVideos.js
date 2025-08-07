@@ -1,171 +1,255 @@
 const express = require('express');
-const multer = require('multer');
-const path = require('path');
-const UserVideoData = require('../models/UserVideoData');
 const router = express.Router();
+const UserVideoData = require('../models/UserVideoData');
 
-// Multer setup for video uploads
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, path.join(__dirname, '../uploads'));
-  },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + '-' + file.originalname);
+// Get user's video data (likes, dislikes, comments, history, playlists)
+router.get('/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    let userVideoData = await UserVideoData.findOne({ userId });
+    
+    if (!userVideoData) {
+      // Create new user video data if it doesn't exist
+      userVideoData = await UserVideoData.create({
+        userId,
+        watchLater: [],
+        likedVideos: [],
+        playlists: [],
+        history: [],
+        subscriptions: [],
+        likes: {},
+        dislikes: {},
+        comments: {}
+      });
+    }
+    
+    res.json(userVideoData);
+  } catch (error) {
+    console.error('Get user video data error:', error);
+    res.status(500).json({ message: 'Server error' });
   }
 });
-const upload = multer({ storage });
 
-// Helper: get or create user data
-async function getUserData(userId) {
-  let data = await UserVideoData.findOne({ userId });
-  if (!data) {
-    data = await UserVideoData.create({ userId, watchLater: [], likedVideos: [], playlists: [], history: [], subscriptions: [] });
+// Update video likes/dislikes
+router.post('/:userId/likes', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { videoId, action } = req.body; // action: 'like', 'unlike', 'dislike', 'undislike'
+    
+    let userVideoData = await UserVideoData.findOne({ userId });
+    if (!userVideoData) {
+      userVideoData = await UserVideoData.create({ userId, likes: {}, dislikes: {} });
+    }
+    
+    if (!userVideoData.likes) userVideoData.likes = {};
+    if (!userVideoData.dislikes) userVideoData.dislikes = {};
+    
+    switch (action) {
+      case 'like':
+        userVideoData.likes[videoId] = true;
+        userVideoData.dislikes[videoId] = false;
+        break;
+      case 'unlike':
+        userVideoData.likes[videoId] = false;
+        break;
+      case 'dislike':
+        userVideoData.dislikes[videoId] = true;
+        userVideoData.likes[videoId] = false;
+        break;
+      case 'undislike':
+        userVideoData.dislikes[videoId] = false;
+        break;
+    }
+    
+    await userVideoData.save();
+    res.json({ success: true, likes: userVideoData.likes, dislikes: userVideoData.dislikes });
+  } catch (error) {
+    console.error('Update likes error:', error);
+    res.status(500).json({ message: 'Server error' });
   }
-  return data;
-}
-
-// GET all watch later
-router.get('/watch-later', async (req, res) => {
-  const { userId } = req.query;
-  const data = await getUserData(userId);
-  res.json(data.watchLater);
 });
 
-// POST add/remove watch later
-router.post('/watch-later', async (req, res) => {
-  const { userId, video, action } = req.body;
-  const data = await getUserData(userId);
-  if (action === 'add') {
-    data.watchLater = data.watchLater.filter(v => v.id !== video.id);
-    data.watchLater.unshift(video);
-  } else if (action === 'remove') {
-    data.watchLater = data.watchLater.filter(v => v.id !== video.id);
+// Add comment to video
+router.post('/:userId/comments', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { videoId, comment } = req.body;
+    
+    let userVideoData = await UserVideoData.findOne({ userId });
+    if (!userVideoData) {
+      userVideoData = await UserVideoData.create({ userId, comments: {} });
+    }
+    
+    if (!userVideoData.comments) userVideoData.comments = {};
+    if (!userVideoData.comments[videoId]) userVideoData.comments[videoId] = [];
+    
+    userVideoData.comments[videoId].push({
+      text: comment,
+      timestamp: new Date(),
+      userId: userId
+    });
+    
+    await userVideoData.save();
+    res.json({ success: true, comments: userVideoData.comments[videoId] });
+  } catch (error) {
+    console.error('Add comment error:', error);
+    res.status(500).json({ message: 'Server error' });
   }
-  await data.save();
-  res.json(data.watchLater);
 });
 
-// GET all liked videos
-router.get('/liked', async (req, res) => {
-  const { userId } = req.query;
-  const data = await getUserData(userId);
-  res.json(data.likedVideos);
-});
-
-// POST add/remove liked video
-router.post('/liked', async (req, res) => {
-  const { userId, video, action } = req.body;
-  const data = await getUserData(userId);
-  if (action === 'add') {
-    data.likedVideos = data.likedVideos.filter(v => v.id !== video.id);
-    data.likedVideos.unshift(video);
-  } else if (action === 'remove') {
-    data.likedVideos = data.likedVideos.filter(v => v.id !== video.id);
+// Add video to watch history
+router.post('/:userId/history', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { video } = req.body;
+    
+    let userVideoData = await UserVideoData.findOne({ userId });
+    if (!userVideoData) {
+      userVideoData = await UserVideoData.create({ userId, history: [] });
+    }
+    
+    // Remove if already exists to avoid duplicates
+    userVideoData.history = userVideoData.history.filter(v => v.id !== video.id);
+    
+    // Add to beginning of history
+    userVideoData.history.unshift({
+      ...video,
+      watchedAt: new Date()
+    });
+    
+    // Keep only last 100 videos in history
+    if (userVideoData.history.length > 100) {
+      userVideoData.history = userVideoData.history.slice(0, 100);
+    }
+    
+    await userVideoData.save();
+    res.json({ success: true, history: userVideoData.history });
+  } catch (error) {
+    console.error('Add to history error:', error);
+    res.status(500).json({ message: 'Server error' });
   }
-  await data.save();
-  res.json(data.likedVideos);
 });
 
-// GET all history
-router.get('/history', async (req, res) => {
-  const { userId } = req.query;
-  const data = await getUserData(userId);
-  res.json(data.history);
-});
-
-// POST add to history
-router.post('/history', async (req, res) => {
-  const { userId, video } = req.body;
-  const data = await getUserData(userId);
-  data.history = data.history.filter(v => v.id !== video.id);
-  data.history.unshift(video);
-  if (data.history.length > 100) data.history = data.history.slice(0, 100);
-  await data.save();
-  res.json(data.history);
-});
-
-// GET all playlists
-router.get('/playlists', async (req, res) => {
-  const { userId } = req.query;
-  const data = await getUserData(userId);
-  res.json(data.playlists);
-});
-
-// POST create/update/delete playlist
-router.post('/playlists', async (req, res) => {
-  const { userId, playlist, action } = req.body;
-  const data = await getUserData(userId);
-  if (action === 'add') {
-    data.playlists.push(playlist);
-  } else if (action === 'update') {
-    data.playlists = data.playlists.map(p => p.name === playlist.name ? playlist : p);
-  } else if (action === 'delete') {
-    data.playlists = data.playlists.filter(p => p.name !== playlist.name);
+// Add video to watch later
+router.post('/:userId/watch-later', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { video } = req.body;
+    
+    let userVideoData = await UserVideoData.findOne({ userId });
+    if (!userVideoData) {
+      userVideoData = await UserVideoData.create({ userId, watchLater: [] });
+    }
+    
+    // Check if video already exists
+    const exists = userVideoData.watchLater.find(v => v.id === video.id);
+    if (!exists) {
+      userVideoData.watchLater.push({
+        ...video,
+        addedAt: new Date()
+      });
+      await userVideoData.save();
+    }
+    
+    res.json({ success: true, watchLater: userVideoData.watchLater });
+  } catch (error) {
+    console.error('Add to watch later error:', error);
+    res.status(500).json({ message: 'Server error' });
   }
-  await data.save();
-  res.json(data.playlists);
 });
 
-// GET all subscriptions
-router.get('/subscriptions', async (req, res) => {
-  const { userId } = req.query;
-  const data = await getUserData(userId);
-  res.json(data.subscriptions);
-});
-
-// POST add/remove subscription
-router.post('/subscriptions', async (req, res) => {
-  const { userId, channel, action } = req.body;
-  const data = await getUserData(userId);
-  if (action === 'add') {
-    if (!data.subscriptions.includes(channel)) data.subscriptions.push(channel);
-  } else if (action === 'remove') {
-    data.subscriptions = data.subscriptions.filter(c => c !== channel);
+// Remove video from watch later
+router.delete('/:userId/watch-later/:videoId', async (req, res) => {
+  try {
+    const { userId, videoId } = req.params;
+    
+    let userVideoData = await UserVideoData.findOne({ userId });
+    if (userVideoData) {
+      userVideoData.watchLater = userVideoData.watchLater.filter(v => v.id !== videoId);
+      await userVideoData.save();
+    }
+    
+    res.json({ success: true, watchLater: userVideoData?.watchLater || [] });
+  } catch (error) {
+    console.error('Remove from watch later error:', error);
+    res.status(500).json({ message: 'Server error' });
   }
-  await data.save();
-  res.json(data.subscriptions);
 });
 
-// POST /upload - upload a video file and metadata
-router.post('/upload', upload.single('videoFile'), async (req, res) => {
-  const { userId, title, description, thumbnail, duration } = req.body;
-  const file = req.file;
-  if (!file) return res.status(400).json({ error: 'No video file uploaded' });
-  const video = {
-    id: file.filename,
-    title,
-    thumbnail: thumbnail || '',
-    videoUrl: `/uploads/${file.filename}`,
-    duration: duration || '',
-    views: '0',
-    uploadDate: new Date().toISOString(),
-    channel: {
-      name: userId,
-      avatar: '',
-      subscribers: '',
-      verified: false,
-      verificationBadge: null
-    },
-    description,
-    category: '',
-    tags: [],
-    likes: 0,
-    dislikes: 0,
-    isLive: false,
-    quality: 'HD',
-    isPremium: false,
-    isSponsored: false
-  };
-  let data = await UserVideoData.findOne({ userId });
-  if (!data) {
-    data = await UserVideoData.create({ userId, watchLater: [], likedVideos: [], playlists: [], history: [], subscriptions: [], yourVideos: [] });
+// Create playlist
+router.post('/:userId/playlists', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { name, description = '' } = req.body;
+    
+    let userVideoData = await UserVideoData.findOne({ userId });
+    if (!userVideoData) {
+      userVideoData = await UserVideoData.create({ userId, playlists: [] });
+    }
+    
+    const newPlaylist = {
+      id: Date.now().toString(),
+      name,
+      description,
+      videos: [],
+      createdAt: new Date()
+    };
+    
+    userVideoData.playlists.push(newPlaylist);
+    await userVideoData.save();
+    
+    res.json({ success: true, playlist: newPlaylist });
+  } catch (error) {
+    console.error('Create playlist error:', error);
+    res.status(500).json({ message: 'Server error' });
   }
-  // Add to user's videos (for demo, use history for now)
-  data.history = data.history || [];
-  data.history.unshift(video);
-  await data.save();
-  res.json(video);
+});
+
+// Add video to playlist
+router.post('/:userId/playlists/:playlistId/videos', async (req, res) => {
+  try {
+    const { userId, playlistId } = req.params;
+    const { video } = req.body;
+    
+    let userVideoData = await UserVideoData.findOne({ userId });
+    if (userVideoData) {
+      const playlist = userVideoData.playlists.find(p => p.id === playlistId);
+      if (playlist) {
+        // Check if video already exists in playlist
+        const exists = playlist.videos.find(v => v.id === video.id);
+        if (!exists) {
+          playlist.videos.push({
+            ...video,
+            addedAt: new Date()
+          });
+          await userVideoData.save();
+        }
+      }
+    }
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Add to playlist error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Clear watch history
+router.delete('/:userId/history', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    
+    let userVideoData = await UserVideoData.findOne({ userId });
+    if (userVideoData) {
+      userVideoData.history = [];
+      await userVideoData.save();
+    }
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Clear history error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
 });
 
 module.exports = router; 

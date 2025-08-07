@@ -178,6 +178,7 @@ const ShowcasePage = () => {
   // If user is not available, show coming soon message
   if (!user) {
     return (
+<<<<<<< HEAD
       <div className="max-w-7xl mx-auto px-2 sm:px-4 py-8 sm:py-12 w-full overflow-x-hidden">
         <div className="text-center mb-12">
           <h1 className="text-3xl sm:text-4xl font-extrabold text-ajira-primary mb-4 tracking-tight">
@@ -287,6 +288,66 @@ const ShowcasePage = () => {
               We're putting the finishing touches on your portfolio paradise. Get ready to shine! ✨
             </p>
           </div>
+=======
+      <div className="max-w-4xl mx-auto px-4 py-16 text-center">
+        <div className="bg-gradient-to-br from-ajira-primary/10 to-ajira-accent/10 rounded-3xl p-12 shadow-xl">
+          <div className="text-6xl mb-6">🚀</div>
+          <h1 className="text-4xl md:text-5xl font-bold text-ajira-primary mb-6">
+            Project Showcase
+          </h1>
+          <div className="text-xl md:text-2xl text-gray-700 mb-8 leading-relaxed">
+            <p className="mb-4">
+              <span className="font-semibold text-ajira-accent">Something amazing is brewing!</span>
+            </p>
+            <p className="text-lg text-gray-600">
+              We're crafting an incredible showcase platform where you'll be able to:
+            </p>
+          </div>
+          
+          <div className="grid md:grid-cols-2 gap-6 mb-12 text-left">
+            <div className="bg-white/80 rounded-2xl p-6 shadow-lg">
+              <div className="text-3xl mb-3">💼</div>
+              <h3 className="text-xl font-bold text-ajira-primary mb-2">Showcase Your Work</h3>
+              <p className="text-gray-600">Display your projects, skills, and achievements in a stunning portfolio that stands out.</p>
+            </div>
+            
+            <div className="bg-white/80 rounded-2xl p-6 shadow-lg">
+              <div className="text-3xl mb-3">🤝</div>
+              <h3 className="text-xl font-bold text-ajira-primary mb-2">Connect & Collaborate</h3>
+              <p className="text-gray-600">Find talented professionals, build meaningful connections, and discover exciting opportunities.</p>
+            </div>
+            
+            <div className="bg-white/80 rounded-2xl p-6 shadow-lg">
+              <div className="text-3xl mb-3">🎯</div>
+              <h3 className="text-xl font-bold text-ajira-primary mb-2">Get Discovered</h3>
+              <p className="text-gray-600">Let potential clients and employers find you through our powerful discovery system.</p>
+            </div>
+            
+            <div className="bg-white/80 rounded-2xl p-6 shadow-lg">
+              <div className="text-3xl mb-3">📈</div>
+              <h3 className="text-xl font-bold text-ajira-primary mb-2">Grow Your Network</h3>
+              <p className="text-gray-600">Join a community of passionate professionals and expand your professional network.</p>
+            </div>
+          </div>
+          
+          <div className="bg-ajira-primary/5 rounded-2xl p-8 border-2 border-ajira-primary/20">
+            <p className="text-lg font-semibold text-ajira-primary mb-4">
+              🎉 Coming Very Soon!
+            </p>
+            <p className="text-gray-600 mb-6">
+              Our team is working tirelessly to bring you the most innovative showcase platform. 
+              Get ready to take your professional presence to the next level!
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <button className="bg-ajira-accent text-white px-8 py-3 rounded-xl font-bold text-lg hover:bg-ajira-accent/90 transition-all transform hover:scale-105 shadow-lg">
+                Sign Up for Early Access
+              </button>
+              <button className="bg-ajira-primary text-white px-8 py-3 rounded-xl font-bold text-lg hover:bg-ajira-primary/90 transition-all transform hover:scale-105 shadow-lg">
+                Learn More
+              </button>
+            </div>
+          </div>
+>>>>>>> e9211fa7b760e0d7aafaab53a5aacf86a3b4640a
         </div>
       </div>
     );

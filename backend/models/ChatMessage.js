@@ -11,19 +11,27 @@ const chatMessageSchema = new mongoose.Schema({
   // Group/Conversation identification
   groupId: {
     type: String,
+    required: true
+  },
+  
+  conversationId: {
+    type: String,
+    required: false
+  },
+    type: String,
     required: true,
     index: true
   },
-  
   // User information
   userId: {
     type: String,
-    required: true
+    required: false, // Optional for anonymous chats
+    index: true
   },
   
   userName: {
     type: String,
-    required: true
+    required: false
   },
   
   userAvatar: {
@@ -31,21 +39,25 @@ const chatMessageSchema = new mongoose.Schema({
     default: 'https://via.placeholder.com/40'
   },
   
+  role: {
+    type: String,
+    enum: ['user', 'assistant', 'model'],
+    required: false
+  },
+  
   // Message content
   message: {
     type: String,
     required: true
   },
-  
   content: {
     type: String,
     required: true
   },
-  
   // Message metadata
   messageType: {
     type: String,
-    enum: ['text', 'image', 'file', 'voice', 'video', 'system'],
+    enum: ['text', 'image', 'file', 'voice', 'video', 'system', 'chatbot', 'kinap-ai'],
     default: 'text'
   },
   
@@ -110,10 +122,23 @@ const chatMessageSchema = new mongoose.Schema({
     course: String,
     year: String,
     skills: [String]
+  },
+  
+  metadata: {
+    source: String, // 'gemini-ai', 'contextual-ai', 'fallback', etc.
+    confidence: String, // 'high', 'medium', 'low'
+    responseTime: Number,
+    model: String // 'gemini-1.5-flash', 'contextual-ai', etc.
   }
 }, {
   timestamps: true
 });
+
+// Index for efficient querying
+chatMessageSchema.index({ conversationId: 1, timestamp: 1 });
+chatMessageSchema.index({ userId: 1, messageType: 1 });
+chatMessageSchema.index({ messageType: 1, timestamp: -1 });
+chatMessageSchema.index({ groupId: 1, timestamp: 1 });
 
 // Indexes for better query performance
 chatMessageSchema.index({ groupId: 1, timestamp: -1 });

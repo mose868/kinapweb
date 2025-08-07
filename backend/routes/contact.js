@@ -1,6 +1,6 @@
 const express = require('express');
 const Contact = require('../models/Contact');
-const transporter = require('../config/email');
+const { sendEmail } = require('../services/emailService');
 
 const router = express.Router();
 
@@ -121,12 +121,11 @@ router.post('/submit', async (req, res) => {
         </div>
       `;
 
-      await transporter.sendMail({
-        from: process.env.EMAIL_FROM || '"Ajira Digital Contact" <no-reply@ajirakinap.com>',
-        to: 'moseskimani414@gmail.com',
-        subject: `New Contact: ${subject} - ${category}`,
-        html: emailContent
-      });
+      await sendEmail(
+        'moseskimani414@gmail.com',
+        `New Contact: ${subject} - ${category}`,
+        emailContent
+      );
 
       // Mark email as sent
       contact.emailSent = true;

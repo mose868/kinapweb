@@ -3,7 +3,7 @@ const MentorApplication = require('../models/MentorApplication');
 const MentorVettingService = require('../services/mentorVettingService');
 const { auth } = require('../middleware/auth');
 const { adminAuth } = require('../middleware/auth');
-const emailService = require('../config/email');
+const { sendEmail } = require('../services/emailService');
 
 const router = express.Router();
 const mentorVettingService = new MentorVettingService();
@@ -325,7 +325,7 @@ async function sendApprovalEmail(application) {
       `
     };
 
-    await emailService.sendEmail(emailData);
+    await sendEmail(emailData);
     console.log(`✅ Approval email sent to ${user.userId.email}`);
 
   } catch (error) {
@@ -388,7 +388,7 @@ async function sendApplicationStatusEmail(application) {
       `
     };
 
-    await emailService.sendEmail(emailData);
+    await sendEmail(emailData);
     console.log(`✅ Status email sent to ${user.userId.email}`);
 
   } catch (error) {

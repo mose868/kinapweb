@@ -1,5 +1,6 @@
 const express = require('express');
 const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
+const ChatMessage = require('../models/ChatMessage');
 
 const router = express.Router();
 
@@ -7,10 +8,9 @@ const router = express.Router();
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
 
-// Enhanced conversation memory with better structure
-const conversations = new Map();
+// Enhanced conversation memory with MongoDB persistence
 const MAX_CONVERSATION_HISTORY = 10;
-const API_TIMEOUT = 8000; // 8 seconds timeout for faster responses
+const API_TIMEOUT = 30000; // 30 seconds timeout for more reliable responses
 
 // Sophisticated fallback responses with guaranteed emojis and lively language
 const contextualResponses = {
@@ -449,13 +449,13 @@ const generateFollowUpQuestions = (intent, userMessage) => {
   return `\n\n💭 Quick questions to help you better:\n${selectedQuestions.map(q => `• ${q}`).join('\n')}`;
 };
 
-// Enhanced response generation with hybrid approach
-const generateResponse = async (userMessage, conversationId) => {
+// Enhanced response generation with hybrid approach and MongoDB persistence
+const generateResponse = async (userMessage, conversationId, userId = null) => {
   const startTime = Date.now();
   
   try {
-    // Get conversation history
-    const history = conversations.get(conversationId) || [];
+    // Get conversation history from MongoDB
+    const history = await getConversationHistory(conversationId, 'chatbot');
     
     // Analyze intent for better contextual responses
     const intent = analyzeIntent(userMessage);
@@ -483,14 +483,14 @@ const generateResponse = async (userMessage, conversationId) => {
           ? `${livelyResponse}\n\n${followUpQuestions}`
           : livelyResponse;
         
-        // Update conversation history
-        const updatedHistory = [
-          ...history,
-          { role: 'user', content: userMessage, timestamp: new Date().toISOString() },
-          { role: 'assistant', content: fullResponse, timestamp: new Date().toISOString() }
-        ].slice(-MAX_CONVERSATION_HISTORY);
-        
-        conversations.set(conversationId, updatedHistory);
+        // Save messages to MongoDB
+        await saveMessage(conversationId, userId, 'user', userMessage, 'chatbot');
+        await saveMessage(conversationId, userId, 'assistant', fullResponse, 'chatbot', {
+          source: 'gemini-ai',
+          confidence: 'high',
+          responseTime: Date.now() - startTime,
+          model: 'gemini-1.5-flash'
+        });
         
         const responseTime = Date.now() - startTime;
         console.log(`🚀 Gemini response generated in ${responseTime}ms`);
@@ -520,14 +520,14 @@ const generateResponse = async (userMessage, conversationId) => {
       fallbackResponse += `\n\n${contextualResp.followUp}`;
     }
     
-    // Update conversation history
-    const updatedHistory = [
-      ...history,
-      { role: 'user', content: userMessage, timestamp: new Date().toISOString() },
-      { role: 'assistant', content: fallbackResponse, timestamp: new Date().toISOString() }
-    ].slice(-MAX_CONVERSATION_HISTORY);
-    
-    conversations.set(conversationId, updatedHistory);
+    // Save messages to MongoDB
+    await saveMessage(conversationId, userId, 'user', userMessage, 'chatbot');
+    await saveMessage(conversationId, userId, 'assistant', fallbackResponse, 'chatbot', {
+      source: 'contextual-ai',
+      confidence: 'medium',
+      responseTime: Date.now() - startTime,
+      model: 'contextual-ai'
+    });
     
     const responseTime = Date.now() - startTime;
     console.log(`⚡ Contextual fallback response in ${responseTime}ms`);
@@ -543,9 +543,24 @@ const generateResponse = async (userMessage, conversationId) => {
     console.error('❌ Response generation failed:', error);
     
     // Ultimate fallback
+    const fallbackMessage = "🤖 I'm here to help you with Ajira Digital! I can assist with mentorship, marketplace services, training programs, and more. What would you like to know?";
+    
+    // Save fallback messages to MongoDB
+    try {
+      await saveMessage(conversationId, userId, 'user', userMessage, 'chatbot');
+      await saveMessage(conversationId, userId, 'assistant', fallbackMessage, 'chatbot', {
+        source: 'fallback',
+        confidence: 'low',
+        responseTime: Date.now() - startTime,
+        model: 'fallback'
+      });
+    } catch (saveError) {
+      console.error('❌ Error saving fallback messages:', saveError);
+    }
+    
     const responseTime = Date.now() - startTime;
     return {
-      message: "🤖 I'm here to help you with Ajira Digital! I can assist with mentorship, marketplace services, training programs, and more. What would you like to know?",
+      message: fallbackMessage,
       source: 'fallback',
       responseTime: responseTime,
       confidence: 'low'
@@ -558,12 +573,67 @@ const generateConversationId = () => {
   return `conv_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 };
 
-// Enhanced chat endpoint with better performance monitoring
+// Save message to MongoDB
+const saveMessage = async (conversationId, userId, role, content, messageType = 'chatbot', metadata = {}) => {
+  try {
+    const message = new ChatMessage({
+      conversationId,
+      userId,
+      role,
+      content,
+      messageType,
+      metadata
+    });
+    await message.save();
+    return message;
+  } catch (error) {
+    console.error('❌ Error saving message to MongoDB:', error);
+    throw error;
+  }
+};
+
+// Get conversation history from MongoDB
+const getConversationHistory = async (conversationId, messageType = 'chatbot', limit = MAX_CONVERSATION_HISTORY) => {
+  try {
+    const messages = await ChatMessage.find({
+      conversationId,
+      messageType
+    })
+    .sort({ timestamp: 1 })
+    .limit(limit)
+    .lean();
+    
+    return messages.map(msg => ({
+      role: msg.role,
+      content: msg.content,
+      timestamp: msg.timestamp
+    }));
+  } catch (error) {
+    console.error('❌ Error retrieving conversation history:', error);
+    return [];
+  }
+};
+
+// Clear conversation from MongoDB
+const clearConversation = async (conversationId, messageType = 'chatbot') => {
+  try {
+    await ChatMessage.deleteMany({
+      conversationId,
+      messageType
+    });
+    return true;
+  } catch (error) {
+    console.error('❌ Error clearing conversation:', error);
+    return false;
+  }
+};
+
+// Enhanced chat endpoint with better performance monitoring and MongoDB persistence
 router.post('/chat', async (req, res) => {
   const requestStart = Date.now();
   
   try {
-    const { message, conversationId } = req.body;
+    const { message, conversationId, userId } = req.body;
 
     // Input validation
     if (!message || typeof message !== 'string' || message.trim().length === 0) {
@@ -583,7 +653,7 @@ router.post('/chat', async (req, res) => {
     const convId = conversationId || generateConversationId();
     console.log(`💬 Processing message (${message.length} chars) for conversation: ${convId}`);
 
-    const result = await generateResponse(message.trim(), convId);
+    const result = await generateResponse(message.trim(), convId, userId);
     
     const totalTime = Date.now() - requestStart;
     
@@ -620,11 +690,11 @@ router.post('/chat', async (req, res) => {
   }
 });
 
-// Get conversation history endpoint
-router.get('/conversation/:id', (req, res) => {
+// Get conversation history endpoint with MongoDB
+router.get('/conversation/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const history = conversations.get(id) || [];
+    const history = await getConversationHistory(id, 'chatbot');
     
     res.json({
       conversationId: id,
@@ -642,17 +712,24 @@ router.get('/conversation/:id', (req, res) => {
   }
 });
 
-// Clear conversation endpoint
-router.delete('/conversation/:id', (req, res) => {
+// Clear conversation endpoint with MongoDB
+router.delete('/conversation/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    conversations.delete(id);
+    const success = await clearConversation(id, 'chatbot');
     
-    res.json({
-      message: 'Conversation cleared successfully',
-      conversationId: id,
-      timestamp: new Date().toISOString()
-    });
+    if (success) {
+      res.json({
+        message: 'Conversation cleared successfully',
+        conversationId: id,
+        timestamp: new Date().toISOString()
+      });
+    } else {
+      res.status(500).json({
+        error: 'Failed to clear conversation',
+        timestamp: new Date().toISOString()
+      });
+    }
     
   } catch (error) {
     console.error('❌ Conversation clearing error:', error);
@@ -663,46 +740,285 @@ router.delete('/conversation/:id', (req, res) => {
   }
 });
 
-// Enhanced health check with system status
-router.get('/health', (req, res) => {
+// Enhanced health check with system status and MongoDB persistence
+router.get('/health', async (req, res) => {
   const memoryUsage = process.memoryUsage();
   const uptime = process.uptime();
   
-  res.json({
-    status: 'healthy',
-    system: {
-      model: 'gemini-1.5-flash',
-      fallbackEnabled: true,
-      apiConfigured: !!GEMINI_API_KEY,
-      activeConversations: conversations.size,
-      uptime: `${Math.floor(uptime / 3600)}h ${Math.floor((uptime % 3600) / 60)}m`,
-      memory: {
-        used: `${Math.round(memoryUsage.heapUsed / 1024 / 1024)}MB`,
-        total: `${Math.round(memoryUsage.heapTotal / 1024 / 1024)}MB`
-      }
-    },
-    features: {
-      geminiIntegration: !!GEMINI_API_KEY,
-      contextualFallbacks: true,
-      conversationMemory: true,
-      fastResponse: true,
-      errorRecovery: true
-    },
-    timestamp: new Date().toISOString()
-  });
+  try {
+    // Get conversation counts from MongoDB
+    const chatbotCount = await ChatMessage.countDocuments({ messageType: 'chatbot' });
+    const kinapAICount = await ChatMessage.countDocuments({ messageType: 'kinap-ai' });
+    const uniqueConversations = await ChatMessage.distinct('conversationId');
+    
+    res.json({
+      status: 'healthy',
+      system: {
+        model: 'gemini-1.5-flash',
+        fallbackEnabled: true,
+        apiConfigured: !!GEMINI_API_KEY,
+        databaseConnected: true,
+        totalMessages: chatbotCount + kinapAICount,
+        uniqueConversations: uniqueConversations.length,
+        uptime: `${Math.floor(uptime / 3600)}h ${Math.floor((uptime % 3600) / 60)}m`,
+        memory: {
+          used: `${Math.round(memoryUsage.heapUsed / 1024 / 1024)}MB`,
+          total: `${Math.round(memoryUsage.heapTotal / 1024 / 1024)}MB`
+        }
+      },
+      features: {
+        geminiIntegration: !!GEMINI_API_KEY,
+        contextualFallbacks: true,
+        persistentStorage: true,
+        conversationMemory: true,
+        fastResponse: true,
+        errorRecovery: true
+      },
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('❌ Health check error:', error);
+    res.status(500).json({
+      status: 'unhealthy',
+      error: 'Database connection failed',
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 
-// Performance metrics endpoint
-router.get('/metrics', (req, res) => {
-  res.json({
-    conversations: {
-      active: conversations.size,
-      total: conversations.size // In production, you'd track this separately
-    },
-    system: process.memoryUsage(),
-    uptime: process.uptime(),
-    timestamp: new Date().toISOString()
-  });
+// Performance metrics endpoint with MongoDB
+router.get('/metrics', async (req, res) => {
+  try {
+    const chatbotCount = await ChatMessage.countDocuments({ messageType: 'chatbot' });
+    const kinapAICount = await ChatMessage.countDocuments({ messageType: 'kinap-ai' });
+    const uniqueConversations = await ChatMessage.distinct('conversationId');
+    
+    res.json({
+      conversations: {
+        total: chatbotCount + kinapAICount,
+        chatbot: chatbotCount,
+        kinapAI: kinapAICount,
+        uniqueConversations: uniqueConversations.length
+      },
+      system: process.memoryUsage(),
+      uptime: process.uptime(),
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('❌ Metrics error:', error);
+    res.status(500).json({
+      error: 'Failed to retrieve metrics',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Kinap AI Chat Endpoint with MongoDB persistence
+router.post('/kinap-ai', async (req, res) => {
+  const startTime = Date.now();
+  
+  try {
+    const { message, conversationId, userId } = req.body;
+    
+    if (!message || !message.trim()) {
+      return res.status(400).json({
+        error: 'Message is required',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // Generate conversation ID if not provided
+    const convId = conversationId || generateConversationId();
+    
+    // Get conversation history from MongoDB
+    const conversationHistory = await getConversationHistory(convId, 'kinap-ai');
+    
+    // Save user message to MongoDB
+    await saveMessage(convId, userId, 'user', message, 'kinap-ai');
+
+    // Create system prompt for Kinap AI
+    const systemPrompt = `You are Kinap AI, a friendly and intelligent AI assistant for the Ajira Digital KiNaP Club community. You help users with:
+
+1. General questions and conversations
+2. Technical assistance and guidance
+3. Creative writing and brainstorming
+4. Problem-solving and analysis
+5. Educational content and explanations
+6. Professional advice and career guidance
+7. Entertainment and casual conversation
+
+Key characteristics:
+- Be helpful, friendly, and engaging
+- Use appropriate emojis to make responses lively
+- Provide detailed, informative answers
+- Ask follow-up questions to keep conversations engaging
+- Be knowledgeable about technology, business, education, and general topics
+- Maintain a professional yet approachable tone
+- Always be respectful and inclusive
+
+Current context: You're chatting with a member of the Ajira Digital KiNaP Club community.`;
+
+    // Call Gemini API
+    let aiResponse;
+    if (GEMINI_API_KEY) {
+      try {
+        // Create a single prompt with system context and user message
+        const fullPrompt = `${systemPrompt}\n\nUser: ${message}\n\nKinap AI:`;
+        
+        const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            contents: [{
+              parts: [{ text: fullPrompt }]
+            }],
+            generationConfig: {
+              temperature: 0.7,
+              topK: 40,
+              topP: 0.95,
+              maxOutputTokens: 1024,
+            },
+            safetySettings: [
+              {
+                category: "HARM_CATEGORY_HARASSMENT",
+                threshold: "BLOCK_MEDIUM_AND_ABOVE"
+              },
+              {
+                category: "HARM_CATEGORY_HATE_SPEECH",
+                threshold: "BLOCK_MEDIUM_AND_ABOVE"
+              },
+              {
+                category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                threshold: "BLOCK_MEDIUM_AND_ABOVE"
+              },
+              {
+                category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+                threshold: "BLOCK_MEDIUM_AND_ABOVE"
+              }
+            ]
+          }),
+          signal: AbortSignal.timeout(API_TIMEOUT),
+          timeout: API_TIMEOUT
+        });
+
+        if (!response.ok) {
+          throw new Error(`Gemini API error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        
+        if (data.candidates && data.candidates[0] && data.candidates[0].content) {
+          aiResponse = data.candidates[0].content.parts[0].text;
+        } else {
+          throw new Error('Invalid response from Gemini API');
+        }
+      } catch (error) {
+        console.error('❌ Gemini API error:', error.message);
+        
+        // Better error handling with specific messages
+        if (error.name === 'AbortError' || error.message.includes('timeout')) {
+          aiResponse = "I'm taking a bit longer than usual to respond. Let me try again with a simpler approach! 😊 What would you like to know about Ajira Digital?";
+        } else if (error.message.includes('403') || error.message.includes('401')) {
+          aiResponse = "I'm having authentication issues with my AI service. Let me help you with what I know about Ajira Digital! 🚀";
+        } else if (error.message.includes('429')) {
+          aiResponse = "I'm getting too many requests right now. Let me help you with Ajira Digital information while I wait! 💡";
+        } else {
+          aiResponse = "I'm having trouble connecting to my advanced AI capabilities right now, but I'm still here to help! 😊 What would you like to chat about?";
+        }
+      }
+    } else {
+      // Fallback when API key is not configured
+      aiResponse = "I'm Kinap AI, your friendly assistant! I'm currently in basic mode, but I'd love to chat with you about anything! 😊 What's on your mind?";
+    }
+
+    // Save AI response to MongoDB
+    await saveMessage(convId, userId, 'model', aiResponse, 'kinap-ai', {
+      source: GEMINI_API_KEY ? 'gemini-api' : 'fallback',
+      confidence: 'high',
+      responseTime: Date.now() - startTime,
+      model: GEMINI_API_KEY ? 'gemini-1.5-flash' : 'fallback'
+    });
+
+    const totalTime = Date.now() - startTime;
+
+    res.json({
+      response: aiResponse,
+      conversationId: convId,
+      metadata: {
+        source: GEMINI_API_KEY ? 'gemini-api' : 'fallback',
+        confidence: 'high',
+        totalTime: `${totalTime}ms`,
+        timestamp: new Date().toISOString()
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Kinap AI error:', error);
+    const totalTime = Date.now() - startTime;
+    
+    res.status(500).json({
+      response: "I'm experiencing some technical difficulties, but I'm still here to help! 😊 Please try asking your question again.",
+      error: 'Internal server error',
+      metadata: {
+        source: 'error-fallback',
+        confidence: 'low',
+        totalTime: `${totalTime}ms`,
+        timestamp: new Date().toISOString()
+      }
+    });
+  }
+});
+
+// Get Kinap AI conversation history with MongoDB
+router.get('/kinap-ai/conversation/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const history = await getConversationHistory(id, 'kinap-ai');
+    
+    res.json({
+      conversationId: id,
+      history: history,
+      messageCount: history.length,
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('❌ Kinap AI conversation retrieval error:', error);
+    res.status(500).json({ 
+      error: 'Failed to retrieve conversation',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Clear Kinap AI conversation with MongoDB
+router.delete('/kinap-ai/conversation/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const success = await clearConversation(id, 'kinap-ai');
+    
+    if (success) {
+      res.json({
+        message: 'Kinap AI conversation cleared successfully',
+        conversationId: id,
+        timestamp: new Date().toISOString()
+      });
+    } else {
+      res.status(500).json({
+        error: 'Failed to clear conversation',
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+  } catch (error) {
+    console.error('❌ Kinap AI conversation clearing error:', error);
+    res.status(500).json({ 
+      error: 'Failed to clear conversation',
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 
 module.exports = router;

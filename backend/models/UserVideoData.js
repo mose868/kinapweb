@@ -32,12 +32,18 @@ const playlistSchema = new mongoose.Schema({
 }, { _id: false });
 
 const userVideoDataSchema = new mongoose.Schema({
-  userId: { type: String, required: true, unique: true },
+  userId: { type: String, required: true },
   watchLater: [videoSchema],
   likedVideos: [videoSchema],
   playlists: [playlistSchema],
   history: [videoSchema],
-  subscriptions: [String] // channel names or IDs
-});
+  subscriptions: [String], // channel names or IDs
+  likes: { type: Map, of: Boolean, default: {} }, // videoId -> boolean
+  dislikes: { type: Map, of: Boolean, default: {} }, // videoId -> boolean
+  comments: { type: Map, of: [String], default: {} } // videoId -> array of comments
+}, { timestamps: true });
+
+// Create unique index explicitly to avoid duplicate index warning
+userVideoDataSchema.index({ userId: 1 }, { unique: true });
 
 module.exports = mongoose.model('UserVideoData', userVideoDataSchema); 

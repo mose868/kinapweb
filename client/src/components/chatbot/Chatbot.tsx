@@ -128,7 +128,7 @@ const Chatbot: React.FC = () => {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to get response');
+        throw new Error(`Failed to get response: ${response.status}`);
       }
 
       const data = await response.json();

@@ -4,6 +4,7 @@ const Schema = mongoose.Schema;
 const GroupSchema = new Schema({
   name: { type: String, required: true },
   avatar: { type: String },
+  category: { type: String }, // For community groups by category
   members: [{ type: Schema.Types.ObjectId, ref: 'Student' }],
   admins: [{ type: Schema.Types.ObjectId, ref: 'Student' }],
   messages: [{ type: Schema.Types.ObjectId, ref: 'Message' }],
