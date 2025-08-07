@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { authClient } from '../services/betterAuth';
 
 interface BetterAuthContextType {
   user: any;
@@ -36,25 +37,30 @@ export const BetterAuthProvider: React.FC<BetterAuthProviderProps> = ({ children
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
-    // Check for existing session in localStorage
-    const checkExistingSession = () => {
+    // Check for existing session using Better Auth
+    const checkExistingSession = async () => {
       try {
-        const token = localStorage.getItem('token');
-        const userData = localStorage.getItem('userData');
+        setIsLoading(true);
         
-        console.log('BetterAuthContext: Checking existing session', { hasToken: !!token, hasUserData: !!userData });
+        // Get session from Better Auth
+        const session = await authClient.getSession();
+        console.log('BetterAuthContext: Session from Better Auth', session);
         
-        if (token && userData) {
-          const parsedUser = JSON.parse(userData);
-          console.log('BetterAuthContext: Setting user from localStorage', parsedUser);
-          setUser(parsedUser);
-          setSession({ token });
+        if (session?.data?.user) {
+          setUser(session.data.user);
+          setSession(session.data);
           setIsAuthenticated(true);
         } else {
           console.log('BetterAuthContext: No existing session found');
+          setUser(null);
+          setSession(null);
+          setIsAuthenticated(false);
         }
       } catch (error) {
         console.error('Error checking existing session:', error);
+        setUser(null);
+        setSession(null);
+        setIsAuthenticated(false);
       } finally {
         setIsLoading(false);
       }
@@ -63,36 +69,34 @@ export const BetterAuthProvider: React.FC<BetterAuthProviderProps> = ({ children
     checkExistingSession();
   }, []);
 
-  // Simplified auth helpers
+  // Real auth helpers using Better Auth
   const authHelpers = {
     signInWithEmail: async (email: string, password: string) => {
       try {
         setIsLoading(true);
         setError(null);
         
-        // For now, simulate a successful login
-        const mockUser = {
-          id: '1',
+        const result = await authClient.signIn("emailAndPassword", {
           email,
-          displayName: email.split('@')[0],
-          role: 'student'
-        };
+          password,
+          redirect: false,
+        });
         
-        const mockSession = {
-          token: 'mock-token-' + Date.now()
-        };
+        if (result?.data?.user) {
+          // Store in localStorage
+          localStorage.setItem('token', result.data.session.token);
+          localStorage.setItem('userData', JSON.stringify(result.data.user));
+          
+          setUser(result.data.user);
+          setSession(result.data.session);
+          setIsAuthenticated(true);
+        }
         
-        // Store in localStorage
-        localStorage.setItem('token', mockSession.token);
-        localStorage.setItem('userData', JSON.stringify(mockUser));
-        
-        setUser(mockUser);
-        setSession(mockSession);
-        setIsAuthenticated(true);
-        
-        return { success: true };
+        return result;
       } catch (error) {
-        setError(error);
+        // Handle error properly
+        const errorMessage = error?.message || error?.statusText || 'Authentication failed';
+        setError(errorMessage);
         throw error;
       } finally {
         setIsLoading(false);
@@ -104,30 +108,29 @@ export const BetterAuthProvider: React.FC<BetterAuthProviderProps> = ({ children
         setIsLoading(true);
         setError(null);
         
-        // For now, simulate a successful registration
-        const mockUser = {
-          id: '1',
+        const result = await authClient.signUp("emailAndPassword", {
           email,
-          displayName: userData?.displayName || email.split('@')[0],
-          role: userData?.role || 'student',
-          ...userData
-        };
+          password,
+          name: userData?.displayName || userData?.name,
+          ...userData,
+          redirect: false,
+        });
         
-        const mockSession = {
-          token: 'mock-token-' + Date.now()
-        };
+        if (result?.data?.user) {
+          // Store in localStorage
+          localStorage.setItem('token', result.data.session.token);
+          localStorage.setItem('userData', JSON.stringify(result.data.user));
+          
+          setUser(result.data.user);
+          setSession(result.data.session);
+          setIsAuthenticated(true);
+        }
         
-        // Store in localStorage
-        localStorage.setItem('token', mockSession.token);
-        localStorage.setItem('userData', JSON.stringify(mockUser));
-        
-        setUser(mockUser);
-        setSession(mockSession);
-        setIsAuthenticated(true);
-        
-        return { success: true };
+        return result;
       } catch (error) {
-        setError(error);
+        // Handle error properly
+        const errorMessage = error?.message || error?.statusText || 'Authentication failed';
+        setError(errorMessage);
         throw error;
       } finally {
         setIsLoading(false);
@@ -139,29 +142,21 @@ export const BetterAuthProvider: React.FC<BetterAuthProviderProps> = ({ children
         setIsLoading(true);
         setError(null);
         
-        // For now, simulate Google sign-in
-        const mockUser = {
-          id: '1',
-          email: 'user@gmail.com',
-          displayName: 'Google User',
-          role: 'student'
-        };
+        const result = await authClient.signIn("google", {
+          redirect: false,
+        });
         
-        const mockSession = {
-          token: 'google-token-' + Date.now()
-        };
+        if (result?.data?.user) {
+          setUser(result.data.user);
+          setSession(result.data);
+          setIsAuthenticated(true);
+        }
         
-        // Store in localStorage
-        localStorage.setItem('token', mockSession.token);
-        localStorage.setItem('userData', JSON.stringify(mockUser));
-        
-        setUser(mockUser);
-        setSession(mockSession);
-        setIsAuthenticated(true);
-        
-        return { success: true };
+        return result;
       } catch (error) {
-        setError(error);
+        // Handle error properly
+        const errorMessage = error?.message || error?.statusText || 'Authentication failed';
+        setError(errorMessage);
         throw error;
       } finally {
         setIsLoading(false);
@@ -170,9 +165,7 @@ export const BetterAuthProvider: React.FC<BetterAuthProviderProps> = ({ children
 
     signOutUser: async () => {
       try {
-        // Clear localStorage
-        localStorage.removeItem('token');
-        localStorage.removeItem('userData');
+        await authClient.signOut({ redirect: false });
         
         setUser(null);
         setSession(null);
@@ -184,23 +177,21 @@ export const BetterAuthProvider: React.FC<BetterAuthProviderProps> = ({ children
     },
 
     getCurrentSession: async () => {
-      const token = localStorage.getItem('token');
-      const userData = localStorage.getItem('userData');
-      
-      if (token && userData) {
-        return {
-          token,
-          user: JSON.parse(userData)
-        };
+      try {
+        return await authClient.getSession();
+      } catch (error) {
+        console.error('Error getting session:', error);
+        return null;
       }
-      return null;
     },
 
     getAvailableProviders: async () => {
-      return {
-        email: true,
-        google: true
-      };
+      try {
+        return await authClient.getProviders();
+      } catch (error) {
+        console.error('Error getting providers:', error);
+        return {};
+      }
     }
   };
 

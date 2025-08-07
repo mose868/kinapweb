@@ -8,6 +8,11 @@ const Group = require('../models/Group');
 
 const router = express.Router();
 
+// Test endpoint to verify backend is working
+router.get('/test', (req, res) => {
+  res.json({ message: 'Students backend is working!', timestamp: new Date() });
+});
+
 // Register student
 router.post('/register-student', async (req, res) => {
   try {
@@ -23,7 +28,7 @@ router.post('/register-student', async (req, res) => {
     }
 
     const safeInterests = Array.isArray(interests) ? interests : [];
-    const safeSkills = typeof skills === 'string' ? skills : '';
+    const safeSkills = Array.isArray(skills) ? skills : (typeof skills === 'string' ? [skills] : []);
 
     const student = await Student.create({
       fullname,
@@ -198,6 +203,30 @@ router.post('/get-profile', async (req, res) => {
   }
 });
 
+// Ajira trainings/interests (sample list)
+const AJIRA_TRAININGS = [
+  'Web Development',
+  'Data Science',
+  'Digital Marketing',
+  'Graphic Design',
+  'Cybersecurity',
+  'Entrepreneurship',
+  'Mobile App Development',
+  'UI/UX Design',
+  'Cloud Computing',
+  'AI & Machine Learning',
+  'Project Management',
+  'Business Analytics',
+  'E-Commerce',
+  'Content Creation',
+  'Blockchain',
+];
+
+// Endpoint to get Ajira trainings/interests
+router.get('/ajira-trainings', (req, res) => {
+  res.json({ trainings: AJIRA_TRAININGS });
+});
+
 // Update student profile
 router.post('/update-profile', async (req, res) => {
   try {
@@ -205,6 +234,7 @@ router.post('/update-profile', async (req, res) => {
     
     console.log('Update profile request for:', email);
     console.log('Update data keys:', Object.keys(updateData));
+    console.log('Update data:', updateData);
     
     // Log specific profile completion fields
     const profileFields = ['bio', 'location', 'ajiraGoals', 'linkedinProfile', 'photoURL'];
@@ -220,6 +250,11 @@ router.post('/update-profile', async (req, res) => {
       console.log('PhotoURL present, length:', updateData.photoURL.length);
     }
     
+    // Validate required fields
+    if (!email) {
+      return res.status(400).json({ message: 'Email is required' });
+    }
+    
     const student = await Student.findOneAndUpdate(
       { email },
       { $set: { ...updateData, updatedAt: new Date() } },
@@ -230,6 +265,106 @@ router.post('/update-profile', async (req, res) => {
       return res.status(404).json({ message: 'Student not found' });
     }
     
+    // Auto-add to interest groups if interests are updated
+    try {
+      console.log('🔍 Checking for interests:', updateData.interests);
+      if (updateData.interests && Array.isArray(updateData.interests)) {
+        console.log('✅ Interests found:', updateData.interests);
+        const Group = require('../models/Group');
+        console.log('📦 Group model loaded successfully');
+        
+        for (const interest of updateData.interests) {
+          console.log(`🎯 Processing interest: ${interest}`);
+          let group = await Group.findOne({ name: interest });
+          
+          if (!group) {
+            console.log(`📝 Creating new group for interest: ${interest}`);
+            group = await Group.create({ 
+              name: interest, 
+              members: [student._id], 
+              admins: [student._id], 
+              description: `${interest} group`, 
+              createdBy: student._id 
+            });
+            console.log(`✅ Created group: ${interest} with ID: ${group._id}`);
+          } else {
+            console.log(`📋 Found existing group: ${interest}`);
+            let updated = false;
+            if (!group.members.includes(student._id)) {
+              group.members.push(student._id);
+              updated = true;
+              console.log(`👤 Added user to group: ${interest}`);
+            }
+            if (!group.admins.includes(student._id)) {
+              group.admins.push(student._id);
+              updated = true;
+              console.log(`👑 Made user admin of group: ${interest}`);
+            }
+            if (updated) {
+              await group.save();
+              console.log(`💾 Saved group updates for: ${interest}`);
+            }
+          }
+        }
+      } else {
+        console.log('❌ No interests found or interests is not an array');
+        console.log('Interests data:', updateData.interests);
+      }
+    } catch (groupError) {
+      console.error('❌ Error adding user to interest groups:', groupError);
+      console.error('Error stack:', groupError.stack);
+      // Don't fail the profile update if group assignment fails
+    }
+
+    // Auto-add to skill-based groups if skills are updated
+    try {
+      console.log('🔍 Checking for skills:', updateData.skills);
+      if (updateData.skills && Array.isArray(updateData.skills)) {
+        updateData.skills = updateData.skills.filter(s => s && s.trim());
+      }
+      console.log('✅ Skills found:', updateData.skills);
+      const Group = require('../models/Group');
+      console.log('📦 Group model loaded successfully for skills');
+      
+      for (const skill of updateData.skills) {
+        console.log(`🎯 Processing skill: ${skill}`);
+        let group = await Group.findOne({ name: skill });
+        
+        if (!group) {
+          console.log(`📝 Creating new group for skill: ${skill}`);
+          group = await Group.create({ 
+            name: skill, 
+            members: [student._id], 
+            admins: [student._id], 
+            description: `Community group for ${skill} enthusiasts`, 
+            createdBy: student._id,
+            avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(skill)}&background=1B4F72&color=FFFFFF&bold=true&size=150`
+          });
+          console.log(`✅ Created skill group: ${skill} with ID: ${group._id}`);
+        } else {
+          console.log(`📋 Found existing skill group: ${skill}`);
+          let updated = false;
+          if (!group.members.includes(student._id)) {
+            group.members.push(student._id);
+            updated = true;
+            console.log(`👤 Added user to skill group: ${skill}`);
+          }
+          if (!group.admins.includes(student._id)) {
+            group.admins.push(student._id);
+            updated = true;
+            console.log(`👑 Made user admin of skill group: ${skill}`);
+          }
+          if (updated) {
+            await group.save();
+            console.log(`💾 Saved skill group updates for: ${skill}`);
+          }
+        }
+      }
+    } catch (groupError) {
+      console.error('❌ Error adding user to skill groups:', groupError);
+      console.error('Error stack:', groupError.stack);
+      // Don't fail the profile update if group assignment fails
+    }
     console.log('Profile updated successfully, photoURL saved:', !!student.photoURL);
     res.json({ message: 'Profile updated successfully', student });
   } catch (error) {

@@ -26,28 +26,30 @@ export interface ProfileData {
   lastActive?: string;
 }
 
-// LinkedIn URL validation
+// LinkedIn URL validation - update to match the new format
 const validateLinkedInURL = (url: string): boolean => {
   if (!url.trim()) return false;
-  const linkedinPattern = /^https?:\/\/(www\.)?linkedin\.com\/in\/[a-zA-Z0-9-]+\/?$/;
-  return linkedinPattern.test(url.trim());
+  // Accept full URLs or handles
+  const linkedinPattern = /^https?:\/\/(www\.)?linkedin\.com\/in\/[a-zA-Z0-9-_.]+\/?$/;
+  const handlePattern = /^[a-zA-Z0-9-_.]+$/;
+  return linkedinPattern.test(url.trim()) || handlePattern.test(url.trim());
 };
 
 // Calculate profile completion percentage
 export const calculateProfileCompletion = (profileData: ProfileData): number => {
-  // Define all required fields for 100% completion
+  // Define all required fields for 100% completion (removed location and preferredLearningMode)
   const requiredFields = [
     'displayName',
     'email', 
     'photoURL',
     'bio',
-    'location',
+    // 'location', // Remove location
     'course',
     'year',
     'skills',
     'experienceLevel',
     'ajiraGoals',
-    'preferredLearningMode',
+    // 'preferredLearningMode', // Remove preferredLearningMode
     'linkedinProfile',
     'phoneNumber',
     'idNumber'
@@ -95,19 +97,19 @@ export const checkProfileRequirements = (profileData: ProfileData, feature: 'com
 } => {
   const completion = calculateProfileCompletion(profileData);
   
-  // Define requirements for each feature
+  // Define requirements for each feature (removed location and preferredLearningMode)
   const requirements = {
     community: {
-      requiredCompletion: 100,
-      requiredFields: ['displayName', 'email', 'photoURL', 'bio', 'location', 'course', 'year', 'skills', 'experienceLevel', 'ajiraGoals', 'preferredLearningMode', 'linkedinProfile', 'phoneNumber', 'idNumber']
+      requiredCompletion: 70,
+      requiredFields: ['displayName', 'email', 'photoURL', 'bio', 'course', 'year', 'skills', 'experienceLevel', 'ajiraGoals']
     },
     ambassador: {
       requiredCompletion: 100,
-      requiredFields: ['displayName', 'email', 'photoURL', 'bio', 'location', 'course', 'year', 'skills', 'experienceLevel', 'ajiraGoals', 'preferredLearningMode', 'linkedinProfile', 'phoneNumber', 'idNumber']
+      requiredFields: ['displayName', 'email', 'photoURL', 'bio', 'course', 'year', 'skills', 'experienceLevel', 'ajiraGoals', 'linkedinProfile', 'phoneNumber', 'idNumber']
     },
     marketplace: {
       requiredCompletion: 70,
-      requiredFields: ['displayName', 'email', 'photoURL', 'bio', 'location', 'skills', 'experienceLevel']
+      requiredFields: ['displayName', 'email', 'photoURL', 'bio', 'skills', 'experienceLevel']
     }
   };
 
@@ -145,13 +147,13 @@ export const getFieldDisplayName = (field: string): string => {
     email: 'Email Address',
     photoURL: 'Profile Photo',
     bio: 'Bio/About Me',
-    location: 'Location',
+    // location: 'Location', // Remove location
     course: 'Course of Study',
     year: 'Year of Study',
     skills: 'Skills',
     experienceLevel: 'Experience Level',
     ajiraGoals: 'Ajira Goals',
-    preferredLearningMode: 'Preferred Learning Mode',
+    // preferredLearningMode: 'Preferred Learning Mode', // Remove preferredLearningMode
     linkedinProfile: 'LinkedIn Profile',
     phoneNumber: 'Phone Number',
     idNumber: 'ID Number'

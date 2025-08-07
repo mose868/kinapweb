@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useMutation } from 'react-query'
+import { useMutation, useQuery } from 'react-query'
 import { useBetterAuthContext } from '../contexts/BetterAuthContext'
 import { 
   Camera, 
@@ -26,17 +26,18 @@ const BASEURL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 
 // LinkedIn URL validation
 const validateLinkedInURL = (url: string): boolean => {
-  if (!url.trim()) return false
-  const linkedinPattern = /^https?:\/\/(www\.)?linkedin\.com\/in\/[a-zA-Z0-9-]+\/?$/
-  return linkedinPattern.test(url.trim())
-}
+  if (!url.trim()) return false;
+  // Accept full URLs or handles
+  const linkedinPattern = /^https?:\/\/(www\.)?linkedin\.com\/in\/[a-zA-Z0-9-_.]+\/?$/;
+  const handlePattern = /^[a-zA-Z0-9-_.]+$/;
+  return linkedinPattern.test(url.trim()) || handlePattern.test(url.trim());
+};
 
 interface ClubMemberProfile {
   displayName: string
   email: string
   photoURL?: string
   bio: string
-  location: string
   course: string
   year: string
   skills: string[]
@@ -55,6 +56,7 @@ interface ClubMemberProfile {
   availableForFreelance: boolean
   joinedDate: string
   lastActive: string
+  interests?: string[];
 }
 
 const ProfilePage = () => {
@@ -67,7 +69,6 @@ const ProfilePage = () => {
     email: user?.email || '',
     photoURL: '',
     bio: '',
-    location: '',
     course: '',
     year: '',
     skills: [],
@@ -85,8 +86,16 @@ const ProfilePage = () => {
     mentorshipInterest: false,
     availableForFreelance: false,
     joinedDate: new Date().toISOString(),
-    lastActive: new Date().toISOString()
+    lastActive: new Date().toISOString(),
+    interests: [],
   })
+
+  // Fetch Ajira trainings/interests
+  const { data: trainingsData } = useQuery('ajira-trainings', async () => {
+    const res = await axios.get(`${BASEURL}/students/ajira-trainings`)
+    return res.data.trainings as string[]
+  })
+  const ajiraTrainings = trainingsData || []
 
   // Show loading state while auth is initializing
   if (isLoading) {
@@ -143,7 +152,6 @@ const ProfilePage = () => {
         console.log('PhotoURL from backend:', profile.photoURL)
         console.log('All profile completion fields:')
         console.log('- Bio:', profile.bio)
-        console.log('- Location:', profile.location) 
         console.log('- Goals:', profile.ajiraGoals)
         console.log('- LinkedIn:', profile.linkedinProfile)
         console.log('- Photo:', !!profile.photoURL)
@@ -160,11 +168,11 @@ const ProfilePage = () => {
           idNumber: profile.idNo || prev.idNumber,
           // Additional profile fields (editable)
           bio: profile.bio || prev.bio,
-          location: profile.location || prev.location,
           ajiraGoals: profile.ajiraGoals || prev.ajiraGoals,
           linkedinProfile: profile.linkedinProfile || prev.linkedinProfile,
           photoURL: profile.photoURL || prev.photoURL,
-          lastActive: profile.lastActive || prev.lastActive
+          lastActive: profile.lastActive || prev.lastActive,
+          interests: profile.interests || [],
         }))
       } catch (err) {
         if (isMounted) {
@@ -183,7 +191,7 @@ const ProfilePage = () => {
   // Calculate profile completion percentage
   const calculateProfileCompletion = () => {
     // Simplified completion check - only 4 essential fields
-    const essentialFields = ['bio', 'location', 'ajiraGoals', 'linkedinProfile']
+    const essentialFields = ['bio', 'ajiraGoals', 'linkedinProfile']
     
     let completed = 0
     let total = essentialFields.length + 1 // +1 for required photo
@@ -319,17 +327,15 @@ const ProfilePage = () => {
     if (!formData.bio.trim()) {
       throw new Error('Bio is required')
     }
-    if (!formData.location.trim()) {
-      throw new Error('Location is required')
-    }
     if (!formData.ajiraGoals.trim()) {
       throw new Error('Digital goals are required')
     }
-    if (!formData.linkedinProfile.trim()) {
-      throw new Error('LinkedIn profile is required')
+    let linkedinProfile = formData.linkedinProfile.trim();
+    if (/^[a-zA-Z0-9-_.]+$/.test(linkedinProfile)) {
+      linkedinProfile = `https://linkedin.com/in/${linkedinProfile}`;
     }
-    if (!validateLinkedInURL(formData.linkedinProfile)) {
-      throw new Error('Please enter a valid LinkedIn profile URL (e.g., https://linkedin.com/in/yourname)')
+    if (!validateLinkedInURL(linkedinProfile)) {
+      throw new Error('Please enter a valid LinkedIn profile URL (e.g., https://linkedin.com/in/yourname) or handle (e.g., yourname)')
     }
     if (!formData.photoURL.trim()) {
       throw new Error('Profile picture is required. Please upload an image.')
@@ -338,11 +344,12 @@ const ProfilePage = () => {
     // Prepare data for backend update
     const updateData = {
       bio: formData.bio,
-      location: formData.location,
       ajiraGoals: formData.ajiraGoals,
-      linkedinProfile: formData.linkedinProfile,
+      linkedinProfile,
       photoURL: formData.photoURL,
-      lastActive: new Date()
+      lastActive: new Date(),
+      interests: formData.interests || [],
+      skills: Array.isArray(formData.skills) ? formData.skills : [], // Ensure skills is always an array
     }
     
     console.log('Saving profile data to MongoDB:', updateData)
@@ -360,13 +367,15 @@ const ProfilePage = () => {
       // Show detailed success message with timestamp
       const timestamp = new Date().toLocaleString()
       setTimeout(() => {
-        alert(`✅ All profile data saved successfully at ${timestamp}!\n\n📊 Saved to MongoDB:\n• Bio\n• Location\n• Goals\n• LinkedIn\n• Profile Photo\n• Last Updated Time`)
+        alert(`✅ All profile data saved successfully at ${timestamp}!\n\n📊 Saved to MongoDB:\n• Bio\n• Goals\n• LinkedIn\n• Profile Photo\n• Skills (${formData.skills.length} skills)\n• Last Updated Time\n\n🎯 You've been automatically added to groups based on your skills!\nCheck the Community page to see your new groups.`)
       }, 500)
       
       setIsEditing(false)
     } catch (error) {
       console.error('Failed to update profile:', error)
-      alert('Failed to save profile data. Please try again.')
+      console.error('Error details:', error.response?.data)
+      console.error('Request data:', { email: user.email, ...updateData })
+      alert(`Failed to save profile data. Error: ${error.response?.data?.message || error.message}\n\nPlease check the console for more details.`)
       throw new Error('Failed to update profile')
     }
   })
@@ -492,12 +501,6 @@ const ProfilePage = () => {
                   {formData.phoneNumber}
                 </p>
               )}
-              {formData.location && (
-                <p className="text-gray-600 flex items-center mt-1 break-all">
-                  <MapPin className="w-4 h-4 mr-2" />
-                  {formData.location}
-                </p>
-              )}
               <div className="flex flex-wrap items-center mt-2 gap-2">
                 {formData.course && (
                   <span className="bg-ajira-primary/10 text-ajira-primary px-3 py-1 rounded-full text-xs sm:text-sm">
@@ -518,7 +521,7 @@ const ProfilePage = () => {
               {/* Basic Info Note */}
               <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                 <p className="text-xs sm:text-sm text-blue-800">
-                  <strong>Basic Info Complete:</strong> Your name, email, course, year, phone, skills, and experience were collected during signup. Now add: bio, location, goals, LinkedIn, and profile photo for 100%!
+                  <strong>Basic Info Complete:</strong> Your name, email, course, year, phone, skills, and experience were collected during signup. Now add: bio, goals, LinkedIn, and profile photo for 100%!
                 </p>
               </div>
             </div>
@@ -541,7 +544,7 @@ const ProfilePage = () => {
                     5 required fields to complete!
                   </h3>
                   <p className="text-xs sm:text-sm text-yellow-700 mt-1">
-                    Your profile is {profileCompletion}% complete. Required: bio, location, goals, valid LinkedIn URL, and profile photo.
+                    Your profile is {profileCompletion}% complete. Required: bio, goals, valid LinkedIn URL, and profile photo.
                   </p>
                 </div>
               </div>
@@ -628,22 +631,6 @@ const ProfilePage = () => {
                 />
               </div>
 
-              {/* Location */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Where are you located? *
-                </label>
-                <input
-                  type="text"
-                  name="location"
-                  value={formData.location}
-                  onChange={handleChange}
-                  required
-                  placeholder="e.g., Nairobi, Kenya"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ajira-accent/50 focus:border-transparent"
-                />
-              </div>
-
               {/* Goals */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -666,22 +653,52 @@ const ProfilePage = () => {
                   LinkedIn Profile *
                 </label>
                 <input
-                  type="url"
+                  type="text"
                   name="linkedinProfile"
                   value={formData.linkedinProfile}
                   onChange={handleChange}
                   required
-                  placeholder="https://linkedin.com/in/yourname"
+                  placeholder="e.g., https://linkedin.com/in/yourname or just yourname"
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-ajira-accent/50 focus:border-transparent"
                 />
                 <p className="text-sm text-gray-500 mt-1">
-                  Must be a valid LinkedIn profile URL (e.g., https://linkedin.com/in/yourname)
+                  Enter your full LinkedIn profile URL or just your handle (e.g., yourname)
                 </p>
                 {formData.linkedinProfile && !validateLinkedInURL(formData.linkedinProfile) && (
                   <p className="text-sm text-red-600 mt-1">
-                    Please enter a valid LinkedIn URL
+                    Please enter a valid LinkedIn URL or handle
                   </p>
                 )}
+              </div>
+
+              {/* Interests Selection */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Select Your Interests (Ajira Trainings)
+                </label>
+                <p className="text-xs text-blue-600 mb-2">
+                  For each interest you choose, you will be automatically added to the corresponding group in the Community Hub.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {ajiraTrainings.map((interest) => (
+                    <label key={interest} className="flex items-center space-x-2 bg-gray-100 px-3 py-1 rounded-full cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.interests?.includes(interest) || false}
+                        onChange={e => {
+                          setFormData(prev => ({
+                            ...prev,
+                            interests: e.target.checked
+                              ? [...(prev.interests || []), interest]
+                              : (prev.interests || []).filter(i => i !== interest)
+                          }))
+                        }}
+                        className="form-checkbox accent-ajira-accent"
+                      />
+                      <span>{interest}</span>
+                    </label>
+                  ))}
+                </div>
               </div>
 
               {/* Save Button */}
@@ -793,10 +810,6 @@ const ProfilePage = () => {
                         <p className="flex items-center">
                           <Phone className="w-4 h-4 mr-2" />
                           {formData.phoneNumber || 'Not provided'}
-                        </p>
-                        <p className="flex items-center">
-                          <MapPin className="w-4 h-4 mr-2" />
-                          {formData.location || 'Not specified'}
                         </p>
                       </div>
                     </div>

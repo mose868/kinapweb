@@ -81,7 +81,28 @@ router.post('/register', async (req, res) => {
 
   } catch (error) {
     console.error('Registration error:', error);
-    res.status(500).json({ message: 'Registration failed' });
+    
+    // Handle specific MongoDB errors
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyPattern)[0];
+      return res.status(400).json({ 
+        message: `${field} already exists` 
+      });
+    }
+    
+    // Handle validation errors
+    if (error.name === 'ValidationError') {
+      const validationErrors = Object.values(error.errors).map(err => err.message);
+      return res.status(400).json({ 
+        message: 'Validation failed',
+        errors: validationErrors 
+      });
+    }
+    
+    res.status(500).json({ 
+      message: 'Registration failed',
+      error: error.message 
+    });
   }
 });
 

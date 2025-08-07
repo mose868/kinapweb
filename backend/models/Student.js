@@ -7,7 +7,7 @@ const studentSchema = new mongoose.Schema(
     idNo: { type: String },
     course: { type: String },
     year: { type: String },
-    skills: { type: String },
+    skills: [{ type: String }], // Changed to array to match frontend
     experience: { type: String },
     email: { type: String, required: true, unique: true },
     phone: { type: String },

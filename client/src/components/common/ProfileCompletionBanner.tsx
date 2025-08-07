@@ -25,7 +25,7 @@ const ProfileCompletionBanner: React.FC<ProfileCompletionBannerProps> = ({
       case 'community':
         return {
           title: 'Complete Your Profile to Access Community Hub',
-          description: 'Join discussions, connect with other members, and participate in community activities.',
+          description: 'Help us understand your interests to match you with the right community groups. Your profile helps create better learning communities.',
           icon: <Users className="w-6 h-6" />,
           color: 'bg-blue-50 border-blue-200 text-blue-800'
         };

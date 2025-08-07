@@ -11,7 +11,7 @@ interface FormData {
   password: string
   confirmPassword?: string
   displayName: string
-  role: UserRole
+  // role: UserRole // Remove role
   phoneNumber?: string
   course?: string
   year?: string
@@ -52,7 +52,7 @@ const AuthPage = () => {
     password: '',
     confirmPassword: '',
     displayName: '',
-    role: 'student',
+    // role: 'student', // Remove role
     phoneNumber: '',
     course: '',
     year: '',
@@ -74,7 +74,16 @@ const AuthPage = () => {
   // Handle auth errors
   useEffect(() => {
     if (authError) {
-      setError(authError.message || 'Authentication failed')
+      // Handle different error formats
+      let errorMessage = 'Authentication failed'
+      
+      if (typeof authError === 'string') {
+        errorMessage = authError
+      } else if (authError && typeof authError === 'object') {
+        errorMessage = authError.message || authError.statusText || 'Authentication failed'
+      }
+      
+      setError(errorMessage)
     }
   }, [authError])
 
@@ -100,9 +109,10 @@ const AuthPage = () => {
         }
 
         // Sign up with Better Auth
+        console.log('Attempting sign up with:', formData.email)
         const result = await signUp(formData.email, formData.password, {
           displayName: formData.displayName,
-          role: formData.role,
+          // role: formData.role, // Remove role
           phoneNumber: formData.phoneNumber,
           course: formData.course,
           year: formData.year,
@@ -114,6 +124,8 @@ const AuthPage = () => {
           interests: formData.interests
         })
 
+        console.log('Sign up result:', result)
+
         if (result?.error) {
           setError(result.error)
         } else {
@@ -124,8 +136,11 @@ const AuthPage = () => {
         }
       } else {
         // Sign in with Better Auth
+        console.log('Attempting sign in with:', formData.email)
         const result = await signIn(formData.email, formData.password)
         
+        console.log('Sign in result:', result)
+
         if (result?.error) {
           setError(result.error)
         } else {
@@ -136,6 +151,7 @@ const AuthPage = () => {
         }
       }
     } catch (error: any) {
+      console.error('Auth error:', error)
       setError(error.message || 'Authentication failed')
     }
   }
@@ -336,7 +352,8 @@ const AuthPage = () => {
                 />
               </div>
 
-              <div>
+              {/* Role Field */}
+              {/* <div>
                 <label htmlFor="role" className="block text-sm font-medium text-gray-700">
                   Role
                 </label>
@@ -351,7 +368,7 @@ const AuthPage = () => {
                   <option value="mentor">Mentor</option>
                   <option value="admin">Admin</option>
                 </select>
-              </div>
+              </div> */}
             </>
           )}
 

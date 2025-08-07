@@ -4,11 +4,11 @@ const Schema = mongoose.Schema;
 const GroupSchema = new Schema({
   name: { type: String, required: true },
   avatar: { type: String },
-  members: [{ type: Schema.Types.ObjectId, ref: 'User' }],
-  admins: [{ type: Schema.Types.ObjectId, ref: 'User' }],
+  members: [{ type: Schema.Types.ObjectId, ref: 'Student' }],
+  admins: [{ type: Schema.Types.ObjectId, ref: 'Student' }],
   messages: [{ type: Schema.Types.ObjectId, ref: 'Message' }],
   description: { type: String },
-  createdBy: { type: Schema.Types.ObjectId, ref: 'User' },
+  createdBy: { type: Schema.Types.ObjectId, ref: 'Student' },
 }, { timestamps: true });
 
 module.exports = mongoose.model('Group', GroupSchema); 
