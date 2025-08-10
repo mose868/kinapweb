@@ -524,12 +524,52 @@ router.post('/signout', async (req, res) => {
 
 router.get('/session', async (req, res) => {
   try {
-    // Use Better Auth's getSession method
-    const session = await auth.getSession();
+    // Get user from token
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({
+        success: false,
+        message: 'No authorization token provided'
+      });
+    }
+    
+    const token = authHeader.substring(7);
+    
+    // Verify token and get user
+    const jwt = require('jsonwebtoken');
+    const decoded = jwt.verify(token, process.env.BETTER_AUTH_SECRET || 'your-secret-key');
+    
+    if (!decoded || !decoded.userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid token'
+      });
+    }
+    
+    // Find user
+    const user = await User.findById(decoded.userId).select('-password');
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+    
+    // Check if session has expired
+    if (user.sessionExpiresAt && user.sessionExpiresAt < new Date()) {
+      return res.status(401).json({
+        success: false,
+        message: 'Session expired',
+        sessionExpired: true
+      });
+    }
     
     res.json({ 
       success: true, 
-      session,
+      session: {
+        user: user,
+        expiresAt: user.sessionExpiresAt
+      },
       message: 'Session retrieved successfully' 
     });
   } catch (error) {
