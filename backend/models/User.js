@@ -72,8 +72,20 @@ const UserSchema = new Schema({
     userAgent: { type: String },
     location: { type: String },
     success: { type: Boolean },
-    method: { type: String, enum: ['password', 'google', 'biometric'] }
-  }]
+    method: { type: String, enum: ['password', 'google', 'biometric', 'verification'] }
+  }],
+  
+  // Password reset fields
+  resetPasswordToken: { type: String },
+  resetPasswordExpires: { type: Date },
+  
+  // Verification code fields
+  verificationCode: { type: String },
+  verificationCodeExpires: { type: Date },
+  
+  // Session activity tracking
+  lastActivity: { type: Date },
+  sessionExpiresAt: { type: Date }
 }, { timestamps: true });
 
 module.exports = mongoose.model('User', UserSchema); 

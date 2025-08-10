@@ -16,7 +16,13 @@ interface UploadOptions {
 const defaultOptions: UploadOptions = {
   folder: 'uploads',
   maxSizeMB: 100, // 100MB
-  allowedTypes: ['image/jpeg', 'image/png', 'image/gif', 'video/mp4', 'video/webm'],
+  allowedTypes: [
+    'image/jpeg',
+    'image/png',
+    'image/gif',
+    'video/mp4',
+    'video/webm',
+  ],
   onProgress: () => {},
 };
 
@@ -187,5 +193,5 @@ export const ChatStorage = {
       console.error('Error loading chat settings:', error);
       return null;
     }
-  }
-}; 
+  },
+};

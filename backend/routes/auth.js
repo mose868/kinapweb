@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const { auth } = require('../middleware/auth');
+const { auth: betterAuth } = require('../auth');
 
 // Register new user
 router.post('/register', async (req, res) => {
@@ -399,69 +400,83 @@ router.put('/change-password', auth, async (req, res) => {
   }
 });
 
-// Forgot password (send reset email)
+// Forgot Password - Use Better Auth
 router.post('/forgot-password', async (req, res) => {
   try {
     const { email } = req.body;
 
-    const user = await User.findOne({ email });
-    if (!user) {
-      // Don't reveal if user exists or not
-      return res.json({ message: 'If an account with that email exists, a reset link has been sent' });
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email is required'
+      });
     }
 
-    // Generate reset token
-    const resetToken = jwt.sign(
-      { userId: user._id, type: 'password-reset' },
-      process.env.JWT_SECRET,
-      { expiresIn: '1h' }
-    );
+    // Use Better Auth's forgot password functionality
+    const result = await betterAuth.forgotPassword(email);
 
-    // In a real app, send email with reset link
-    // For now, just return the token
-    res.json({ 
-      message: 'Password reset link sent to your email',
-      resetToken // Remove this in production
+    res.json({
+      success: true,
+      message: 'If an account with that email exists, a password reset link has been sent.'
     });
 
   } catch (error) {
     console.error('Forgot password error:', error);
-    res.status(500).json({ message: 'Failed to process request' });
+    res.status(500).json({
+      success: false,
+      message: 'Failed to process password reset request'
+    });
   }
 });
 
-// Reset password
+// Reset Password - Use Better Auth
 router.post('/reset-password', async (req, res) => {
   try {
-    const { resetToken, newPassword } = req.body;
+    const { token, password } = req.body;
 
-    // Verify reset token
-    const decoded = jwt.verify(resetToken, process.env.JWT_SECRET);
-    if (decoded.type !== 'password-reset') {
-      return res.status(400).json({ message: 'Invalid reset token' });
+    if (!token || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Token and new password are required'
+      });
     }
 
-    const user = await User.findById(decoded.userId);
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
+    // Use Better Auth's reset password functionality
+    const result = await betterAuth.resetPassword(token, password);
 
-    // Hash new password
-    const saltRounds = 12;
-    const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
-
-    // Update password
-    user.password = hashedPassword;
-    await user.save();
-
-    res.json({ message: 'Password reset successfully' });
+    res.json({
+      success: true,
+      message: 'Password has been reset successfully'
+    });
 
   } catch (error) {
     console.error('Reset password error:', error);
-    if (error.name === 'JsonWebTokenError') {
-      return res.status(400).json({ message: 'Invalid or expired reset token' });
-    }
-    res.status(500).json({ message: 'Failed to reset password' });
+    res.status(500).json({
+      success: false,
+      message: 'Failed to reset password'
+    });
+  }
+});
+
+// Verify reset token - Use Better Auth
+router.get('/verify-reset-token/:token', async (req, res) => {
+  try {
+    const { token } = req.params;
+
+    // Use Better Auth's token verification
+    const result = await betterAuth.verifyResetToken(token);
+
+    res.json({
+      success: true,
+      message: 'Token is valid'
+    });
+
+  } catch (error) {
+    console.error('Verify reset token error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to verify token'
+    });
   }
 });
 

@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const mongoose = require('mongoose');
 const Group = require('../models/Group');
 const User = require('../models/User');
 
@@ -200,6 +201,27 @@ router.post('/user', async (req, res) => {
       return res.status(400).json({ error: 'Email is required' });
     }
 
+    // If MongoDB is not connected, return a safe default to avoid 500s on Community page
+    const isDbConnected = mongoose.connection.readyState === 1; // 1: connected
+    if (!isDbConnected) {
+      return res.json({
+        groups: [
+          {
+            _id: 'kinap-ai-offline',
+            name: 'Kinap AI',
+            description:
+              'Your AI assistant for programming help, study guidance, and career advice',
+            members: [],
+            admins: [],
+            createdBy: null,
+            avatar:
+              'https://ui-avatars.com/api/?name=Kinap+AI&background=8B5CF6&color=FFFFFF&bold=true&size=150',
+            type: 'ai',
+          },
+        ],
+      });
+    }
+
     // First fetch both collections
     const Student = require('../models/Student');
     const User = require('../models/User');
@@ -208,24 +230,61 @@ router.post('/user', async (req, res) => {
     let studentDoc = await Student.findOne({ email });
 
     // Prefer studentDoc for group membership (because Group refs Student)
-    const primaryDoc = studentDoc || userDoc;
+    let primaryDoc = studentDoc || userDoc;
+    
+    // If no user found, create a basic user document to ensure groups work
     if (!primaryDoc) {
-      return res.status(404).json({ error: 'User not found in either collection' });
+      console.log('⚠️ User not found, creating basic user document for:', email);
+      try {
+        // Generate a unique username from email
+        const emailPrefix = email.split('@')[0];
+        let username = emailPrefix;
+        let counter = 1;
+        
+        // Check if username already exists and generate a unique one
+        while (await User.findOne({ username })) {
+          username = `${emailPrefix}${counter}`;
+          counter++;
+        }
+        
+        const basicUser = new User({
+          username: username,
+          email: email,
+          displayName: email.split('@')[0], // Use email prefix as display name
+          skills: ['Web Development', 'Programming'], // Default skills
+          interests: ['Technology', 'Learning'], // Default interests
+          createdAt: new Date(),
+          updatedAt: new Date()
+        });
+        await basicUser.save();
+        primaryDoc = basicUser;
+        console.log('✅ Created basic user document with ID:', primaryDoc._id);
+      } catch (createError) {
+        console.error('❌ Failed to create user document:', createError);
+        return res.status(500).json({ error: 'Failed to create user profile' });
+      }
     }
 
-    // Merge skills / interests
+    // Merge skills / interests with fallbacks
     let mergedSkills = [];
     let mergedInterests = [];
     if (studentDoc && Array.isArray(studentDoc.skills)) mergedSkills = mergedSkills.concat(studentDoc.skills);
     if (userDoc && Array.isArray(userDoc.skills)) mergedSkills = mergedSkills.concat(userDoc.skills);
     if (studentDoc && Array.isArray(studentDoc.interests)) mergedInterests = mergedInterests.concat(studentDoc.interests);
     if (userDoc && Array.isArray(userDoc.interests)) mergedInterests = mergedInterests.concat(userDoc.interests);
+    
+    // If no skills/interests found, use defaults
+    if (mergedSkills.length === 0) {
+      mergedSkills = ['Web Development', 'Programming', 'Technology'];
+    }
+    if (mergedInterests.length === 0) {
+      mergedInterests = ['Learning', 'Career Growth', 'Community'];
+    }
+    
     mergedSkills = [...new Set(mergedSkills.filter(Boolean))];
     mergedInterests = [...new Set(mergedInterests.filter(Boolean))];
 
     console.log('👤 Email:', email, '\n   Skills:', mergedSkills, '\n   Interests:', mergedInterests);
-
-    // replace uses of user with primaryDoc, userSkills with mergedSkills, userInterests with mergedInterests, and user._id with primaryDoc._id
 
     // Find groups where the user is a member
     const groups = await Group.find({ 
@@ -265,7 +324,6 @@ router.post('/user', async (req, res) => {
     console.log('📊 Current groups for user:', allGroups.map(g => g.name));
 
     // Always ensure user is added to groups based on their skills
-    let userSkills = [];
     if (mergedSkills.length > 0) {
       console.log('🎯 Processing user skills:', mergedSkills);
       
@@ -306,7 +364,6 @@ router.post('/user', async (req, res) => {
     }
 
     // Always ensure user is added to groups based on their interests
-    let userInterests = [];
     if (mergedInterests.length > 0) {
       console.log('🎯 Processing user interests:', mergedInterests);
       

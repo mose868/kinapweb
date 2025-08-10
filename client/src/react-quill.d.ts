@@ -4,7 +4,12 @@ declare module 'react-quill' {
   // Minimal props definition; extend/add as needed for richer typing
   export interface ReactQuillProps {
     value?: string;
-    onChange?: (content: string, delta: any, source: string, editor: any) => void;
+    onChange?: (
+      content: string,
+      delta: any,
+      source: string,
+      editor: any
+    ) => void;
     placeholder?: string;
     className?: string;
     theme?: string;
@@ -14,4 +19,4 @@ declare module 'react-quill' {
 
   class ReactQuill extends React.Component<ReactQuillProps> {}
   export default ReactQuill;
-} 
+}

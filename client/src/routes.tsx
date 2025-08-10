@@ -9,10 +9,10 @@ import SearchResults from './pages/marketplace/SearchResults';
 import OrderPage from './pages/orders/OrderPage';
 import OrdersList from './pages/orders/OrdersList';
 import AuthPage from './pages/AuthPage';
+import EmailVerificationPage from './pages/EmailVerificationPage';
 import ProfilePage from './pages/ProfilePage';
 import NotificationsPage from './pages/notifications/NotificationsPage';
 import ProtectedRoute from './components/auth/ProtectedRoute';
-
 
 // Import organized pages
 import CommunityPage from './pages/community/CommunityPage';
@@ -34,6 +34,8 @@ import PrivacyPolicy from './pages/legal/PrivacyPolicy';
 import Terms from './pages/legal/Terms';
 import BecomeSeller from './pages/BecomeSeller';
 import HistoryPage from './pages/content/HistoryPage';
+import BiometricTest from './components/auth/BiometricTest';
+import ResetPassword from './components/auth/ResetPassword';
 import ShortsPage from './pages/content/ShortsPage';
 import PlaylistsPage from './pages/content/PlaylistsPage';
 import SubscriptionsPage from './pages/content/SubscriptionsPage';
@@ -69,7 +71,7 @@ export const routes: RouteConfig[] = [
       <Layout>
         <HomePage />
       </Layout>
-    )
+    ),
   },
   {
     path: '/about',
@@ -77,7 +79,7 @@ export const routes: RouteConfig[] = [
       <Layout>
         <About />
       </Layout>
-    )
+    ),
   },
   {
     path: '/community',
@@ -85,7 +87,7 @@ export const routes: RouteConfig[] = [
       <Layout>
         <CommunityPage />
       </Layout>
-    )
+    ),
   },
 
   {
@@ -94,7 +96,7 @@ export const routes: RouteConfig[] = [
       <Layout>
         <Videos />
       </Layout>
-    )
+    ),
   },
   {
     path: '/events',
@@ -102,7 +104,7 @@ export const routes: RouteConfig[] = [
       <Layout>
         <EventsPage />
       </Layout>
-    )
+    ),
   },
   {
     path: '/testimonials',
@@ -110,7 +112,7 @@ export const routes: RouteConfig[] = [
       <Layout>
         <TestimonialsPage />
       </Layout>
-    )
+    ),
   },
   {
     path: '/blog',
@@ -118,7 +120,7 @@ export const routes: RouteConfig[] = [
       <Layout>
         <Blog />
       </Layout>
-    )
+    ),
   },
   {
     path: '/ambassador',
@@ -126,7 +128,7 @@ export const routes: RouteConfig[] = [
       <Layout>
         <AmbassadorPage />
       </Layout>
-    )
+    ),
   },
   {
     path: '/showcase',
@@ -134,7 +136,7 @@ export const routes: RouteConfig[] = [
       <Layout>
         <ShowcasePage />
       </Layout>
-    )
+    ),
   },
   {
     path: '/updates',
@@ -142,7 +144,7 @@ export const routes: RouteConfig[] = [
       <Layout>
         <UpdatesPage />
       </Layout>
-    )
+    ),
   },
   {
     path: '/team',
@@ -150,7 +152,7 @@ export const routes: RouteConfig[] = [
       <Layout>
         <TeamPage />
       </Layout>
-    )
+    ),
   },
   {
     path: '/training',
@@ -158,7 +160,7 @@ export const routes: RouteConfig[] = [
       <Layout>
         <TrainingPage />
       </Layout>
-    )
+    ),
   },
   {
     path: '/mentorship',
@@ -166,7 +168,7 @@ export const routes: RouteConfig[] = [
       <Layout>
         <MentorshipPage />
       </Layout>
-    )
+    ),
   },
   {
     path: '/mentorship/apply',
@@ -174,7 +176,7 @@ export const routes: RouteConfig[] = [
       <Layout>
         <ApplyAsMentor />
       </Layout>
-    )
+    ),
   },
   {
     path: '/mentor/dashboard',
@@ -182,7 +184,7 @@ export const routes: RouteConfig[] = [
       <Layout>
         <MentorDashboard />
       </Layout>
-    )
+    ),
   },
   {
     path: '/faq',
@@ -190,7 +192,7 @@ export const routes: RouteConfig[] = [
       <Layout>
         <FaqPage />
       </Layout>
-    )
+    ),
   },
   {
     path: '/contact',
@@ -198,7 +200,7 @@ export const routes: RouteConfig[] = [
       <Layout>
         <Contact />
       </Layout>
-    )
+    ),
   },
 
   {
@@ -207,7 +209,7 @@ export const routes: RouteConfig[] = [
       <Layout>
         <BecomeSeller />
       </Layout>
-    )
+    ),
   },
   {
     path: '/privacy',
@@ -215,7 +217,7 @@ export const routes: RouteConfig[] = [
       <Layout>
         <PrivacyPolicy />
       </Layout>
-    )
+    ),
   },
   {
     path: '/terms',
@@ -223,7 +225,7 @@ export const routes: RouteConfig[] = [
       <Layout>
         <Terms />
       </Layout>
-    )
+    ),
   },
   {
     path: '/marketplace',
@@ -233,7 +235,7 @@ export const routes: RouteConfig[] = [
           <MarketplacePage />
         </MarketplaceLayout>
       </Layout>
-    )
+    ),
   },
   {
     path: '/marketplace/gigs/:gigId',
@@ -243,7 +245,7 @@ export const routes: RouteConfig[] = [
           <GigDetailPage />
         </MarketplaceLayout>
       </Layout>
-    )
+    ),
   },
   {
     path: '/marketplace/create',
@@ -255,7 +257,7 @@ export const routes: RouteConfig[] = [
           </ProtectedRoute>
         </MarketplaceLayout>
       </Layout>
-    )
+    ),
   },
   {
     path: '/marketplace/search',
@@ -265,7 +267,7 @@ export const routes: RouteConfig[] = [
           <SearchResults />
         </MarketplaceLayout>
       </Layout>
-    )
+    ),
   },
   {
     path: '/orders',
@@ -275,7 +277,7 @@ export const routes: RouteConfig[] = [
           <OrdersList />
         </ProtectedRoute>
       </Layout>
-    )
+    ),
   },
   {
     path: '/orders/:orderId',
@@ -285,7 +287,7 @@ export const routes: RouteConfig[] = [
           <OrderPage />
         </ProtectedRoute>
       </Layout>
-    )
+    ),
   },
   {
     path: '/notifications',
@@ -295,11 +297,15 @@ export const routes: RouteConfig[] = [
           <NotificationsPage />
         </ProtectedRoute>
       </Layout>
-    )
+    ),
   },
   {
     path: '/auth',
-    element: <AuthPage />
+    element: <AuthPage />,
+  },
+  {
+    path: '/verify-email',
+    element: <EmailVerificationPage />,
   },
 
   {
@@ -310,7 +316,7 @@ export const routes: RouteConfig[] = [
           <ProfilePage />
         </ProtectedRoute>
       </Layout>
-    )
+    ),
   },
   {
     path: '/history',
@@ -318,7 +324,7 @@ export const routes: RouteConfig[] = [
       <Layout>
         <HistoryPage />
       </Layout>
-    )
+    ),
   },
   {
     path: '/shorts',
@@ -326,7 +332,7 @@ export const routes: RouteConfig[] = [
       <Layout>
         <ShortsPage />
       </Layout>
-    )
+    ),
   },
   {
     path: '/playlists',
@@ -334,7 +340,7 @@ export const routes: RouteConfig[] = [
       <Layout>
         <PlaylistsPage />
       </Layout>
-    )
+    ),
   },
   {
     path: '/subscriptions',
@@ -342,7 +348,7 @@ export const routes: RouteConfig[] = [
       <Layout>
         <SubscriptionsPage />
       </Layout>
-    )
+    ),
   },
   {
     path: '/watch-later',
@@ -350,7 +356,7 @@ export const routes: RouteConfig[] = [
       <Layout>
         <WatchLaterPage />
       </Layout>
-    )
+    ),
   },
   {
     path: '/liked-videos',
@@ -358,7 +364,7 @@ export const routes: RouteConfig[] = [
       <Layout>
         <LikedVideosPage />
       </Layout>
-    )
+    ),
   },
   {
     path: '/your-videos',
@@ -366,87 +372,87 @@ export const routes: RouteConfig[] = [
       <Layout>
         <YourVideosPage />
       </Layout>
-    )
+    ),
   },
   {
     path: '/admin',
     element: (
-      <ProtectedRoute requiredRole="admin">
+      <ProtectedRoute requiredRole='admin'>
         <AdminDashboard />
       </ProtectedRoute>
-    )
+    ),
   },
   {
     path: '/admin/about-us',
     element: (
-      <ProtectedRoute requiredRole="admin">
+      <ProtectedRoute requiredRole='admin'>
         <AboutUsAdmin />
       </ProtectedRoute>
-    )
+    ),
   },
   {
     path: '/admin/team',
     element: (
-      <ProtectedRoute requiredRole="admin">
+      <ProtectedRoute requiredRole='admin'>
         <TeamAdmin />
       </ProtectedRoute>
-    )
+    ),
   },
   {
     path: '/admin/updates',
     element: (
-      <ProtectedRoute requiredRole="admin">
+      <ProtectedRoute requiredRole='admin'>
         <UpdatesAdmin />
       </ProtectedRoute>
-    )
+    ),
   },
   {
     path: '/admin/faq',
     element: (
-      <ProtectedRoute requiredRole="admin">
+      <ProtectedRoute requiredRole='admin'>
         <FAQAdmin />
       </ProtectedRoute>
-    )
+    ),
   },
   {
     path: '/admin/contact',
     element: (
-      <ProtectedRoute requiredRole="admin">
+      <ProtectedRoute requiredRole='admin'>
         <ContactAdmin />
       </ProtectedRoute>
-    )
+    ),
   },
   {
     path: '/admin/training',
     element: (
-      <ProtectedRoute requiredRole="admin">
+      <ProtectedRoute requiredRole='admin'>
         <TrainingAdmin />
       </ProtectedRoute>
-    )
+    ),
   },
   {
     path: '/admin/mentorship',
     element: (
-      <ProtectedRoute requiredRole="admin">
+      <ProtectedRoute requiredRole='admin'>
         <MentorshipAdmin />
       </ProtectedRoute>
-    )
+    ),
   },
   {
     path: '/admin/events',
     element: (
-      <ProtectedRoute requiredRole="admin">
+      <ProtectedRoute requiredRole='admin'>
         <EventsAdmin />
       </ProtectedRoute>
-    )
+    ),
   },
   {
     path: '/admin/mentor-applications',
     element: (
-      <ProtectedRoute requiredRole="admin">
+      <ProtectedRoute requiredRole='admin'>
         <MentorApplicationsAdmin />
       </ProtectedRoute>
-    )
+    ),
   },
   {
     path: '/profile',
@@ -454,6 +460,20 @@ export const routes: RouteConfig[] = [
       <ProtectedRoute>
         <ProfilePage />
       </ProtectedRoute>
-    )
-  }
-]; 
+    ),
+  },
+  {
+    path: '/biometric-test',
+    element: (
+      <Layout>
+        <div className="min-h-screen bg-gray-50 py-8">
+          <BiometricTest />
+        </div>
+      </Layout>
+    ),
+  },
+  {
+    path: '/reset-password',
+    element: <ResetPassword />,
+  },
+];

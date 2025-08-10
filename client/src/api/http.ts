@@ -13,4 +13,6 @@ http.interceptors.request.use((config) => {
   return config;
 });
 
-export default http; 
+// Export both default and named export for compatibility
+export const api = http;
+export default http;

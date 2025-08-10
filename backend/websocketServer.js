@@ -63,6 +63,13 @@ class WebSocketServer {
     }
 
     switch (type) {
+      case 'ping':
+        this.sendToClient(clientId, {
+          type: 'pong',
+          data: { timestamp: Date.now() }
+        });
+        break;
+      
       case 'join_community':
         await this.handleJoinCommunity(clientId, data);
         break;
@@ -104,11 +111,12 @@ class WebSocketServer {
         break;
       
       default:
-        console.warn('Unknown message type:', type);
+        console.warn(`Unknown message type: ${type}`);
         this.sendToClient(clientId, {
           type: 'error',
-          data: { message: 'Unknown message type' }
+          data: { message: `Unknown message type: ${type}` }
         });
+        break;
     }
   }
 
@@ -240,8 +248,8 @@ class WebSocketServer {
         }
       };
 
-      // Broadcast to all users in the group
-      this.broadcastToGroup(groupId, broadcastMessage);
+      // Broadcast to all users in the group except the sender
+      this.broadcastToGroup(groupId, broadcastMessage, clientId);
       
       console.log(`💬 Message saved and broadcasted: ${savedMessage._id} in group ${groupId}`);
       console.log(`📤 Broadcasting to ${this.groups.get(groupId)?.size || 0} clients in group ${groupId}`);

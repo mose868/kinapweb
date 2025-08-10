@@ -2,26 +2,31 @@ import { useState } from 'react';
 import { NotificationsList } from '../../components/notifications';
 import { Bell } from 'lucide-react';
 
-type NotificationFilter = 'all' | 'unread' | 'message' | 'order' | 'review' | 'payment' | 'system';
+type NotificationFilter =
+  | 'all'
+  | 'unread'
+  | 'message'
+  | 'order'
+  | 'review'
+  | 'payment'
+  | 'system';
 
 const NotificationsPage = () => {
   const [filter, setFilter] = useState<NotificationFilter>('all');
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8">
+    <div className='max-w-4xl mx-auto px-4 py-8'>
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div className="flex items-center gap-3">
-          <Bell className="w-8 h-8 text-ajira-primary" />
-          <h1 className="text-2xl font-bold text-gray-900">
-            Notifications
-          </h1>
+      <div className='flex items-center justify-between mb-8'>
+        <div className='flex items-center gap-3'>
+          <Bell className='w-8 h-8 text-ajira-primary' />
+          <h1 className='text-2xl font-bold text-gray-900'>Notifications</h1>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-lg shadow-sm p-4 mb-6">
-        <div className="flex flex-wrap gap-2">
+      <div className='bg-white rounded-lg shadow-sm p-4 mb-6'>
+        <div className='flex flex-wrap gap-2'>
           <button
             onClick={() => setFilter('all')}
             className={`px-4 py-2 rounded-lg text-sm font-medium ${
@@ -96,11 +101,11 @@ const NotificationsPage = () => {
       </div>
 
       {/* Notifications List */}
-      <div className="bg-white rounded-lg shadow-sm p-6">
+      <div className='bg-white rounded-lg shadow-sm p-6'>
         <NotificationsList />
       </div>
     </div>
   );
 };
 
-export default NotificationsPage; 
+export default NotificationsPage;

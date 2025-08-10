@@ -13,19 +13,18 @@ const systemPrompt = `You are Kinap Ajira Assistant, a helpful assistant for the
 6. Technical support for video uploads
 7. General questions about digital skills and online work
 
-Please focus primarily on Kinap Ajira Club related questions and be friendly, professional, and concise in your responses. If you don't know something, say so and suggest where they might find the information.`
+Please focus primarily on Kinap Ajira Club related questions and be friendly, professional, and concise in your responses. If you don't know something, say so and suggest where they might find the information.`;
 
 type Message = {
-  role: 'system' | 'user' | 'assistant'
-  content: string
-}
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+};
 
 export const generateChatResponse = async (messages: Message[]) => {
   try {
     // Get the last user message
-    const lastUserMessage = messages
-      .filter(msg => msg.role === 'user')
-      .pop()?.content || '';
+    const lastUserMessage =
+      messages.filter((msg) => msg.role === 'user').pop()?.content || '';
 
     if (!lastUserMessage) {
       throw new Error('No user message found');
@@ -38,8 +37,8 @@ export const generateChatResponse = async (messages: Message[]) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        message: lastUserMessage
-      })
+        message: lastUserMessage,
+      }),
     });
 
     if (!response.ok) {
@@ -50,12 +49,12 @@ export const generateChatResponse = async (messages: Message[]) => {
 
     return {
       message: data.message || 'Sorry, I could not generate a response.',
-    }
+    };
   } catch (error) {
-    console.error('Error generating chat response:', error)
-    throw error
+    console.error('Error generating chat response:', error);
+    throw error;
   }
-}
+};
 
 // Kinap AI API functions
 export const kinapAIApi = {
@@ -64,7 +63,7 @@ export const kinapAIApi = {
     try {
       const response = await httpClient.post('/chatbot/kinap-ai', {
         message,
-        conversationId
+        conversationId,
       });
       return response.data;
     } catch (error) {
@@ -76,7 +75,9 @@ export const kinapAIApi = {
   // Get conversation history
   getConversation: async (conversationId: string) => {
     try {
-      const response = await httpClient.get(`/chatbot/kinap-ai/conversation/${conversationId}`);
+      const response = await httpClient.get(
+        `/chatbot/kinap-ai/conversation/${conversationId}`
+      );
       return response.data;
     } catch (error) {
       console.error('Error getting Kinap AI conversation:', error);
@@ -87,11 +88,13 @@ export const kinapAIApi = {
   // Clear conversation
   clearConversation: async (conversationId: string) => {
     try {
-      const response = await httpClient.delete(`/chatbot/kinap-ai/conversation/${conversationId}`);
+      const response = await httpClient.delete(
+        `/chatbot/kinap-ai/conversation/${conversationId}`
+      );
       return response.data;
     } catch (error) {
       console.error('Error clearing Kinap AI conversation:', error);
       throw error;
     }
-  }
-}; 
+  },
+};

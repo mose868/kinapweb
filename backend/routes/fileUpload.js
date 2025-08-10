@@ -26,24 +26,11 @@ const storage = multer.diskStorage({
 const upload = multer({
   storage: storage,
   limits: {
-    fileSize: 50 * 1024 * 1024, // 50MB limit
+    fileSize: 100 * 1024 * 1024, // 100MB limit
   },
   fileFilter: (req, file, cb) => {
-    // Allowed file types
-    const allowedTypes = [
-      'image/jpeg', 'image/png', 'image/gif', 'image/webp',
-      'video/mp4', 'video/webm', 'video/avi', 'video/mov',
-      'audio/mpeg', 'audio/wav', 'audio/ogg',
-      'application/pdf', 'application/msword', 
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      'text/plain', 'application/zip', 'application/x-rar-compressed'
-    ];
-    
-    if (allowedTypes.includes(file.mimetype)) {
-      cb(null, true);
-    } else {
-      cb(new Error('Invalid file type'), false);
-    }
+    // Accept all file types like WhatsApp
+    cb(null, true);
   }
 });
 
@@ -80,7 +67,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       storagePath: req.file.path,
       downloadUrl: `/api/files/download/${req.file.filename}`,
       uploadedBy: uploadedBy,
-      uploadContext: uploadContext || 'general',
+      uploadContext: uploadContext || 'chat',
       relatedId: relatedId,
       status: 'completed'
     });
@@ -132,7 +119,7 @@ router.post('/upload-multiple', upload.array('files', 10), async (req, res) => {
         storagePath: file.path,
         downloadUrl: `/api/files/download/${file.filename}`,
         uploadedBy: uploadedBy,
-        uploadContext: uploadContext || 'general',
+        uploadContext: uploadContext || 'chat',
         relatedId: relatedId,
         status: 'completed'
       });

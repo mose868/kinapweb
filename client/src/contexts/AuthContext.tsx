@@ -1,16 +1,16 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { 
-  loginUser, 
-  registerUser, 
-  getCurrentUser, 
-  updateUserProfile, 
-  logoutUser, 
+import {
+  loginUser,
+  registerUser,
+  getCurrentUser,
+  updateUserProfile,
+  logoutUser,
   verifyToken,
   googleAuth,
   type User,
   type LoginCredentials,
   type RegisterData,
-  type GoogleAuthData
+  type GoogleAuthData,
 } from '../api/auth';
 
 // Remove duplicate interface since we're importing it from auth.ts
@@ -36,7 +36,9 @@ export const useAuth = () => {
   return context;
 };
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -81,14 +83,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (email: string, password: string) => {
     try {
       setError(null);
-      
+
       const credentials: LoginCredentials = { email, password };
       const response = await loginUser(credentials);
-      
+
       localStorage.setItem('token', response.token);
       localStorage.setItem('userData', JSON.stringify(response.user));
       setUser(response.user);
-      
     } catch (error: any) {
       setError(error.message || 'Failed to login');
       throw error;
@@ -98,13 +99,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const googleLogin = async (googleData: GoogleAuthData) => {
     try {
       setError(null);
-      
+
       const response = await googleAuth(googleData);
-      
+
       localStorage.setItem('token', response.token);
       localStorage.setItem('userData', JSON.stringify(response.user));
       setUser(response.user);
-      
     } catch (error: any) {
       setError(error.message || 'Failed to login with Google');
       throw error;
@@ -114,13 +114,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const register = async (userData: RegisterData) => {
     try {
       setError(null);
-      
+
       const response = await registerUser(userData);
-      
+
       localStorage.setItem('token', response.token);
       localStorage.setItem('userData', JSON.stringify(response.user));
       setUser(response.user);
-      
     } catch (error: any) {
       setError(error.message || 'Failed to register');
       throw error;
@@ -150,7 +149,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (!token || !user) {
         throw new Error('Not authenticated');
       }
-      
+
       const updatedUser = await updateUserProfile(user._id, data, token);
       setUser(updatedUser);
       localStorage.setItem('userData', JSON.stringify(updatedUser));
@@ -174,4 +173,4 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
-export default AuthContext; 
+export default AuthContext;

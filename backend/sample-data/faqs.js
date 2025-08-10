@@ -65,7 +65,7 @@ const sampleFAQs = [
   {
     question: "How does the marketplace work?",
     answer: "Our marketplace is a platform where club members can showcase their digital skills and services to potential clients. Members can create service listings (gigs), receive job opportunities, and build their portfolio through real projects. Clients can browse services, hire members, and leave reviews. We facilitate secure payments and provide dispute resolution when needed.",
-    category: "Marketplace",
+    category: "Career",
     tags: ["marketplace", "gigs", "services", "freelancing", "clients"],
     priority: 6,
     isPublished: true,
@@ -80,7 +80,7 @@ const sampleFAQs = [
   {
     question: "Can I post jobs on the marketplace?",
     answer: "Yes, verified employers and clients can post job opportunities on our marketplace. All job postings are reviewed by our team to ensure they meet our quality and safety standards. Jobs must offer fair compensation, clear deliverables, and comply with our community guidelines. There's a small posting fee of KSh 200 for job listings to maintain quality.",
-    category: "Marketplace",
+    category: "Career",
     tags: ["jobs", "employers", "posting", "hiring", "clients"],
     priority: 5,
     isPublished: true,
@@ -95,7 +95,7 @@ const sampleFAQs = [
   {
     question: "What support do you provide to members?",
     answer: "We provide comprehensive support including: one-on-one mentorship with industry professionals, technical support for projects, access to premium learning resources and software, networking opportunities with alumni and partners, career guidance and interview preparation, access to computer labs and high-speed internet, and a supportive community forum for peer help.",
-    category: "Support",
+    category: "General",
     tags: ["support", "mentorship", "resources", "networking", "career-guidance"],
     priority: 7,
     isPublished: true,
@@ -110,7 +110,7 @@ const sampleFAQs = [
   {
     question: "How can I get help if I'm stuck on a project?",
     answer: "Multiple support channels are available: Use our 24/7 chat support for quick questions, visit our physical office during working hours, post in our community forum where peers and mentors respond, join our weekly 'Help Sessions' every Wednesday at 3 PM, or schedule a one-on-one mentorship session. We also have a WhatsApp support group for urgent technical issues.",
-    category: "Support",
+    category: "General",
     tags: ["help", "support", "technical-help", "mentorship", "community"],
     priority: 6,
     isPublished: true,
@@ -140,7 +140,7 @@ const sampleFAQs = [
   {
     question: "What are the requirements to become a verified seller on the marketplace?",
     answer: "To become a verified seller, you must: Complete at least 2 training programs with us, maintain a 4.5+ rating from initial projects, submit 3 portfolio samples, pass a skill assessment test, provide valid ID and contact information, and agree to our seller terms of service. Verification typically takes 3-5 business days and gives you access to premium features and higher-paying projects.",
-    category: "Marketplace",
+    category: "Career",
     tags: ["verification", "seller", "requirements", "marketplace", "premium"],
     priority: 4,
     isPublished: true,
@@ -200,7 +200,7 @@ const sampleFAQs = [
   {
     question: "How can I become a mentor or trainer?",
     answer: "To become a mentor/trainer: Have at least 2 years of industry experience, demonstrate expertise in your field, complete our mentor training program, provide references from previous work/teaching, commit to at least 4 hours per month, and pass a background check. Mentors receive recognition, networking opportunities, and a small stipend for their time.",
-    category: "Mentorship",
+    category: "Training",
     tags: ["mentor", "trainer", "volunteer", "teaching", "expertise"],
     priority: 3,
     isPublished: true,

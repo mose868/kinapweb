@@ -5,8 +5,15 @@ const ChatMessage = require('../models/ChatMessage');
 const router = express.Router();
 
 // Gemini API configuration
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || 'AIzaSyDhj7xhHayAaoFeL8QKkm7c4yhi9b8-lPU'; // Updated API key
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
+
+// Debug API key status
+console.log('🔑 Gemini API Key Status:', {
+  hasKey: !!GEMINI_API_KEY,
+  keyLength: GEMINI_API_KEY ? GEMINI_API_KEY.length : 0,
+  keyPrefix: GEMINI_API_KEY ? GEMINI_API_KEY.substring(0, 10) + '...' : 'NOT SET'
+});
 
 // Enhanced conversation memory with MongoDB persistence
 const MAX_CONVERSATION_HISTORY = 10;
@@ -202,8 +209,9 @@ const getContextualResponse = (intent) => {
 
 // Enhanced Gemini API call with better error handling and faster responses
 const callGeminiAPI = async (userMessage, conversationHistory = []) => {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT);
+  console.log('🚀 Attempting Gemini API call...');
+  console.log('🔑 API Key length:', GEMINI_API_KEY ? GEMINI_API_KEY.length : 'NOT SET');
+  console.log('🌐 API URL:', GEMINI_API_URL);
   
   try {
     // Create context-aware prompt for Gemini with mandatory emoji usage
@@ -251,8 +259,7 @@ EMOJI GUIDELINES:
         temperature: 0.7,
         topK: 40,
         topP: 0.95,
-        maxOutputTokens: 200, // Shorter responses for speed
-        stopSequences: []
+        maxOutputTokens: 1024
       },
       safetySettings: [
         {
@@ -274,38 +281,50 @@ EMOJI GUIDELINES:
       ]
     };
 
-    const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-      signal: controller.signal
-    });
-
-    clearTimeout(timeoutId);
-
-    if (!response.ok) {
-      throw new Error(`Gemini API error: ${response.status} ${response.statusText}`);
+    // Create AbortController for timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT);
+    
+    try {
+      const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) {
+        let errorBody = '';
+        try {
+          errorBody = await response.text();
+        } catch {}
+        throw new Error(`Gemini API error: ${response.status} ${response.statusText} - ${errorBody}`);
+      }
+      
+      const data = await response.json();
+      
+      if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) {
+        const response = data.candidates[0].content.parts[0].text.trim();
+        console.log('✅ Gemini API call successful!');
+        console.log('📝 Response length:', response.length);
+        return response;
+      }
+      
+      throw new Error('Invalid response format from Gemini API');
+      
+    } catch (error) {
+      clearTimeout(timeoutId);
+      if (error.name === 'AbortError') {
+        throw new Error('Gemini API request timed out');
+      }
+            throw error;
     }
-
-    const data = await response.json();
-    
-    if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) {
-      return data.candidates[0].content.parts[0].text.trim();
-    }
-    
-    throw new Error('Invalid response format from Gemini API');
-    
   } catch (error) {
-    clearTimeout(timeoutId);
-    
-    if (error.name === 'AbortError') {
-      console.log('🕐 Gemini API timeout, using fallback');
-    } else {
-      console.error('🚨 Gemini API error:', error.message);
-    }
-    
+    console.error('🚨 Gemini API error:', error.message);
     throw error;
   }
 };
@@ -463,7 +482,7 @@ const generateResponse = async (userMessage, conversationId, userId = null) => {
     // Extract user name if this is a personal introduction
     const userName = intent === 'personal_intro' ? extractUserName(userMessage) : null;
     
-    // Try Gemini API first for more sophisticated responses
+    // Prefer Gemini if enabled; otherwise try Gemini
     if (GEMINI_API_KEY) {
       try {
         // Add user name to context if available
@@ -504,6 +523,17 @@ const generateResponse = async (userMessage, conversationId, userId = null) => {
         
       } catch (geminiError) {
         console.log('⚠️ Gemini API failed, switching to intelligent fallback');
+        console.error('Gemini error details:', geminiError.message);
+        
+        // Better error handling with specific messages
+        if (geminiError.name === 'AbortError' || geminiError.message.includes('timeout')) {
+          console.log('🕐 Gemini API timeout, using fallback');
+        } else if (geminiError.message.includes('403') || geminiError.message.includes('401')) {
+          console.log('🔐 Gemini API authentication error');
+        } else if (geminiError.message.includes('429')) {
+          console.log('📊 Gemini API rate limit exceeded');
+        }
+        
         // Fall through to contextual fallback
       }
     }
@@ -576,12 +606,22 @@ const generateConversationId = () => {
 // Save message to MongoDB
 const saveMessage = async (conversationId, userId, role, content, messageType = 'chatbot', metadata = {}) => {
   try {
+    // Ensure required fields for ChatMessage schema are present
+    const messageId = Date.now().toString();
+    const groupId = messageType === 'kinap-ai' ? 'kinap-ai-fallback' : 'chatbot-fallback';
+
     const message = new ChatMessage({
+      messageId,
+      groupId,
       conversationId,
       userId,
       role,
+      // Mirror content into `message` to satisfy schema while keeping a single source of truth
+      message: content,
       content,
       messageType,
+      // Mark AI messages for analytics/filters
+      isAIMessage: role !== 'user',
       metadata
     });
     await message.save();
@@ -836,34 +876,19 @@ router.post('/kinap-ai', async (req, res) => {
     // Save user message to MongoDB
     await saveMessage(convId, userId, 'user', message, 'kinap-ai');
 
-    // Create system prompt for Kinap AI
-    const systemPrompt = `You are Kinap AI, a friendly and intelligent AI assistant for the Ajira Digital KiNaP Club community. You help users with:
+    // Create optimized system prompt for Kinap AI
+    const systemPrompt = `You are Kinap AI, a friendly AI assistant for Ajira Digital KiNaP Club. Be helpful, use emojis, keep responses concise (2-3 sentences), and be engaging. Help with mentorship, marketplace, training, and community topics.`;
 
-1. General questions and conversations
-2. Technical assistance and guidance
-3. Creative writing and brainstorming
-4. Problem-solving and analysis
-5. Educational content and explanations
-6. Professional advice and career guidance
-7. Entertainment and casual conversation
-
-Key characteristics:
-- Be helpful, friendly, and engaging
-- Use appropriate emojis to make responses lively
-- Provide detailed, informative answers
-- Ask follow-up questions to keep conversations engaging
-- Be knowledgeable about technology, business, education, and general topics
-- Maintain a professional yet approachable tone
-- Always be respectful and inclusive
-
-Current context: You're chatting with a member of the Ajira Digital KiNaP Club community.`;
-
-    // Call Gemini API
+    // Call Gemini
     let aiResponse;
     if (GEMINI_API_KEY) {
       try {
         // Create a single prompt with system context and user message
         const fullPrompt = `${systemPrompt}\n\nUser: ${message}\n\nKinap AI:`;
+        
+        // Create AbortController for timeout (compatible with older Node.js versions)
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout for faster response
         
         const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
           method: 'POST',
@@ -878,7 +903,7 @@ Current context: You're chatting with a member of the Ajira Digital KiNaP Club c
               temperature: 0.7,
               topK: 40,
               topP: 0.95,
-              maxOutputTokens: 1024,
+              maxOutputTokens: 512, // Reduced for faster responses
             },
             safetySettings: [
               {
@@ -899,9 +924,10 @@ Current context: You're chatting with a member of the Ajira Digital KiNaP Club c
               }
             ]
           }),
-          signal: AbortSignal.timeout(API_TIMEOUT),
-          timeout: API_TIMEOUT
+          signal: controller.signal,
         });
+        
+        clearTimeout(timeoutId);
 
         if (!response.ok) {
           throw new Error(`Gemini API error: ${response.status}`);
@@ -915,6 +941,7 @@ Current context: You're chatting with a member of the Ajira Digital KiNaP Club c
           throw new Error('Invalid response from Gemini API');
         }
       } catch (error) {
+        clearTimeout(timeoutId);
         console.error('❌ Gemini API error:', error.message);
         
         // Better error handling with specific messages
@@ -1017,6 +1044,53 @@ router.delete('/kinap-ai/conversation/:id', async (req, res) => {
     res.status(500).json({ 
       error: 'Failed to clear conversation',
       timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Test endpoint for debugging Gemini API
+router.get('/test-gemini', async (req, res) => {
+  try {
+    res.json({
+      status: 'Gemini API Test',
+      geminiKey: {
+        configured: !!GEMINI_API_KEY,
+        length: GEMINI_API_KEY ? GEMINI_API_KEY.length : 0,
+        prefix: GEMINI_API_KEY ? GEMINI_API_KEY.substring(0, 10) + '...' : 'NOT SET'
+      },
+      apiUrl: GEMINI_API_URL,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: 'Test failed',
+      message: error.message
+    });
+  }
+});
+
+// Simple Gemini test endpoint
+router.post('/test-gemini-call', async (req, res) => {
+  try {
+    if (!GEMINI_API_KEY || GEMINI_API_KEY === 'AIzaSyDhj7xhHayAaoFeL8QKkm7c4yhi9b8-lPU') {
+      return res.status(400).json({
+        error: 'Gemini API key not configured',
+        message: 'Please set GEMINI_API_KEY environment variable'
+      });
+    }
+
+    const testResponse = await callGeminiAPI('Hello, this is a test message');
+    
+    res.json({
+      success: true,
+      response: testResponse,
+      source: 'gemini-ai'
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: 'Gemini API test failed',
+      message: error.message,
+      source: 'fallback'
     });
   }
 });

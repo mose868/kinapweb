@@ -30,17 +30,23 @@ export interface ProfileData {
 const validateLinkedInURL = (url: string): boolean => {
   if (!url.trim()) return false;
   // Accept full URLs or handles
-  const linkedinPattern = /^https?:\/\/(www\.)?linkedin\.com\/in\/[a-zA-Z0-9-_.]+\/?$/;
+  const linkedinPattern =
+    /^https?:\/\/(www\.)?linkedin\.com\/in\/[a-zA-Z0-9-_.]+\/?$/;
   const handlePattern = /^[a-zA-Z0-9-_.]+$/;
   return linkedinPattern.test(url.trim()) || handlePattern.test(url.trim());
 };
 
 // Calculate profile completion percentage
-export const calculateProfileCompletion = (profileData: ProfileData): number => {
+export const calculateProfileCompletion = (
+  profileData: ProfileData
+): number => {
+  // Ensure profileData is not undefined
+  const safeProfileData = profileData || {};
+  
   // Define all required fields for 100% completion (removed location and preferredLearningMode)
   const requiredFields = [
     'displayName',
-    'email', 
+    'email',
     'photoURL',
     'bio',
     // 'location', // Remove location
@@ -52,15 +58,15 @@ export const calculateProfileCompletion = (profileData: ProfileData): number => 
     // 'preferredLearningMode', // Remove preferredLearningMode
     'linkedinProfile',
     'phoneNumber',
-    'idNumber'
+    'idNumber',
   ];
 
   let completed = 0;
   let total = requiredFields.length;
 
-  requiredFields.forEach(field => {
-    const value = profileData[field as keyof ProfileData];
-    
+  requiredFields.forEach((field) => {
+    const value = safeProfileData[field as keyof ProfileData];
+
     if (value !== undefined && value !== null && value !== '') {
       // Special validation for arrays
       if (Array.isArray(value)) {
@@ -89,45 +95,95 @@ export const calculateProfileCompletion = (profileData: ProfileData): number => 
 };
 
 // Check if profile meets minimum requirements for specific features
-export const checkProfileRequirements = (profileData: ProfileData, feature: 'community' | 'ambassador' | 'marketplace'): {
+export const checkProfileRequirements = (
+  profileData: ProfileData,
+  feature: 'community' | 'ambassador' | 'marketplace'
+): {
   allowed: boolean;
   completion: number;
   requiredCompletion: number;
   missingFields: string[];
 } => {
-  const completion = calculateProfileCompletion(profileData);
-  
+  // Ensure profileData is not undefined
+  const safeProfileData = profileData || {};
+  const completion = calculateProfileCompletion(safeProfileData);
+
   // Define requirements for each feature (removed location and preferredLearningMode)
   const requirements = {
     community: {
       requiredCompletion: 70,
-      requiredFields: ['displayName', 'email', 'photoURL', 'bio', 'course', 'year', 'skills', 'experienceLevel', 'ajiraGoals']
+      requiredFields: [
+        'displayName',
+        'email',
+        'photoURL',
+        'bio',
+        'course',
+        'year',
+        'skills',
+        'experienceLevel',
+        'ajiraGoals',
+      ],
     },
     ambassador: {
       requiredCompletion: 100,
-      requiredFields: ['displayName', 'email', 'photoURL', 'bio', 'course', 'year', 'skills', 'experienceLevel', 'ajiraGoals', 'linkedinProfile', 'phoneNumber', 'idNumber']
+      requiredFields: [
+        'displayName',
+        'email',
+        'photoURL',
+        'bio',
+        'course',
+        'year',
+        'skills',
+        'experienceLevel',
+        'ajiraGoals',
+        'linkedinProfile',
+        'phoneNumber',
+        'idNumber',
+      ],
     },
     marketplace: {
       requiredCompletion: 70,
-      requiredFields: ['displayName', 'email', 'photoURL', 'bio', 'skills', 'experienceLevel']
-    }
+      requiredFields: [
+        'displayName',
+        'email',
+        'photoURL',
+        'bio',
+        'skills',
+        'experienceLevel',
+      ],
+    },
   };
 
   const featureRequirements = requirements[feature];
+  
+  // Ensure featureRequirements exists
+  if (!featureRequirements) {
+    console.error(`Invalid feature: ${feature}`);
+    return {
+      allowed: false,
+      completion,
+      requiredCompletion: 100,
+      missingFields: ['Invalid feature'],
+    };
+  }
+  
   const allowed = completion >= featureRequirements.requiredCompletion;
 
   // Find missing fields
   const missingFields: string[] = [];
-  featureRequirements.requiredFields.forEach(field => {
-    const value = profileData[field as keyof ProfileData];
-    
+  featureRequirements.requiredFields.forEach((field) => {
+    const value = safeProfileData[field as keyof ProfileData];
+
     if (value === undefined || value === null || value === '') {
       missingFields.push(field);
     } else if (Array.isArray(value) && value.length === 0) {
       missingFields.push(field);
     } else if (typeof value === 'string' && value.trim() === '') {
       missingFields.push(field);
-    } else if (field === 'linkedinProfile' && !validateLinkedInURL(String(value))) {
+    } else if (
+      field === 'linkedinProfile' &&
+      !validateLinkedInURL(String(value))
+    ) {
       missingFields.push(field);
     }
   });
@@ -136,7 +192,7 @@ export const checkProfileRequirements = (profileData: ProfileData, feature: 'com
     allowed,
     completion,
     requiredCompletion: featureRequirements.requiredCompletion,
-    missingFields
+    missingFields,
   };
 };
 
@@ -156,8 +212,8 @@ export const getFieldDisplayName = (field: string): string => {
     // preferredLearningMode: 'Preferred Learning Mode', // Remove preferredLearningMode
     linkedinProfile: 'LinkedIn Profile',
     phoneNumber: 'Phone Number',
-    idNumber: 'ID Number'
+    idNumber: 'ID Number',
   };
 
   return fieldNames[field] || field;
-}; 
+};

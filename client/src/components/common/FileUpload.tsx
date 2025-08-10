@@ -1,5 +1,14 @@
 import React, { useState, useRef } from 'react';
-import { Upload, X, File, Image, Video, Music, FileText, Loader2 } from 'lucide-react';
+import {
+  Upload,
+  X,
+  File,
+  Image,
+  Video,
+  Music,
+  FileText,
+  Loader2,
+} from 'lucide-react';
 
 interface FileUploadProps {
   onFileSelect: (files: FileInfo[]) => void;
@@ -23,35 +32,30 @@ interface FileInfo {
   status: 'uploading' | 'completed' | 'failed';
   progress?: number;
   error?: string;
+  previewUrl?: string;
 }
 
 const FileUpload: React.FC<FileUploadProps> = ({
   onFileSelect,
-  multiple = false,
+  multiple = true, // Changed to true for WhatsApp-like behavior
   maxFiles = 10,
-  maxSize = 50,
-  allowedTypes = [
-    'image/jpeg', 'image/png', 'image/gif', 'image/webp',
-    'video/mp4', 'video/webm', 'video/avi', 'video/mov',
-    'audio/mpeg', 'audio/wav', 'audio/ogg',
-    'application/pdf', 'application/msword', 
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    'text/plain', 'application/zip', 'application/x-rar-compressed'
-  ],
-  uploadContext = 'general',
+  maxSize = 100, // Increased to 100MB for larger files
+  allowedTypes = [], // Empty array means accept all file types
+  uploadContext = 'chat', // Changed default to chat
   uploadedBy = 'user',
-  relatedId
+  relatedId,
 }) => {
   const [selectedFiles, setSelectedFiles] = useState<FileInfo[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const getFileIcon = (mimeType: string) => {
-    if (mimeType.startsWith('image/')) return <Image className="w-4 h-4" />;
-    if (mimeType.startsWith('video/')) return <Video className="w-4 h-4" />;
-    if (mimeType.startsWith('audio/')) return <Music className="w-4 h-4" />;
-    if (mimeType === 'application/pdf' || mimeType.includes('document')) return <FileText className="w-4 h-4" />;
-    return <File className="w-4 h-4" />;
+    if (mimeType.startsWith('image/')) return <Image className='w-4 h-4' />;
+    if (mimeType.startsWith('video/')) return <Video className='w-4 h-4' />;
+    if (mimeType.startsWith('audio/')) return <Music className='w-4 h-4' />;
+    if (mimeType === 'application/pdf' || mimeType.includes('document'))
+      return <FileText className='w-4 h-4' />;
+    return <File className='w-4 h-4' />;
   };
 
   const formatFileSize = (bytes: number) => {
@@ -63,9 +67,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
   };
 
   const validateFile = (file: File): string | null => {
-    if (!allowedTypes.includes(file.type)) {
-      return `File type ${file.type} is not allowed`;
-    }
+    // Only check file size and count, accept all file types
     if (file.size > maxSize * 1024 * 1024) {
       return `File size exceeds ${maxSize}MB limit`;
     }
@@ -97,11 +99,13 @@ const FileUpload: React.FC<FileUploadProps> = ({
     return {
       ...result.file,
       status: 'completed' as const,
-      progress: 100
+      progress: 100,
     };
   };
 
-  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const files = Array.from(event.target.files || []);
     if (files.length === 0) return;
 
@@ -111,7 +115,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
     for (const file of files) {
       const error = validateFile(file);
       if (error) {
-        newFiles.push({
+        const failedFile = {
           id: Date.now().toString() + Math.random(),
           fileName: file.name,
           originalName: file.name,
@@ -119,9 +123,10 @@ const FileUpload: React.FC<FileUploadProps> = ({
           fileSize: formatFileSize(file.size),
           downloadUrl: '',
           mimeType: file.type,
-          status: 'failed',
-          error
-        });
+          status: 'failed' as const,
+          error,
+        };
+        newFiles.push(failedFile);
         continue;
       }
 
@@ -133,31 +138,54 @@ const FileUpload: React.FC<FileUploadProps> = ({
         fileSize: formatFileSize(file.size),
         downloadUrl: '',
         mimeType: file.type,
-        status: 'uploading',
-        progress: 0
+        status: 'uploading' as const,
+        progress: 0,
+        previewUrl: URL.createObjectURL(file),
       };
 
       newFiles.push(tempFile);
-      setSelectedFiles(prev => [...prev, tempFile]);
+      setSelectedFiles((prev) => [...prev, tempFile]);
 
       try {
         const uploadedFile = await uploadFile(file);
-        setSelectedFiles(prev => 
-          prev.map(f => f.id === tempFile.id ? uploadedFile : f)
+        const completedFile = {
+          ...uploadedFile,
+          status: 'completed' as const,
+          progress: 100,
+          previewUrl: tempFile.previewUrl,
+        };
+        setSelectedFiles((prev) =>
+          prev.map((f) => (f.id === tempFile.id ? completedFile : f))
         );
+        // Update the file in newFiles array
+        const fileIndex = newFiles.findIndex((f) => f.id === tempFile.id);
+        if (fileIndex !== -1) {
+          newFiles[fileIndex] = completedFile;
+        }
       } catch (error) {
-        setSelectedFiles(prev => 
-          prev.map(f => f.id === tempFile.id ? { ...f, status: 'failed', error: 'Upload failed' } : f)
+        const failedFile = {
+          ...tempFile,
+          status: 'failed' as const,
+          error: 'Upload failed',
+        };
+        setSelectedFiles((prev) =>
+          prev.map((f) => (f.id === tempFile.id ? failedFile : f))
         );
+        // Update the file in newFiles array
+        const fileIndex = newFiles.findIndex((f) => f.id === tempFile.id);
+        if (fileIndex !== -1) {
+          newFiles[fileIndex] = failedFile;
+        }
       }
     }
 
     setIsUploading(false);
-    onFileSelect(newFiles.filter(f => f.status === 'completed'));
+    // Call onFileSelect with all files (including failed ones) so the parent can handle them
+    onFileSelect(newFiles);
   };
 
   const removeFile = (fileId: string) => {
-    setSelectedFiles(prev => prev.filter(f => f.id !== fileId));
+    setSelectedFiles((prev) => prev.filter((f) => f.id !== fileId));
   };
 
   const handleDrop = (event: React.DragEvent) => {
@@ -167,7 +195,9 @@ const FileUpload: React.FC<FileUploadProps> = ({
       const input = fileInputRef.current;
       if (input) {
         input.files = event.dataTransfer.files;
-        handleFileSelect({ target: { files: event.dataTransfer.files } } as any);
+        handleFileSelect({
+          target: { files: event.dataTransfer.files },
+        } as any);
       }
     }
   };
@@ -177,30 +207,32 @@ const FileUpload: React.FC<FileUploadProps> = ({
   };
 
   return (
-    <div className="w-full">
+    <div className='w-full'>
       {/* File Upload Area */}
       <div
         className={`border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center transition-colors ${
-          isUploading ? 'border-ajira-primary bg-ajira-primary/5' : 'hover:border-ajira-primary hover:bg-gray-50 dark:hover:bg-gray-700'
+          isUploading
+            ? 'border-ajira-primary bg-ajira-primary/5'
+            : 'hover:border-ajira-primary hover:bg-gray-50 dark:hover:bg-gray-700'
         }`}
         onDrop={handleDrop}
         onDragOver={handleDragOver}
       >
-        <Upload className="w-8 h-8 mx-auto mb-2 text-gray-400" />
-        <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+        <Upload className='w-8 h-8 mx-auto mb-2 text-gray-400' />
+        <p className='text-sm text-gray-600 dark:text-gray-400 mb-2'>
           Drop files here or click to upload
         </p>
-        <p className="text-xs text-gray-500 dark:text-gray-500 mb-4">
-          Max {maxSize}MB per file • {allowedTypes.length} file types supported
+        <p className='text-xs text-gray-500 dark:text-gray-500 mb-4'>
+          Max {maxSize}MB per file • All file types supported
         </p>
         <button
           onClick={() => fileInputRef.current?.click()}
           disabled={isUploading}
-          className="px-4 py-2 bg-ajira-primary text-white rounded-lg hover:bg-ajira-primary/90 transition-colors disabled:opacity-50"
+          className='px-4 py-2 bg-ajira-primary text-white rounded-lg hover:bg-ajira-primary/90 transition-colors disabled:opacity-50'
         >
           {isUploading ? (
             <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              <Loader2 className='w-4 h-4 mr-2 animate-spin' />
               Uploading...
             </>
           ) : (
@@ -209,17 +241,17 @@ const FileUpload: React.FC<FileUploadProps> = ({
         </button>
         <input
           ref={fileInputRef}
-          type="file"
+          type='file'
           multiple={multiple}
-          accept={allowedTypes.join(',')}
+          accept='*/*' // Accept all file types
           onChange={handleFileSelect}
-          className="hidden"
+          className='hidden'
         />
       </div>
 
       {/* Selected Files */}
       {selectedFiles.length > 0 && (
-        <div className="mt-4 space-y-2">
+        <div className='mt-4 space-y-2'>
           {selectedFiles.map((file) => (
             <div
               key={file.id}
@@ -227,41 +259,41 @@ const FileUpload: React.FC<FileUploadProps> = ({
                 file.status === 'completed'
                   ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
                   : file.status === 'failed'
-                  ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
-                  : 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'
+                    ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
+                    : 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'
               }`}
             >
-              <div className="flex items-center space-x-3">
+              <div className='flex items-center space-x-3'>
                 {getFileIcon(file.mimeType)}
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                <div className='flex-1 min-w-0'>
+                  <p className='text-sm font-medium text-gray-900 dark:text-white truncate'>
                     {file.originalName}
                   </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                  <p className='text-xs text-gray-500 dark:text-gray-400'>
                     {file.fileSize} • {file.fileType.toUpperCase()}
                   </p>
                   {file.error && (
-                    <p className="text-xs text-red-600 dark:text-red-400">
+                    <p className='text-xs text-red-600 dark:text-red-400'>
                       {file.error}
                     </p>
                   )}
                 </div>
               </div>
-              
-              <div className="flex items-center space-x-2">
+
+              <div className='flex items-center space-x-2'>
                 {file.status === 'uploading' && (
-                  <div className="flex items-center space-x-1">
-                    <Loader2 className="w-3 h-3 animate-spin" />
-                    <span className="text-xs text-gray-500">
+                  <div className='flex items-center space-x-1'>
+                    <Loader2 className='w-3 h-3 animate-spin' />
+                    <span className='text-xs text-gray-500'>
                       {file.progress || 0}%
                     </span>
                   </div>
                 )}
                 <button
                   onClick={() => removeFile(file.id)}
-                  className="text-gray-400 hover:text-red-500 transition-colors"
+                  className='text-gray-400 hover:text-red-500 transition-colors'
                 >
-                  <X className="w-4 h-4" />
+                  <X className='w-4 h-4' />
                 </button>
               </div>
             </div>
@@ -272,4 +304,4 @@ const FileUpload: React.FC<FileUploadProps> = ({
   );
 };
 
-export default FileUpload; 
+export default FileUpload;

@@ -20,14 +20,24 @@ export interface JoinGroupResponse {
 
 export const groupsApi = {
   // Join a group by category
-  joinGroup: async (category: string, userId: string): Promise<JoinGroupResponse> => {
-    const response = await http.post(`/api/groups/join/${category}`, { userId });
+  joinGroup: async (
+    category: string,
+    userId: string
+  ): Promise<JoinGroupResponse> => {
+    const response = await http.post(`/api/groups/join/${category}`, {
+      userId,
+    });
     return response.data;
   },
 
   // Leave a group
-  leaveGroup: async (groupId: string, userId: string): Promise<{ success: boolean; message: string }> => {
-    const response = await http.post(`/api/groups/leave/${groupId}`, { userId });
+  leaveGroup: async (
+    groupId: string,
+    userId: string
+  ): Promise<{ success: boolean; message: string }> => {
+    const response = await http.post(`/api/groups/leave/${groupId}`, {
+      userId,
+    });
     return response.data;
   },
 
@@ -44,7 +54,10 @@ export const groupsApi = {
   },
 
   // Check if user is member of group
-  checkMembership: async (groupId: string, userId: string): Promise<{ isMember: boolean }> => {
+  checkMembership: async (
+    groupId: string,
+    userId: string
+  ): Promise<{ isMember: boolean }> => {
     const response = await http.get(`/api/groups/${groupId}/member/${userId}`);
     return response.data;
   },
@@ -59,5 +72,5 @@ export const groupsApi = {
   getGroupById: async (groupId: string): Promise<Group> => {
     const response = await http.get(`/api/groups/${groupId}`);
     return response.data;
-  }
-}; 
+  },
+};

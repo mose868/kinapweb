@@ -1,219 +1,206 @@
-// Auth API service for backend integration
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+import axios from 'axios';
 
-export interface User {
-  _id: string;
-  username: string;
-  email: string;
-  displayName?: string;
-  role: 'student' | 'mentor' | 'admin';
-  avatar?: string;
-  phoneNumber?: string;
-  course?: string;
-  year?: string;
-  experienceLevel?: string;
-  skills?: string[];
-  bio?: string;
-  rating?: number;
-  location?: {
-    country: string;
-    city: string;
-  };
-  languages?: string[];
-  portfolio?: Array<{
-    title: string;
-    description: string;
-    image: string;
-    url: string;
-  }>;
-  isVerified?: boolean;
-  // Google OAuth fields
-  googleId?: string;
-  googleEmail?: string;
-  authProvider?: 'local' | 'google';
-  createdAt: string;
-  updatedAt: string;
-}
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
-export interface LoginCredentials {
+// Better Auth API endpoints
+const BETTER_AUTH_URL = `${API_URL}/better-auth`;
+
+export interface LoginData {
   email: string;
   password: string;
 }
 
-export interface RegisterData {
-  username: string;
+export interface SignUpData {
   email: string;
   password: string;
   displayName?: string;
   phoneNumber?: string;
   course?: string;
   year?: string;
+  skills?: string;
+  ajiraGoals?: string;
   experienceLevel?: string;
-  skills?: string[];
-  bio?: string;
-  location?: {
-    country: string;
-    city: string;
-  };
-  languages?: string[];
-}
-
-export interface GoogleAuthData {
-  googleId: string;
-  email: string;
-  displayName?: string;
-  avatar?: string;
-  googleEmail?: string;
+  preferredLearningMode?: string;
+  otherInfo?: string;
+  interests?: string[];
 }
 
 export interface AuthResponse {
-  user: User;
-  token: string;
+  success: boolean;
+  message: string;
+  data?: any;
+  user?: any;
+  token?: string;
 }
 
-// Login user
-export const loginUser = async (credentials: LoginCredentials): Promise<AuthResponse> => {
+// Better Auth API functions
+export const betterAuthSignIn = async (data: LoginData): Promise<AuthResponse> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(credentials),
-    });
+    const response = await axios.post(`${BETTER_AUTH_URL}/signin`, data);
+    return response.data;
+  } catch (error: any) {
+    throw new Error(error.response?.data?.message || 'Sign in failed');
+  }
+};
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || 'Login failed');
+export const betterAuthSignUp = async (data: SignUpData): Promise<AuthResponse> => {
+  try {
+    const response = await axios.post(`${BETTER_AUTH_URL}/signup`, data);
+    return response.data;
+  } catch (error: any) {
+    throw new Error(error.response?.data?.message || 'Sign up failed');
+  }
+};
+
+export const betterAuthSignOut = async (): Promise<AuthResponse> => {
+  try {
+    const response = await axios.post(`${BETTER_AUTH_URL}/signout`);
+    return response.data;
+  } catch (error: any) {
+    throw new Error(error.response?.data?.message || 'Sign out failed');
+  }
+};
+
+export const betterAuthGetSession = async (): Promise<AuthResponse> => {
+  try {
+    const response = await axios.get(`${BETTER_AUTH_URL}/session`);
+    return response.data;
+  } catch (error: any) {
+    throw new Error(error.response?.data?.message || 'Failed to get session');
+  }
+};
+
+// Better Auth Forgot Password
+export const betterAuthForgotPassword = async (email: string): Promise<AuthResponse> => {
+  try {
+    const response = await axios.post(`${BETTER_AUTH_URL}/forgot-password`, { email });
+    return response.data;
+  } catch (error: any) {
+    throw new Error(error.response?.data?.message || 'Failed to send verification code');
+  }
+};
+
+// Better Auth Reset Password
+export const betterAuthResetPassword = async (email: string, code: string, password: string): Promise<AuthResponse> => {
+  try {
+    const response = await axios.post(`${BETTER_AUTH_URL}/reset-password`, { email, code, password });
+    return response.data;
+  } catch (error: any) {
+    throw new Error(error.response?.data?.message || 'Failed to reset password');
+  }
+};
+
+// Better Auth Verify Code
+export const betterAuthVerifyCode = async (email: string, code: string): Promise<AuthResponse> => {
+  try {
+    const response = await axios.post(`${BETTER_AUTH_URL}/verify-code`, { email, code });
+    return response.data;
+  } catch (error: any) {
+    throw new Error(error.response?.data?.message || 'Failed to verify code');
+  }
+};
+
+// Better Auth Verify Account
+export const betterAuthVerifyAccount = async (email: string, code: string): Promise<AuthResponse> => {
+  try {
+    const response = await axios.post(`${BETTER_AUTH_URL}/verify-account`, { email, code });
+    return response.data;
+  } catch (error: any) {
+    throw new Error(error.response?.data?.message || 'Failed to verify account');
+  }
+};
+
+// Better Auth Check Session
+export const betterAuthCheckSession = async (): Promise<AuthResponse> => {
+  try {
+    const token = localStorage.getItem('authToken');
+    if (!token) {
+      throw new Error('No session found');
+    }
+    
+    const response = await axios.get(`${BETTER_AUTH_URL}/check-session`, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+    return response.data;
+  } catch (error: any) {
+    // If session expired, clear token
+    if (error.response?.data?.sessionExpired) {
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('user');
+    }
+    throw new Error(error.response?.data?.message || 'Session check failed');
+  }
+};
+
+// Better Auth Extend Session
+export const betterAuthExtendSession = async (): Promise<AuthResponse> => {
+  try {
+    const token = localStorage.getItem('authToken');
+    if (!token) {
+      throw new Error('No session found');
     }
 
-    return await response.json();
-  } catch (error) {
-    console.error('Login error:', error);
-    throw error;
+    // Simply call check session to extend it
+    return await betterAuthCheckSession();
+  } catch (error: any) {
+    throw new Error(error.response?.data?.message || 'Failed to extend session');
   }
 };
 
-// Google OAuth login/signup
-export const googleAuth = async (googleData: GoogleAuthData): Promise<AuthResponse> => {
+// Better Auth Resend Code
+export const betterAuthResendCode = async (email: string): Promise<AuthResponse> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/auth/google`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(googleData),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || 'Google authentication failed');
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error('Google auth error:', error);
-    throw error;
+    const response = await axios.post(`${BETTER_AUTH_URL}/resend-code`, { email });
+    return response.data;
+  } catch (error: any) {
+    throw new Error(error.response?.data?.message || 'Failed to resend verification code');
   }
 };
 
-// Register user
-export const registerUser = async (userData: RegisterData): Promise<AuthResponse> => {
+// Legacy auth functions (keeping for backward compatibility)
+export const login = async (data: LoginData): Promise<AuthResponse> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(userData),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || 'Registration failed');
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error('Registration error:', error);
-    throw error;
+    const response = await axios.post(`${API_URL}/auth/login`, data);
+    return response.data;
+  } catch (error: any) {
+    throw new Error(error.response?.data?.message || 'Login failed');
   }
 };
 
-// Get current user profile
-export const getCurrentUser = async (token: string): Promise<User> => {
+export const register = async (data: SignUpData): Promise<AuthResponse> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/auth/profile`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to get user profile');
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error('Get profile error:', error);
-    throw error;
+    const response = await axios.post(`${API_URL}/auth/register`, data);
+    return response.data;
+  } catch (error: any) {
+    throw new Error(error.response?.data?.message || 'Registration failed');
   }
 };
 
-// Update user profile
-export const updateUserProfile = async (userId: string, userData: Partial<User>, token: string): Promise<User> => {
+export const forgotPassword = async (email: string): Promise<AuthResponse> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/users/${userId}`, {
-      method: 'PUT',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(userData),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || 'Failed to update profile');
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error('Update profile error:', error);
-    throw error;
+    const response = await axios.post(`${API_URL}/auth/forgot-password`, { email });
+    return response.data;
+  } catch (error: any) {
+    throw new Error(error.response?.data?.message || 'Failed to send password reset email');
   }
 };
 
-// Logout user
-export const logoutUser = async (token: string): Promise<void> => {
+export const resetPassword = async (token: string, password: string): Promise<AuthResponse> => {
   try {
-    await fetch(`${API_BASE_URL}/api/auth/logout`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-    });
-  } catch (error) {
-    console.error('Logout error:', error);
-    // Don't throw error for logout as it's not critical
+    const response = await axios.post(`${API_URL}/auth/reset-password`, { token, password });
+    return response.data;
+  } catch (error: any) {
+    throw new Error(error.response?.data?.message || 'Failed to reset password');
   }
 };
 
-// Verify token
-export const verifyToken = async (token: string): Promise<boolean> => {
+export const verifyResetToken = async (token: string): Promise<AuthResponse> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/auth/verify`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-    });
-
-    return response.ok;
-  } catch (error) {
-    console.error('Token verification error:', error);
-    return false;
+    const response = await axios.get(`${API_URL}/auth/verify-reset-token/${token}`);
+    return response.data;
+  } catch (error: any) {
+    throw new Error(error.response?.data?.message || 'Failed to verify reset token');
   }
-}; 
+};

@@ -81,7 +81,14 @@ export interface SellerApplication {
   applicationContent: ApplicationContent;
   documents: Documents;
   aiVetting: AIVetting;
-  status: 'pending' | 'ai_processing' | 'ai_approved' | 'ai_rejected' | 'manual_review' | 'approved' | 'rejected';
+  status:
+    | 'pending'
+    | 'ai_processing'
+    | 'ai_approved'
+    | 'ai_rejected'
+    | 'manual_review'
+    | 'approved'
+    | 'rejected';
   review: Review;
   submittedAt: string;
   updatedAt: string;
@@ -136,9 +143,9 @@ export const submitSellerApplication = async (
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
+        Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify(applicationData)
+      body: JSON.stringify(applicationData),
     });
 
     if (!response.ok) {
@@ -154,13 +161,18 @@ export const submitSellerApplication = async (
 };
 
 // Get user's own seller application
-export const getMySellerApplication = async (token: string): Promise<{ application: SellerApplication }> => {
+export const getMySellerApplication = async (
+  token: string
+): Promise<{ application: SellerApplication }> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/seller-applications/my-application`, {
-      headers: {
-        'Authorization': `Bearer ${token}`
+    const response = await fetch(
+      `${API_BASE_URL}/api/seller-applications/my-application`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
       }
-    });
+    );
 
     if (!response.ok) {
       const errorData = await response.json();
@@ -194,11 +206,14 @@ export const getAllSellerApplications = async (
       }
     });
 
-    const response = await fetch(`${API_BASE_URL}/api/seller-applications?${params.toString()}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`
+    const response = await fetch(
+      `${API_BASE_URL}/api/seller-applications?${params.toString()}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
       }
-    });
+    );
 
     if (!response.ok) {
       const errorData = await response.json();
@@ -218,11 +233,14 @@ export const getSellerApplicationById = async (
   token: string
 ): Promise<{ application: SellerApplication }> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/seller-applications/${applicationId}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`
+    const response = await fetch(
+      `${API_BASE_URL}/api/seller-applications/${applicationId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
       }
-    });
+    );
 
     if (!response.ok) {
       const errorData = await response.json();
@@ -247,14 +265,17 @@ export const reviewSellerApplication = async (
   token: string
 ): Promise<ApplicationResponse> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/seller-applications/${applicationId}/review`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify(reviewData)
-    });
+    const response = await fetch(
+      `${API_BASE_URL}/api/seller-applications/${applicationId}/review`,
+      {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(reviewData),
+      }
+    );
 
     if (!response.ok) {
       const errorData = await response.json();
@@ -274,12 +295,15 @@ export const retryAIVetting = async (
   token: string
 ): Promise<ApplicationResponse> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/seller-applications/${applicationId}/retry-ai`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`
+    const response = await fetch(
+      `${API_BASE_URL}/api/seller-applications/${applicationId}/retry-ai`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
       }
-    });
+    );
 
     if (!response.ok) {
       const errorData = await response.json();
@@ -294,13 +318,18 @@ export const retryAIVetting = async (
 };
 
 // Get dashboard statistics (admin only)
-export const getSellerApplicationsStats = async (token: string): Promise<DashboardStats> => {
+export const getSellerApplicationsStats = async (
+  token: string
+): Promise<DashboardStats> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/seller-applications/stats/dashboard`, {
-      headers: {
-        'Authorization': `Bearer ${token}`
+    const response = await fetch(
+      `${API_BASE_URL}/api/seller-applications/stats/dashboard`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
       }
-    });
+    );
 
     if (!response.ok) {
       const errorData = await response.json();
@@ -356,4 +385,4 @@ export const getStatusLabel = (status: string): string => {
     default:
       return 'Unknown';
   }
-}; 
+};

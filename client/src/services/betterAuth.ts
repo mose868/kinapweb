@@ -1,217 +1,196 @@
-// Mock Better Auth client for now (since the library might not be properly installed)
-// This will be replaced with the real Better Auth once we get it working
+// Better Auth client using the new API endpoints
+import { betterAuthSignIn, betterAuthSignUp, betterAuthSignOut, betterAuthGetSession, betterAuthVerifyAccount, betterAuthResendCode } from '../api/auth';
 
-// Create a mock auth client
+// Create a Better Auth client that uses our API
 export const authClient = {
   signIn: async (provider: string, options: any) => {
-    console.log('Mock signIn called with:', provider, options);
-    
+    console.log('Better Auth signIn called with:', provider, options);
+
     try {
-      // Use the existing auth API instead of better-auth
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/auth/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: options.email,
-          password: options.password,
-        }),
+      // First, attempt to sign in (this will send verification code if needed)
+      const result = await betterAuthSignIn({
+        email: options.email,
+        password: options.password,
       });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Sign in failed');
+
+      // If the response indicates verification is needed, return that
+      if (result.requiresVerification) {
+        return {
+          data: null,
+          error: null,
+          requiresVerification: true,
+          message: result.message || 'Verification code sent to your email'
+        };
       }
-      
-      const data = await response.json();
-      
-      // Return in Better Auth format
-      return {
-        data: {
-          user: data.user,
-          session: {
-            token: data.token,
-            expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-          }
-        },
-        error: null
-      };
+
+      // If successful, return the user data
+      if (result.success && result.user) {
+        return {
+          data: {
+            user: result.user,
+            session: {
+              token: result.token,
+              expires: new Date(Date.now() + 30 * 60 * 1000).toISOString(), // 30 minutes
+            },
+          },
+          error: null,
+        };
+      }
+
+      // If there's an error, throw it
+      throw new Error(result.message || 'Sign in failed');
     } catch (error) {
       console.error('Sign in error:', error);
       throw error;
     }
   },
-  
+
   signUp: async (provider: string, options: any) => {
-    console.log('Mock signUp called with:', provider, options);
-    
+    console.log('Better Auth signUp called with:', provider, options);
+
     try {
-      // Use the existing auth API instead of better-auth
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/auth/register`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: options.email,
-          password: options.password,
-          username: options.email.split('@')[0], // Generate username from email
-          displayName: options.name || options.displayName,
-          role: options.role || 'student',
-          phoneNumber: options.phoneNumber,
-          course: options.course,
-          year: options.year,
-          skills: options.skills,
-          ajiraGoals: options.ajiraGoals,
-          experienceLevel: options.experienceLevel,
-          preferredLearningMode: options.preferredLearningMode,
-          otherInfo: options.otherInfo,
-          interests: options.interests,
-        }),
+      // Sign up (this will send verification code)
+      const result = await betterAuthSignUp({
+        email: options.email,
+        password: options.password,
+        displayName: options.displayName,
+        phoneNumber: options.phoneNumber,
+        course: options.course,
+        year: options.year,
+        skills: options.skills,
+        ajiraGoals: options.ajiraGoals,
+        experienceLevel: options.experienceLevel,
+        preferredLearningMode: options.preferredLearningMode,
+        otherInfo: options.otherInfo,
+        interests: options.interests,
       });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Sign up failed');
+
+      // Sign up always requires verification
+      if (result.success) {
+        return {
+          data: null,
+          error: null,
+          requiresVerification: true,
+          message: result.message || 'Account created! Verification code sent to your email'
+        };
       }
-      
-      const data = await response.json();
-      
-      // Return in Better Auth format
-      return {
-        data: {
-          user: data.user,
-          session: {
-            token: data.token,
-            expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-          }
-        },
-        error: null
-      };
+
+      // If there's an error, throw it
+      throw new Error(result.message || 'Sign up failed');
     } catch (error) {
       console.error('Sign up error:', error);
       throw error;
     }
   },
-  
-  signOut: async (options: any) => {
-    console.log('Mock signOut called with:', options);
-    
+
+  verifyCode: async (email: string, code: string) => {
+    console.log('Better Auth verifyCode called with:', email, code);
+
     try {
-      // Use the existing auth API instead of better-auth
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/auth/logout`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/better-auth/verify-account`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
         },
+        body: JSON.stringify({
+          email,
+          code,
+        }),
       });
-      
-      // Clear local storage regardless of response
-      localStorage.removeItem('token');
-      localStorage.removeItem('userData');
-      
-      return {
-        data: { success: true },
-        error: null
-      };
+
+      const result = await response.json();
+      console.log('🔍 Verification response:', result);
+
+      if (response.ok && result.success) {
+        console.log('✅ Verification successful, returning data');
+        console.log('🔍 Result data structure:');
+        console.log('  - result.success:', result.success);
+        console.log('  - result.data.user:', result.data.user);
+        console.log('  - result.data.token:', result.data.token);
+        console.log('  - result.data.sessionExpiresAt:', result.data.sessionExpiresAt);
+        
+        const returnData = {
+          data: {
+            user: result.data.user,
+            session: {
+              token: result.data.token,
+              expires: result.data.sessionExpiresAt,
+            },
+          },
+          error: null,
+        };
+        
+        console.log('🔍 Returning data structure:', JSON.stringify(returnData, null, 2));
+        return returnData;
+      } else {
+        console.log('❌ Verification failed:', result.message);
+        throw new Error(result.message || 'Verification failed');
+      }
+    } catch (error) {
+      console.error('Verification error:', error);
+      throw error;
+    }
+  },
+
+  signOut: async (options?: any) => {
+    console.log('Better Auth signOut called');
+
+    try {
+      await betterAuthSignOut();
+      return { data: null, error: null };
     } catch (error) {
       console.error('Sign out error:', error);
-      // Clear local storage even if API call fails
-      localStorage.removeItem('token');
-      localStorage.removeItem('userData');
-      return {
-        data: { success: true },
-        error: null
-      };
+      throw error;
     }
   },
-  
+
   getSession: async () => {
-    console.log('Mock getSession called');
-    
+    console.log('Better Auth getSession called');
+
     try {
-      // Check if user is logged in via localStorage
-      const token = localStorage.getItem('token');
-      const userData = localStorage.getItem('userData');
+      const result = await betterAuthGetSession();
       
-      if (!token || !userData) {
-        return null;
+      if (result.success && result.data) {
+        return {
+          data: {
+            user: result.data.user,
+            session: result.data.session,
+          },
+          error: null,
+        };
       }
-      
-      // Verify token with backend
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/users/me`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-      
-      if (!response.ok) {
-        // Token is invalid, clear storage
-        localStorage.removeItem('token');
-        localStorage.removeItem('userData');
-        return null;
-      }
-      
-      const user = await response.json();
-      
-      return {
-        data: {
-          user: user.data || JSON.parse(userData),
-          session: {
-            token,
-            expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-          }
-        },
-        error: null
-      };
+
+      return { data: null, error: null };
     } catch (error) {
       console.error('Get session error:', error);
-      return null;
+      return { data: null, error };
     }
   },
-  
+
   getProviders: async () => {
-    console.log('Mock getProviders called');
-    // Simulate API call
-    const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/better-auth/providers`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-    
-    if (!response.ok) {
-      return {};
+    console.log('Better Auth getProviders called');
+    return { data: ['emailAndPassword'], error: null };
+  },
+
+  resendCode: async (email: string) => {
+    console.log('Better Auth resendCode called with:', email);
+
+    try {
+      const result = await betterAuthResendCode(email);
+
+      if (result.success) {
+        return {
+          data: null,
+          error: null,
+          message: result.message || 'Verification code resent successfully'
+        };
+      }
+
+      throw new Error(result.message || 'Failed to resend code');
+    } catch (error) {
+      console.error('Resend code error:', error);
+      throw error;
     }
-    
-    return response.json();
-  },
-  
-  useSession: () => {
-    // Mock hook that returns loading state
-    return {
-      data: null,
-      isLoading: false,
-      error: null,
-    };
-  },
-  
-  useUser: () => {
-    // Mock hook that returns no user
-    return {
-      data: null,
-      isLoading: false,
-      error: null,
-    };
-  },
-  
-  getCsrfToken: async () => {
-    return 'mock-csrf-token';
   },
 };
 
@@ -234,14 +213,14 @@ export const authHelpers = {
   // Sign in with email and password
   signInWithEmail: async (email: string, password: string) => {
     try {
-      const result = await signIn("emailAndPassword", {
+      const result = await signIn('emailAndPassword', {
         email,
         password,
         redirect: false,
       });
       return result;
     } catch (error) {
-      console.error("Sign in error:", error);
+      console.error('Sign in error:', error);
       throw error;
     }
   },
@@ -249,7 +228,7 @@ export const authHelpers = {
   // Sign up with email and password
   signUpWithEmail: async (email: string, password: string, userData?: any) => {
     try {
-      const result = await signUp("emailAndPassword", {
+      const result = await signUp('emailAndPassword', {
         email,
         password,
         ...userData,
@@ -257,30 +236,19 @@ export const authHelpers = {
       });
       return result;
     } catch (error) {
-      console.error("Sign up error:", error);
+      console.error('Sign up error:', error);
       throw error;
     }
   },
 
-  // Sign in with Google
-  signInWithGoogle: async () => {
-    try {
-      const result = await signIn("google", {
-        redirect: false,
-      });
-      return result;
-    } catch (error) {
-      console.error("Google sign in error:", error);
-      throw error;
-    }
-  },
+
 
   // Sign out
   signOutUser: async () => {
     try {
       await signOut({ redirect: false });
     } catch (error) {
-      console.error("Sign out error:", error);
+      console.error('Sign out error:', error);
       throw error;
     }
   },
@@ -290,7 +258,7 @@ export const authHelpers = {
     try {
       return await getSession();
     } catch (error) {
-      console.error("Get session error:", error);
+      console.error('Get session error:', error);
       return null;
     }
   },
@@ -300,10 +268,10 @@ export const authHelpers = {
     try {
       return await getProviders();
     } catch (error) {
-      console.error("Get providers error:", error);
+      console.error('Get providers error:', error);
       return {};
     }
   },
 };
 
-export default authClient; 
+export default authClient;

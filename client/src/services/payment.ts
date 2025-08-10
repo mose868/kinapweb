@@ -1,5 +1,5 @@
 // Platform fee percentage
-const PLATFORM_FEE_PERCENTAGE = 0.10; // 10%
+const PLATFORM_FEE_PERCENTAGE = 0.1; // 10%
 
 // Calculate platform fee and net amount
 const calculateFees = (amount: number) => {
@@ -9,11 +9,16 @@ const calculateFees = (amount: number) => {
 };
 
 // Placeholder for M-Pesa API integration
-export const sendMpesaCommission = async (amount: number, phoneNumber: string): Promise<void> => {
+export const sendMpesaCommission = async (
+  amount: number,
+  phoneNumber: string
+): Promise<void> => {
   // TODO: Integrate with M-Pesa API (e.g., Safaricom Daraja, Flutterwave, etc.)
   // Use environment variables for credentials
   // Log the transaction for audit
-  console.log(`Sending KES ${amount} commission to club M-Pesa number ${phoneNumber}`);
+  console.log(
+    `Sending KES ${amount} commission to club M-Pesa number ${phoneNumber}`
+  );
   // Example: await mpesaApi.sendMoney({ amount, phoneNumber });
 };
 
@@ -48,15 +53,18 @@ export const initializePayment = async (
       status: 'pending',
       escrowDetails: {
         holdPeriod: 14, // 14 days hold period
-        releaseTrigger: 'manual'
+        releaseTrigger: 'manual',
       },
       createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
+      updatedAt: serverTimestamp(),
     };
 
     // Add payment record to database
-    const paymentRef = await addDoc(collection(db, COLLECTIONS.PAYMENTS), paymentData);
-    
+    const paymentRef = await addDoc(
+      collection(db, COLLECTIONS.PAYMENTS),
+      paymentData
+    );
+
     // Create escrow transaction
     const escrowData: Omit<EscrowTransaction, 'id'> = {
       paymentId: paymentRef.id,
@@ -66,7 +74,7 @@ export const initializePayment = async (
       holdStartDate: serverTimestamp(),
       releasedTo: '', // Will be set when released
       createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
+      updatedAt: serverTimestamp(),
     };
 
     await addDoc(collection(db, COLLECTIONS.ESCROW), escrowData);
@@ -75,12 +83,12 @@ export const initializePayment = async (
     const orderRef = doc(db, COLLECTIONS.ORDERS, orderId);
     await updateDoc(orderRef, {
       paymentStatus: 'paid',
-      updatedAt: serverTimestamp()
+      updatedAt: serverTimestamp(),
     });
 
     return {
       id: paymentRef.id,
-      ...paymentData
+      ...paymentData,
     };
   } catch (error) {
     console.error('Error initializing payment:', error);
@@ -99,8 +107,10 @@ export const releaseFundsToSeller = async (
       collection(db, COLLECTIONS.ESCROW),
       where('orderId', '==', orderId)
     );
-    const escrowSnapshot = await getDoc(doc(db, COLLECTIONS.ESCROW, escrowQuery));
-    
+    const escrowSnapshot = await getDoc(
+      doc(db, COLLECTIONS.ESCROW, escrowQuery)
+    );
+
     if (!escrowSnapshot.exists()) {
       throw new Error('Escrow transaction not found');
     }
@@ -112,7 +122,7 @@ export const releaseFundsToSeller = async (
       status: 'released',
       releasedTo: sellerId,
       releaseDate: serverTimestamp(),
-      updatedAt: serverTimestamp()
+      updatedAt: serverTimestamp(),
     });
 
     // Update payment status
@@ -120,7 +130,7 @@ export const releaseFundsToSeller = async (
     await updateDoc(paymentRef, {
       status: 'released',
       'escrowDetails.releaseDate': serverTimestamp(),
-      updatedAt: serverTimestamp()
+      updatedAt: serverTimestamp(),
     });
 
     // Update order status
@@ -128,7 +138,7 @@ export const releaseFundsToSeller = async (
     await updateDoc(orderRef, {
       status: 'completed',
       completedDate: serverTimestamp(),
-      updatedAt: serverTimestamp()
+      updatedAt: serverTimestamp(),
     });
   } catch (error) {
     console.error('Error releasing funds:', error);
@@ -147,8 +157,10 @@ export const initiateRefund = async (
       collection(db, COLLECTIONS.ESCROW),
       where('orderId', '==', orderId)
     );
-    const escrowSnapshot = await getDoc(doc(db, COLLECTIONS.ESCROW, escrowQuery));
-    
+    const escrowSnapshot = await getDoc(
+      doc(db, COLLECTIONS.ESCROW, escrowQuery)
+    );
+
     if (!escrowSnapshot.exists()) {
       throw new Error('Escrow transaction not found');
     }
@@ -156,7 +168,7 @@ export const initiateRefund = async (
     // Update escrow status
     await updateDoc(doc(db, COLLECTIONS.ESCROW, escrowSnapshot.id), {
       status: 'refunded',
-      updatedAt: serverTimestamp()
+      updatedAt: serverTimestamp(),
     });
 
     // Update payment status
@@ -164,7 +176,7 @@ export const initiateRefund = async (
     const paymentRef = doc(db, COLLECTIONS.PAYMENTS, escrowData.paymentId);
     await updateDoc(paymentRef, {
       status: 'refunded',
-      updatedAt: serverTimestamp()
+      updatedAt: serverTimestamp(),
     });
 
     // Update order status
@@ -174,7 +186,7 @@ export const initiateRefund = async (
       paymentStatus: 'refunded',
       cancelledDate: serverTimestamp(),
       cancellationReason: reason,
-      updatedAt: serverTimestamp()
+      updatedAt: serverTimestamp(),
     });
   } catch (error) {
     console.error('Error initiating refund:', error);
@@ -188,17 +200,20 @@ export const savePaymentMethod = async (
   paymentMethodData: Omit<PaymentMethod, 'id' | 'userId' | 'createdAt'>
 ): Promise<PaymentMethod> => {
   try {
-    const paymentMethodDoc = await addDoc(collection(db, COLLECTIONS.PAYMENT_METHODS), {
-      ...paymentMethodData,
-      userId,
-      createdAt: serverTimestamp()
-    });
+    const paymentMethodDoc = await addDoc(
+      collection(db, COLLECTIONS.PAYMENT_METHODS),
+      {
+        ...paymentMethodData,
+        userId,
+        createdAt: serverTimestamp(),
+      }
+    );
 
     return {
       id: paymentMethodDoc.id,
       userId,
       ...paymentMethodData,
-      createdAt: serverTimestamp()
+      createdAt: serverTimestamp(),
     };
   } catch (error) {
     console.error('Error saving payment method:', error);
@@ -215,11 +230,16 @@ export const getUserPaymentMethods = async (
       collection(db, COLLECTIONS.PAYMENT_METHODS),
       where('userId', '==', userId)
     );
-    const snapshot = await getDoc(doc(db, COLLECTIONS.PAYMENT_METHODS, paymentMethodsQuery));
-    return snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    } as PaymentMethod));
+    const snapshot = await getDoc(
+      doc(db, COLLECTIONS.PAYMENT_METHODS, paymentMethodsQuery)
+    );
+    return snapshot.docs.map(
+      (doc) =>
+        ({
+          id: doc.id,
+          ...doc.data(),
+        }) as PaymentMethod
+    );
   } catch (error) {
     console.error('Error getting payment methods:', error);
     throw new Error('Failed to get payment methods');
@@ -235,24 +255,27 @@ export const generatePaymentAnalytics = async (
     // Get all user transactions within the period
     const startDate = getStartDateForPeriod(period);
     const transactions = await getTransactionsForPeriod(userId, startDate);
-    
+
     // Calculate metrics
     const metrics = calculateMetrics(transactions);
-    
+
     // Create or update analytics record
     const analyticsData: Omit<PaymentAnalytics, 'id'> = {
       userId,
       period,
       metrics,
       createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
+      updatedAt: serverTimestamp(),
     };
 
-    const analyticsRef = await addDoc(collection(db, COLLECTIONS.PAYMENT_ANALYTICS), analyticsData);
-    
+    const analyticsRef = await addDoc(
+      collection(db, COLLECTIONS.PAYMENT_ANALYTICS),
+      analyticsData
+    );
+
     return {
       id: analyticsRef.id,
-      ...analyticsData
+      ...analyticsData,
     };
   } catch (error) {
     console.error('Error generating payment analytics:', error);
@@ -268,15 +291,19 @@ export const requestWithdrawal = async (
 ): Promise<WithdrawalRequest> => {
   try {
     // Get user's payment method
-    const paymentMethodRef = doc(db, COLLECTIONS.PAYMENT_METHODS, paymentMethodId);
+    const paymentMethodRef = doc(
+      db,
+      COLLECTIONS.PAYMENT_METHODS,
+      paymentMethodId
+    );
     const paymentMethodSnap = await getDoc(paymentMethodRef);
-    
+
     if (!paymentMethodSnap.exists()) {
       throw new Error('Payment method not found');
     }
 
     const paymentMethod = paymentMethodSnap.data() as PaymentMethod;
-    
+
     // Calculate fees
     const transactionFee = calculateWithdrawalFee(amount);
     const netAmount = amount - transactionFee;
@@ -292,14 +319,17 @@ export const requestWithdrawal = async (
       transactionFee,
       netAmount,
       createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
+      updatedAt: serverTimestamp(),
     };
 
-    const withdrawalRef = await addDoc(collection(db, COLLECTIONS.WITHDRAWALS), withdrawalData);
-    
+    const withdrawalRef = await addDoc(
+      collection(db, COLLECTIONS.WITHDRAWALS),
+      withdrawalData
+    );
+
     return {
       id: withdrawalRef.id,
-      ...withdrawalData
+      ...withdrawalData,
     };
   } catch (error) {
     console.error('Error requesting withdrawal:', error);
@@ -310,13 +340,20 @@ export const requestWithdrawal = async (
 // Configure automatic payouts
 export const configureAutomaticPayouts = async (
   userId: string,
-  settings: Omit<AutomaticPayoutSettings, 'id' | 'userId' | 'createdAt' | 'updatedAt'>
+  settings: Omit<
+    AutomaticPayoutSettings,
+    'id' | 'userId' | 'createdAt' | 'updatedAt'
+  >
 ): Promise<AutomaticPayoutSettings> => {
   try {
     // Validate payment method
-    const paymentMethodRef = doc(db, COLLECTIONS.PAYMENT_METHODS, settings.preferredPaymentMethod);
+    const paymentMethodRef = doc(
+      db,
+      COLLECTIONS.PAYMENT_METHODS,
+      settings.preferredPaymentMethod
+    );
     const paymentMethodSnap = await getDoc(paymentMethodRef);
-    
+
     if (!paymentMethodSnap.exists()) {
       throw new Error('Payment method not found');
     }
@@ -329,14 +366,17 @@ export const configureAutomaticPayouts = async (
       ...settings,
       nextScheduledPayout: nextPayout,
       createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
+      updatedAt: serverTimestamp(),
     };
 
-    const settingsRef = await addDoc(collection(db, COLLECTIONS.PAYOUT_SETTINGS), payoutSettings);
-    
+    const settingsRef = await addDoc(
+      collection(db, COLLECTIONS.PAYOUT_SETTINGS),
+      payoutSettings
+    );
+
     return {
       id: settingsRef.id,
-      ...payoutSettings
+      ...payoutSettings,
     };
   } catch (error) {
     console.error('Error configuring automatic payouts:', error);
@@ -347,13 +387,16 @@ export const configureAutomaticPayouts = async (
 // Create milestone payment
 export const createMilestonePayment = async (
   orderId: string,
-  milestoneData: Omit<MilestonePayment, 'id' | 'orderId' | 'status' | 'createdAt' | 'updatedAt'>
+  milestoneData: Omit<
+    MilestonePayment,
+    'id' | 'orderId' | 'status' | 'createdAt' | 'updatedAt'
+  >
 ): Promise<MilestonePayment> => {
   try {
     // Get order details
     const orderRef = doc(db, COLLECTIONS.ORDERS, orderId);
     const orderSnap = await getDoc(orderRef);
-    
+
     if (!orderSnap.exists()) {
       throw new Error('Order not found');
     }
@@ -363,14 +406,17 @@ export const createMilestonePayment = async (
       ...milestoneData,
       status: 'pending',
       createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
+      updatedAt: serverTimestamp(),
     };
 
-    const milestoneRef = await addDoc(collection(db, COLLECTIONS.MILESTONES), milestone);
-    
+    const milestoneRef = await addDoc(
+      collection(db, COLLECTIONS.MILESTONES),
+      milestone
+    );
+
     return {
       id: milestoneRef.id,
-      ...milestone
+      ...milestone,
     };
   } catch (error) {
     console.error('Error creating milestone payment:', error);
@@ -383,7 +429,7 @@ export const fundMilestone = async (milestoneId: string): Promise<void> => {
   try {
     const milestoneRef = doc(db, COLLECTIONS.MILESTONES, milestoneId);
     const milestoneSnap = await getDoc(milestoneRef);
-    
+
     if (!milestoneSnap.exists()) {
       throw new Error('Milestone not found');
     }
@@ -399,16 +445,19 @@ export const fundMilestone = async (milestoneId: string): Promise<void> => {
       holdStartDate: serverTimestamp(),
       releasedTo: '',
       createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
+      updatedAt: serverTimestamp(),
     };
 
-    const escrowRef = await addDoc(collection(db, COLLECTIONS.ESCROW), escrowData);
+    const escrowRef = await addDoc(
+      collection(db, COLLECTIONS.ESCROW),
+      escrowData
+    );
 
     // Update milestone with escrow reference
     await updateDoc(milestoneRef, {
       status: 'funded',
       escrowTransactionId: escrowRef.id,
-      updatedAt: serverTimestamp()
+      updatedAt: serverTimestamp(),
     });
   } catch (error) {
     console.error('Error funding milestone:', error);
@@ -424,7 +473,7 @@ export const releaseMilestonePayment = async (
   try {
     const milestoneRef = doc(db, COLLECTIONS.MILESTONES, milestoneId);
     const milestoneSnap = await getDoc(milestoneRef);
-    
+
     if (!milestoneSnap.exists()) {
       throw new Error('Milestone not found');
     }
@@ -436,18 +485,22 @@ export const releaseMilestonePayment = async (
     }
 
     // Release escrow
-    const escrowRef = doc(db, COLLECTIONS.ESCROW, milestone.escrowTransactionId);
+    const escrowRef = doc(
+      db,
+      COLLECTIONS.ESCROW,
+      milestone.escrowTransactionId
+    );
     await updateDoc(escrowRef, {
       status: 'released',
       releasedTo: sellerId,
       releaseDate: serverTimestamp(),
-      updatedAt: serverTimestamp()
+      updatedAt: serverTimestamp(),
     });
 
     // Update milestone status
     await updateDoc(milestoneRef, {
       status: 'released',
-      updatedAt: serverTimestamp()
+      updatedAt: serverTimestamp(),
     });
   } catch (error) {
     console.error('Error releasing milestone payment:', error);
@@ -509,4 +562,4 @@ const calculateNextPayoutDate = (frequency: string): Timestamp => {
       break;
   }
   return Timestamp.fromDate(now);
-}; 
+};

@@ -9,18 +9,23 @@ interface BetterAuthContextType {
   isAuthenticated: boolean;
   signIn: (email: string, password: string) => Promise<any>;
   signUp: (email: string, password: string, userData?: any) => Promise<any>;
-  signInWithGoogle: () => Promise<any>;
+  verifyCode: (email: string, code: string) => Promise<any>;
+  resendCode: (email: string) => Promise<any>;
   signOut: () => Promise<void>;
   getSession: () => Promise<any>;
   getProviders: () => Promise<any>;
 }
 
-const BetterAuthContext = createContext<BetterAuthContextType | undefined>(undefined);
+const BetterAuthContext = createContext<BetterAuthContextType | undefined>(
+  undefined
+);
 
 export const useBetterAuthContext = () => {
   const context = useContext(BetterAuthContext);
   if (context === undefined) {
-    throw new Error('useBetterAuthContext must be used within a BetterAuthProvider');
+    throw new Error(
+      'useBetterAuthContext must be used within a BetterAuthProvider'
+    );
   }
   return context;
 };
@@ -29,7 +34,9 @@ interface BetterAuthProviderProps {
   children: React.ReactNode;
 }
 
-export const BetterAuthProvider: React.FC<BetterAuthProviderProps> = ({ children }) => {
+export const BetterAuthProvider: React.FC<BetterAuthProviderProps> = ({
+  children,
+}) => {
   const [user, setUser] = useState<any>(null);
   const [session, setSession] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -41,14 +48,27 @@ export const BetterAuthProvider: React.FC<BetterAuthProviderProps> = ({ children
     const checkExistingSession = async () => {
       try {
         setIsLoading(true);
-        
+
+        // Check localStorage first for existing user data
+        const storedUser = localStorage.getItem('userData');
+        const storedToken = localStorage.getItem('token');
+
+        if (storedUser && storedToken) {
+          const userData = JSON.parse(storedUser);
+          setUser(userData);
+          setSession({ token: storedToken });
+          setIsAuthenticated(true);
+          setIsLoading(false);
+          return;
+        }
+
         // Get session from Better Auth
         const session = await authClient.getSession();
         console.log('BetterAuthContext: Session from Better Auth', session);
-        
+
         if (session?.data?.user) {
           setUser(session.data.user);
-          setSession(session.data);
+          setSession(session.data.session);
           setIsAuthenticated(true);
         } else {
           console.log('BetterAuthContext: No existing session found');
@@ -75,27 +95,37 @@ export const BetterAuthProvider: React.FC<BetterAuthProviderProps> = ({ children
       try {
         setIsLoading(true);
         setError(null);
-        
-        const result = await authClient.signIn("emailAndPassword", {
+
+        const result = await authClient.signIn('emailAndPassword', {
           email,
           password,
           redirect: false,
         });
-        
+
+        // Check if verification is required
+        if (result.requiresVerification) {
+          return {
+            requiresVerification: true,
+            message: result.message,
+            email: email
+          };
+        }
+
         if (result?.data?.user) {
           // Store in localStorage
           localStorage.setItem('token', result.data.session.token);
           localStorage.setItem('userData', JSON.stringify(result.data.user));
-          
+
           setUser(result.data.user);
           setSession(result.data.session);
           setIsAuthenticated(true);
         }
-        
+
         return result;
       } catch (error) {
         // Handle error properly
-        const errorMessage = error?.message || error?.statusText || 'Authentication failed';
+        const errorMessage =
+          error?.message || error?.statusText || 'Authentication failed';
         setError(errorMessage);
         throw error;
       } finally {
@@ -103,33 +133,45 @@ export const BetterAuthProvider: React.FC<BetterAuthProviderProps> = ({ children
       }
     },
 
-    signUpWithEmail: async (email: string, password: string, userData?: any) => {
+    signUpWithEmail: async (
+      email: string,
+      password: string,
+      userData?: any
+    ) => {
       try {
         setIsLoading(true);
         setError(null);
-        
-        const result = await authClient.signUp("emailAndPassword", {
+
+        const result = await authClient.signUp('emailAndPassword', {
           email,
           password,
-          name: userData?.displayName || userData?.name,
           ...userData,
           redirect: false,
         });
-        
+
+        // Sign up always requires verification
+        if (result.requiresVerification) {
+          return {
+            requiresVerification: true,
+            message: result.message,
+            email: email
+          };
+        }
+
         if (result?.data?.user) {
           // Store in localStorage
           localStorage.setItem('token', result.data.session.token);
           localStorage.setItem('userData', JSON.stringify(result.data.user));
-          
+
           setUser(result.data.user);
           setSession(result.data.session);
           setIsAuthenticated(true);
         }
-        
+
         return result;
       } catch (error) {
-        // Handle error properly
-        const errorMessage = error?.message || error?.statusText || 'Authentication failed';
+        const errorMessage =
+          error?.message || error?.statusText || 'Registration failed';
         setError(errorMessage);
         throw error;
       } finally {
@@ -137,25 +179,45 @@ export const BetterAuthProvider: React.FC<BetterAuthProviderProps> = ({ children
       }
     },
 
-    signInWithGoogle: async () => {
+    verifyCode: async (email: string, code: string) => {
       try {
         setIsLoading(true);
         setError(null);
-        
-        const result = await authClient.signIn("google", {
-          redirect: false,
-        });
-        
+
+        const result = await authClient.verifyCode(email, code);
+        console.log('🔍 BetterAuthContext verifyCode result:', result);
+
         if (result?.data?.user) {
+          console.log('✅ Setting user data and session');
+          console.log('🔍 User data:', result.data.user);
+          console.log('🔍 Session data:', result.data.session);
+          
+          // Store in localStorage
+          localStorage.setItem('token', result.data.session.token);
+          localStorage.setItem('userData', JSON.stringify(result.data.user));
+
           setUser(result.data.user);
-          setSession(result.data);
+          setSession(result.data.session);
           setIsAuthenticated(true);
+          
+          console.log('✅ Authentication state updated - user set, session set, isAuthenticated set to true');
+          
+          // Return the result so the VerificationCode component can handle success
+          return result;
+        } else {
+          console.log('❌ No user data in result:', result);
+          // Return the result even if no user data, so error handling works
+          return result;
         }
-        
-        return result;
       } catch (error) {
-        // Handle error properly
-        const errorMessage = error?.message || error?.statusText || 'Authentication failed';
+        console.log('🔍 BetterAuthContext caught error:', error);
+        console.log('🔍 Error type:', typeof error);
+        console.log('🔍 Error message:', error?.message);
+        console.log('🔍 Error statusText:', error?.statusText);
+        
+        const errorMessage =
+          error?.message || error?.statusText || 'Verification failed';
+        console.log('🔍 BetterAuthContext setting error:', errorMessage);
         setError(errorMessage);
         throw error;
       } finally {
@@ -163,39 +225,68 @@ export const BetterAuthProvider: React.FC<BetterAuthProviderProps> = ({ children
       }
     },
 
-    signOutUser: async () => {
+    resendCode: async (email: string) => {
       try {
+        setError(null);
+
+        const result = await authClient.resendCode(email);
+
+        return result;
+      } catch (error) {
+        const errorMessage =
+          error?.message || error?.statusText || 'Failed to resend code';
+        setError(errorMessage);
+        throw error;
+      }
+    },
+
+    signOut: async () => {
+      try {
+        setIsLoading(true);
+
         await authClient.signOut({ redirect: false });
-        
+
+        // Clear localStorage
+        localStorage.removeItem('token');
+        localStorage.removeItem('userData');
+
         setUser(null);
         setSession(null);
         setIsAuthenticated(false);
         setError(null);
       } catch (error) {
-        console.error('Error signing out:', error);
+        console.error('Sign out error:', error);
+        // Still clear local state even if API call fails
+        localStorage.removeItem('token');
+        localStorage.removeItem('userData');
+        setUser(null);
+        setSession(null);
+        setIsAuthenticated(false);
+      } finally {
+        setIsLoading(false);
       }
     },
 
-    getCurrentSession: async () => {
+    getSession: async () => {
       try {
         return await authClient.getSession();
       } catch (error) {
-        console.error('Error getting session:', error);
+        console.error('Get session error:', error);
         return null;
       }
     },
 
-    getAvailableProviders: async () => {
+    getProviders: async () => {
       try {
         return await authClient.getProviders();
       } catch (error) {
-        console.error('Error getting providers:', error);
-        return {};
+        console.error('Get providers error:', error);
+        return [];
       }
-    }
+    },
   };
 
-  const value: BetterAuthContextType = {
+  const value = {
     user,
     session,
     isLoading,
@@ -203,10 +294,11 @@ export const BetterAuthProvider: React.FC<BetterAuthProviderProps> = ({ children
     isAuthenticated,
     signIn: authHelpers.signInWithEmail,
     signUp: authHelpers.signUpWithEmail,
-    signInWithGoogle: authHelpers.signInWithGoogle,
-    signOut: authHelpers.signOutUser,
-    getSession: authHelpers.getCurrentSession,
-    getProviders: authHelpers.getAvailableProviders,
+    verifyCode: authHelpers.verifyCode,
+    resendCode: authHelpers.resendCode,
+    signOut: authHelpers.signOut,
+    getSession: authHelpers.getSession,
+    getProviders: authHelpers.getProviders,
   };
 
   return (
@@ -216,4 +308,4 @@ export const BetterAuthProvider: React.FC<BetterAuthProviderProps> = ({ children
   );
 };
 
-export default BetterAuthProvider; 
+export default BetterAuthProvider;

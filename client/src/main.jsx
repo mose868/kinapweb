@@ -1,10 +1,11 @@
-import React from 'react'
-import ReactDOM from 'react-dom/client'
-import { BrowserRouter } from 'react-router-dom'
-import { QueryClient, QueryClientProvider } from 'react-query'
-import { HelmetProvider } from 'react-helmet-async'
-import App from './App.tsx'
-import './styles/index.css'
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import { BrowserRouter } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from 'react-query';
+import { HelmetProvider } from 'react-helmet-async';
+import App from './App.tsx';
+import { ThemeProvider } from './contexts/ThemeContext';
+import './styles/index.css';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -15,16 +16,18 @@ const queryClient = new QueryClient({
       cacheTime: 10 * 60 * 1000, // 10 minutes
     },
   },
-})
+});
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <HelmetProvider>
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
-          <App />
+          <ThemeProvider>
+            <App />
+          </ThemeProvider>
         </BrowserRouter>
       </QueryClientProvider>
     </HelmetProvider>
-  </React.StrictMode>,
-) 
+  </React.StrictMode>
+);

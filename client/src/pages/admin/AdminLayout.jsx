@@ -13,14 +13,18 @@ const navLinks = [
 const AdminLayout = ({ children }) => {
   const location = useLocation();
   return (
-    <div className="flex min-h-screen bg-ajira-lightGray">
+    <div className='flex min-h-screen bg-ajira-lightGray'>
       {/* Sidebar */}
-      <aside className="w-64 bg-white shadow-lg flex flex-col">
-        <div className="h-20 flex items-center justify-center border-b">
-          <img src="/logo.jpeg" alt="Admin Logo" className="h-12 w-auto rounded-lg" />
+      <aside className='w-64 bg-white shadow-lg flex flex-col'>
+        <div className='h-20 flex items-center justify-center border-b'>
+          <img
+            src='/logo.jpeg'
+            alt='Admin Logo'
+            className='h-12 w-auto rounded-lg'
+          />
         </div>
-        <nav className="flex-1 py-6 px-4 space-y-2">
-          {navLinks.map(link => (
+        <nav className='flex-1 py-6 px-4 space-y-2'>
+          {navLinks.map((link) => (
             <Link
               key={link.to}
               to={link.to}
@@ -37,15 +41,15 @@ const AdminLayout = ({ children }) => {
         </nav>
       </aside>
       {/* Main Content */}
-      <div className="flex-1 flex flex-col">
+      <div className='flex-1 flex flex-col'>
         {/* Header */}
-        <header className="h-20 bg-white shadow flex items-center px-8 border-b">
-          <h1 className="text-2xl font-bold text-ajira-blue">Admin Panel</h1>
+        <header className='h-20 bg-white shadow flex items-center px-8 border-b'>
+          <h1 className='text-2xl font-bold text-ajira-blue'>Admin Panel</h1>
         </header>
-        <main className="flex-1 p-8 overflow-y-auto">{children}</main>
+        <main className='flex-1 p-8 overflow-y-auto'>{children}</main>
       </div>
     </div>
   );
 };
 
-export default AdminLayout; 
+export default AdminLayout;

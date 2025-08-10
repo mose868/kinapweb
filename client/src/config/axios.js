@@ -6,7 +6,7 @@ const axiosInstance = axios.create({
   baseURL,
   withCredentials: true,
   headers: {
-    'Content-Type': 'application/json'
+    'Content-Type': 'application/json',
   },
   timeout: 10000, // 10 second timeout
 });
@@ -49,4 +49,4 @@ axiosInstance.interceptors.response.use(
   }
 );
 
-export default axiosInstance; 
+export default axiosInstance;

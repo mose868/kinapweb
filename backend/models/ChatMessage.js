@@ -18,6 +18,9 @@ const chatMessageSchema = new mongoose.Schema({
     type: String,
     required: false
   },
+  
+  // Message type
+  messageType: {
     type: String,
     required: true,
     index: true
@@ -50,14 +53,15 @@ const chatMessageSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  
   content: {
     type: String,
     required: true
   },
   // Message metadata
-  messageType: {
+  contentType: {
     type: String,
-    enum: ['text', 'image', 'file', 'voice', 'video', 'system', 'chatbot', 'kinap-ai'],
+    enum: ['text', 'image', 'file', 'voice', 'video', 'audio', 'system', 'chatbot', 'kinap-ai'],
     default: 'text'
   },
   
@@ -136,8 +140,8 @@ const chatMessageSchema = new mongoose.Schema({
 
 // Index for efficient querying
 chatMessageSchema.index({ conversationId: 1, timestamp: 1 });
-chatMessageSchema.index({ userId: 1, messageType: 1 });
-chatMessageSchema.index({ messageType: 1, timestamp: -1 });
+chatMessageSchema.index({ userId: 1, contentType: 1 });
+chatMessageSchema.index({ contentType: 1, timestamp: -1 });
 chatMessageSchema.index({ groupId: 1, timestamp: 1 });
 
 // Indexes for better query performance

@@ -1,48 +1,54 @@
-export type UserRole = 'buyer' | 'seller' | 'admin'
+export type UserRole = 'buyer' | 'seller' | 'admin';
 
 export interface UserProfile {
-  uid: string
-  email: string
-  displayName: string
-  photoURL?: string
-  role: UserRole
-  bio: string
-  location: string
-  skills: string[]
-  joinedAt: Date
-  rating: number
-  reviews: number
-  completedOrders: number
-  languages: string[]
-  id?: string
+  uid: string;
+  email: string;
+  displayName: string;
+  photoURL?: string;
+  role: UserRole;
+  bio: string;
+  location: string;
+  skills: string[];
+  joinedAt: Date;
+  rating: number;
+  reviews: number;
+  completedOrders: number;
+  languages: string[];
+  id?: string;
   // Club member specific fields
-  course?: string
-  year?: string
-  preferredPlatforms?: string[]
-  experienceLevel?: string
-  ajiraGoals?: string
-  preferredLearningMode?: string
-  linkedinProfile?: string
-  githubProfile?: string
-  portfolioUrl?: string
-  phoneNumber?: string
-  idNumber?: string
-  achievements?: string[]
-  completedProjects?: number
-  mentorshipInterest?: boolean
-  availableForFreelance?: boolean
-  joinedDate?: string
-  lastActive?: string
+  course?: string;
+  year?: string;
+  preferredPlatforms?: string[];
+  experienceLevel?: string;
+  ajiraGoals?: string;
+  preferredLearningMode?: string;
+  linkedinProfile?: string;
+  githubProfile?: string;
+  portfolioUrl?: string;
+  phoneNumber?: string;
+  idNumber?: string;
+  achievements?: string[];
+  completedProjects?: number;
+  mentorshipInterest?: boolean;
+  availableForFreelance?: boolean;
+  joinedDate?: string;
+  lastActive?: string;
   stats?: {
-    rating: number
-    reviews: number
-    views: number
-    completedOrders: number
-  }
+    rating: number;
+    reviews: number;
+    views: number;
+    completedOrders: number;
+  };
 }
 
 export type GigStatus = 'active' | 'paused' | 'draft' | 'under_review';
-export type OrderStatus = 'pending' | 'active' | 'delivered' | 'completed' | 'cancelled' | 'disputed';
+export type OrderStatus =
+  | 'pending'
+  | 'active'
+  | 'delivered'
+  | 'completed'
+  | 'cancelled'
+  | 'disputed';
 export type PaymentStatus = 'pending' | 'paid' | 'refunded' | 'released';
 
 export interface GigPackage {
@@ -406,4 +412,4 @@ export interface MilestonePayment {
   escrowTransactionId?: string;
   createdAt: string;
   updatedAt: string;
-} 
+}

@@ -152,31 +152,15 @@ class BiometricAuthService {
 
   // Check if device supports biometric authentication
   async checkBiometricSupport() {
+    // Since this is a backend service, we'll return basic support info
+    // The actual device capability check should be done on the frontend
     const support = {
-      fingerprint: false,
-      face: false,
-      voice: false,
-      iris: false,
-      palm: false
+      fingerprint: true, // WebAuthn is widely supported
+      face: true, // Most devices have cameras
+      voice: true, // Most devices have microphones
+      iris: false, // Not widely supported
+      palm: false  // Not widely supported
     };
-
-    // Check WebAuthn support
-    if (typeof window !== 'undefined' && window.PublicKeyCredential) {
-      support.fingerprint = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
-    }
-
-    // Check for other biometric APIs (these are experimental)
-    if (typeof window !== 'undefined') {
-      // Face recognition support (experimental)
-      support.face = 'FaceDetector' in window || 'getUserMedia' in navigator.mediaDevices;
-      
-      // Voice recognition support
-      support.voice = 'webkitSpeechRecognition' in window || 'SpeechRecognition' in window;
-      
-      // Iris and palm are typically hardware-dependent
-      support.iris = false; // Would need specific hardware
-      support.palm = false; // Would need specific hardware
-    }
 
     return support;
   }

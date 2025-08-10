@@ -1,10 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-<<<<<<< HEAD
-const envContent = `# Server Configuration
-=======
-console.log('🚀 Setting up Kinap Ajira Club Environment Variables (Gmail SMTP)...\n');
+console.log('🚀 Setting up Kinap Ajira Club Environment Variables...\n');
 
 // Check if .env file exists
 const envPath = path.join(__dirname, '.env');
@@ -65,12 +62,7 @@ JWT_SECRET=your_jwt_secret_here
 MONGODB_URI=your_mongodb_connection_string
 
 # Server Configuration
->>>>>>> e9211fa7b760e0d7aafaab53a5aacf86a3b4640a
 PORT=5000
-
-<<<<<<< HEAD
-# MongoDB Configuration
-MONGODB_URI=mongodb://localhost:27017/ajira_digital_kinap
 
 # Better Auth Configuration
 BETTER_AUTH_SECRET=your-super-secret-key-change-this-in-production
@@ -81,7 +73,6 @@ GOOGLE_CLIENT_ID=your_google_client_id_here
 GOOGLE_CLIENT_SECRET=your_google_client_secret_here
 
 # JWT Configuration (for legacy auth)
-JWT_SECRET=your_jwt_secret_key_here
 JWT_EXPIRES_IN=7d
 
 # Session Configuration
@@ -90,12 +81,6 @@ SESSION_SECRET=your_session_secret_here
 # Frontend URL
 CLIENT_URL=http://localhost:5173
 
-# Email Configuration
-EMAIL_HOST=smtp.gmail.com
-EMAIL_PORT=587
-EMAIL_USER=kinapajira@gmail.com
-EMAIL_PASS=your-email-password
-=======
 # Optional: Other email providers (fallback)
 SENDGRID_API_KEY=
 MAILGUN_USER=
@@ -109,22 +94,14 @@ EMAIL_PORT=587
 EMAIL_SECURE=false
 EMAIL_USER=kinapajira@gmail.com
 EMAIL_PASS=your-app-password
->>>>>>> e9211fa7b760e0d7aafaab53a5aacf86a3b4640a
 `;
 
   fs.writeFileSync(envPath, envTemplate);
   console.log('✅ .env file created successfully!');
-<<<<<<< HEAD
   console.log('📝 Please update the following variables:');
   console.log('   - BETTER_AUTH_SECRET (generate a secure random string)');
   console.log('   - GOOGLE_CLIENT_ID (from Google Cloud Console)');
   console.log('   - GOOGLE_CLIENT_SECRET (from Google Cloud Console)');
-  console.log('   - EMAIL_PASS (your Gmail app password)');
-} catch (error) {
-  console.error('❌ Error creating .env file:', error.message);
-} 
-=======
-  console.log('📋 Please update the following variables:');
   console.log('   - GMAIL_USER: Your Kinap Ajira Club Gmail address');
   console.log('   - GMAIL_APP_PASSWORD: Your Gmail app password');
   console.log('   - JWT_SECRET: A random secret string');
@@ -146,5 +123,4 @@ console.log('- Create a Gmail account for Kinap Ajira Club');
 console.log('- Set up 2-Step Verification and App Password');
 console.log('- Update your .env file with the credentials');
 console.log('- Test the email functionality: npm run test-email');
-console.log('- Start your server: npm run dev\n'); 
->>>>>>> e9211fa7b760e0d7aafaab53a5aacf86a3b4640a
+console.log('- Start your server: npm run dev\n');

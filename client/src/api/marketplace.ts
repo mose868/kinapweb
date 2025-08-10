@@ -1,5 +1,5 @@
 // Marketplace API service for connecting to backend
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 export interface Gig {
   _id: string;
@@ -101,18 +101,22 @@ export interface PaginatedResponse<T> {
 }
 
 // Fetch all gigs with optional filters
-export const fetchGigs = async (filters: SearchFilters = {}): Promise<PaginatedResponse<Gig>> => {
+export const fetchGigs = async (
+  filters: SearchFilters = {}
+): Promise<PaginatedResponse<Gig>> => {
   try {
     const params = new URLSearchParams();
-    
+
     Object.entries(filters).forEach(([key, value]) => {
       if (value !== undefined && value !== null && value !== '') {
         params.append(key, value.toString());
       }
     });
 
-    const response = await fetch(`${API_BASE_URL}/api/marketplace/gigs?${params.toString()}`);
-    
+    const response = await fetch(
+      `${API_BASE_URL}/marketplace/gigs?${params.toString()}`
+    );
+
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -127,8 +131,10 @@ export const fetchGigs = async (filters: SearchFilters = {}): Promise<PaginatedR
 // Fetch featured gigs
 export const fetchFeaturedGigs = async (): Promise<Gig[]> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/marketplace/gigs/featured`);
-    
+    const response = await fetch(
+      `${API_BASE_URL}/marketplace/gigs/featured`
+    );
+
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -143,8 +149,8 @@ export const fetchFeaturedGigs = async (): Promise<Gig[]> => {
 // Fetch gig by ID
 export const fetchGigById = async (id: string): Promise<Gig> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/marketplace/gigs/${id}`);
-    
+    const response = await fetch(`${API_BASE_URL}/marketplace/gigs/${id}`);
+
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -157,18 +163,23 @@ export const fetchGigById = async (id: string): Promise<Gig> => {
 };
 
 // Search gigs
-export const searchGigs = async (query: string, filters: Omit<SearchFilters, 'search'> = {}): Promise<Gig[]> => {
+export const searchGigs = async (
+  query: string,
+  filters: Omit<SearchFilters, 'search'> = {}
+): Promise<Gig[]> => {
   try {
     const params = new URLSearchParams({ q: query });
-    
+
     Object.entries(filters).forEach(([key, value]) => {
       if (value !== undefined && value !== null && value !== '') {
         params.append(key, value.toString());
       }
     });
 
-    const response = await fetch(`${API_BASE_URL}/api/marketplace/search?${params.toString()}`);
-    
+    const response = await fetch(
+      `${API_BASE_URL}/marketplace/search?${params.toString()}`
+    );
+
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -183,8 +194,8 @@ export const searchGigs = async (query: string, filters: Omit<SearchFilters, 'se
 // Fetch marketplace statistics
 export const fetchMarketplaceStats = async (): Promise<MarketplaceStats> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/marketplace/stats`);
-    
+    const response = await fetch(`${API_BASE_URL}/marketplace/stats`);
+
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -197,17 +208,20 @@ export const fetchMarketplaceStats = async (): Promise<MarketplaceStats> => {
 };
 
 // Create new gig (requires authentication)
-export const createGig = async (gigData: Partial<Gig>, token: string): Promise<Gig> => {
+export const createGig = async (
+  gigData: Partial<Gig>,
+  token: string
+): Promise<Gig> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/marketplace/gigs`, {
+    const response = await fetch(`${API_BASE_URL}/marketplace/gigs`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
+        Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify(gigData)
+      body: JSON.stringify(gigData),
     });
-    
+
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -220,17 +234,21 @@ export const createGig = async (gigData: Partial<Gig>, token: string): Promise<G
 };
 
 // Update gig (requires authentication)
-export const updateGig = async (id: string, gigData: Partial<Gig>, token: string): Promise<Gig> => {
+export const updateGig = async (
+  id: string,
+  gigData: Partial<Gig>,
+  token: string
+): Promise<Gig> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/marketplace/gigs/${id}`, {
+    const response = await fetch(`${API_BASE_URL}/marketplace/gigs/${id}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
+        Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify(gigData)
+      body: JSON.stringify(gigData),
     });
-    
+
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -245,13 +263,13 @@ export const updateGig = async (id: string, gigData: Partial<Gig>, token: string
 // Delete gig (requires authentication)
 export const deleteGig = async (id: string, token: string): Promise<void> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/marketplace/gigs/${id}`, {
+    const response = await fetch(`${API_BASE_URL}/marketplace/gigs/${id}`, {
       method: 'DELETE',
       headers: {
-        'Authorization': `Bearer ${token}`
-      }
+        Authorization: `Bearer ${token}`,
+      },
     });
-    
+
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -262,10 +280,15 @@ export const deleteGig = async (id: string, token: string): Promise<void> => {
 };
 
 // Get gigs by category
-export const fetchGigsByCategory = async (category: string, limit: number = 20): Promise<Gig[]> => {
+export const fetchGigsByCategory = async (
+  category: string,
+  limit: number = 20
+): Promise<Gig[]> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/marketplace/gigs?category=${category}&limit=${limit}`);
-    
+    const response = await fetch(
+      `${API_BASE_URL}/marketplace/gigs?category=${category}&limit=${limit}`
+    );
+
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -281,8 +304,10 @@ export const fetchGigsByCategory = async (category: string, limit: number = 20):
 // Get gigs by seller
 export const fetchGigsBySeller = async (sellerId: string): Promise<Gig[]> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/marketplace/gigs?seller=${sellerId}`);
-    
+    const response = await fetch(
+      `${API_BASE_URL}/marketplace/gigs?seller=${sellerId}`
+    );
+
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -293,4 +318,4 @@ export const fetchGigsBySeller = async (sellerId: string): Promise<Gig[]> => {
     console.error('Error fetching gigs by seller:', error);
     throw error;
   }
-}; 
+};

@@ -592,4 +592,55 @@
 /* Custom container with responsive padding and max-width */
 .container-custom {
   @apply px-4 sm:px-6 lg:px-8 mx-auto w-full max-w-7xl;
+}
+
+/* Prevent layout shifts and shaking */
+.chat-container {
+  contain: layout style paint;
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+.chat-messages {
+  contain: layout style;
+  will-change: scroll-position;
+  transform: translateZ(0);
+}
+
+.chat-input {
+  contain: layout style;
+  will-change: transform;
+  transform: translateZ(0);
+}
+
+/* Prevent textarea resizing from causing layout shifts */
+.chat-textarea {
+  resize: none;
+  overflow: hidden;
+  min-height: 44px;
+  max-height: 120px;
+  height: 44px;
+  transition: height 0.2s ease;
+}
+
+/* Smooth scrolling for chat containers */
+.chat-scroll {
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Prevent animation jank */
+.no-shake {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+
+/* Fixed positioning improvements */
+.chat-fixed {
+  position: fixed;
+  transform: translateZ(0);
+  will-change: transform;
+  backface-visibility: hidden;
 } 

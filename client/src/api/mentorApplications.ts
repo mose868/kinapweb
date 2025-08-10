@@ -105,13 +105,15 @@ export interface PaginatedResponse<T> {
 }
 
 // Submit mentor application
-export const submitMentorApplication = async (applicationData: MentorApplicationData): Promise<{ message: string; application: any }> => {
+export const submitMentorApplication = async (
+  applicationData: MentorApplicationData
+): Promise<{ message: string; application: any }> => {
   try {
     const response = await fetch(`${API_BASE_URL}/api/mentor-applications`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
+        Authorization: `Bearer ${localStorage.getItem('token')}`,
       },
       body: JSON.stringify(applicationData),
     });
@@ -129,36 +131,42 @@ export const submitMentorApplication = async (applicationData: MentorApplication
 };
 
 // Get user's mentor application
-export const fetchMyMentorApplication = async (): Promise<MentorApplication> => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/api/mentor-applications/my-application`, {
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      }
-    });
+export const fetchMyMentorApplication =
+  async (): Promise<MentorApplication> => {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/mentor-applications/my-application`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('token')}`,
+          },
+        }
+      );
 
-    if (!response.ok) {
-      if (response.status === 404) {
-        throw new Error('No application found');
+      if (!response.ok) {
+        if (response.status === 404) {
+          throw new Error('No application found');
+        }
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to fetch application');
       }
-      const errorData = await response.json();
-      throw new Error(errorData.message || 'Failed to fetch application');
+
+      const data = await response.json();
+      return data.application;
+    } catch (error) {
+      console.error('Fetch mentor application error:', error);
+      throw error;
     }
-
-    const data = await response.json();
-    return data.application;
-  } catch (error) {
-    console.error('Fetch mentor application error:', error);
-    throw error;
-  }
-};
+  };
 
 // Get all mentor applications (admin only)
-export const fetchAllMentorApplications = async (filters: {
-  status?: string;
-  page?: number;
-  limit?: number;
-} = {}): Promise<PaginatedResponse<MentorApplication>> => {
+export const fetchAllMentorApplications = async (
+  filters: {
+    status?: string;
+    page?: number;
+    limit?: number;
+  } = {}
+): Promise<PaginatedResponse<MentorApplication>> => {
   try {
     const params = new URLSearchParams();
     Object.entries(filters).forEach(([key, value]) => {
@@ -167,11 +175,14 @@ export const fetchAllMentorApplications = async (filters: {
       }
     });
 
-    const response = await fetch(`${API_BASE_URL}/api/mentor-applications?${params.toString()}`, {
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
+    const response = await fetch(
+      `${API_BASE_URL}/api/mentor-applications?${params.toString()}`,
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
       }
-    });
+    );
 
     if (!response.ok) {
       const errorData = await response.json();
@@ -186,13 +197,18 @@ export const fetchAllMentorApplications = async (filters: {
 };
 
 // Get specific mentor application (admin only)
-export const fetchMentorApplicationById = async (id: string): Promise<MentorApplication> => {
+export const fetchMentorApplicationById = async (
+  id: string
+): Promise<MentorApplication> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/mentor-applications/${id}`, {
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
+    const response = await fetch(
+      `${API_BASE_URL}/api/mentor-applications/${id}`,
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
       }
-    });
+    );
 
     if (!response.ok) {
       const errorData = await response.json();
@@ -209,7 +225,7 @@ export const fetchMentorApplicationById = async (id: string): Promise<MentorAppl
 
 // Review mentor application (admin only)
 export const reviewMentorApplication = async (
-  id: string, 
+  id: string,
   reviewData: {
     status: string;
     notes?: string;
@@ -217,14 +233,17 @@ export const reviewMentorApplication = async (
   }
 ): Promise<{ message: string; application: any }> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/mentor-applications/${id}/review`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      },
-      body: JSON.stringify(reviewData),
-    });
+    const response = await fetch(
+      `${API_BASE_URL}/api/mentor-applications/${id}/review`,
+      {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
+        body: JSON.stringify(reviewData),
+      }
+    );
 
     if (!response.ok) {
       const errorData = await response.json();
@@ -239,14 +258,19 @@ export const reviewMentorApplication = async (
 };
 
 // Retry AI vetting (admin only)
-export const retryAIVetting = async (id: string): Promise<{ message: string; application: any }> => {
+export const retryAIVetting = async (
+  id: string
+): Promise<{ message: string; application: any }> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/mentor-applications/${id}/retry-ai`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
+    const response = await fetch(
+      `${API_BASE_URL}/api/mentor-applications/${id}/retry-ai`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
       }
-    });
+    );
 
     if (!response.ok) {
       const errorData = await response.json();
@@ -261,23 +285,27 @@ export const retryAIVetting = async (id: string): Promise<{ message: string; app
 };
 
 // Get dashboard stats (admin only)
-export const fetchMentorApplicationStats = async (): Promise<MentorApplicationStats> => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/api/mentor-applications/stats/dashboard`, {
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
+export const fetchMentorApplicationStats =
+  async (): Promise<MentorApplicationStats> => {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/mentor-applications/stats/dashboard`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('token')}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to fetch stats');
       }
-    });
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || 'Failed to fetch stats');
+      const data = await response.json();
+      return data.stats;
+    } catch (error) {
+      console.error('Fetch mentor application stats error:', error);
+      throw error;
     }
-
-    const data = await response.json();
-    return data.stats;
-  } catch (error) {
-    console.error('Fetch mentor application stats error:', error);
-    throw error;
-  }
-}; 
+  };

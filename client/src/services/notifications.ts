@@ -41,11 +41,13 @@ export const createOrderNotification = async (
       break;
     case 'delivery':
       title = 'Order Delivered';
-      message = 'Your order has been delivered. Please review and accept the delivery.';
+      message =
+        'Your order has been delivered. Please review and accept the delivery.';
       break;
     case 'complete':
       title = 'Order Completed';
-      message = 'Your order has been completed. Thank you for using our service.';
+      message =
+        'Your order has been completed. Thank you for using our service.';
       break;
   }
 
@@ -54,7 +56,7 @@ export const createOrderNotification = async (
     type: 'order',
     title,
     message,
-    link: `/orders/${orderId}`
+    link: `/orders/${orderId}`,
   });
 };
 
@@ -68,7 +70,7 @@ export const createMessageNotification = async (
     type: 'message',
     title: 'New Message',
     message: `You have a new message from ${senderName}`,
-    link: `/orders/${orderId}`
+    link: `/orders/${orderId}`,
   });
 };
 
@@ -82,7 +84,7 @@ export const createReviewNotification = async (
     type: 'review',
     title: 'New Review',
     message: `${reviewerName} has left a review on your gig`,
-    link: `/gigs/${gigId}`
+    link: `/gigs/${gigId}`,
   });
 };
 
@@ -114,7 +116,7 @@ export const createPaymentNotification = async (
     type: 'payment',
     title,
     message,
-    link: `/orders/${orderId}`
+    link: `/orders/${orderId}`,
   });
 };
 
@@ -129,6 +131,6 @@ export const createSystemNotification = async (
     type: 'system',
     title,
     message,
-    link
+    link,
   });
-}; 
+};

@@ -69,4 +69,4 @@ export const endpoints = {
     list: '/notifications',
     markRead: (id: string) => `/notifications/${id}/read`,
   },
-} as const; 
+} as const;

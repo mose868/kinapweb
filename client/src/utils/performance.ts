@@ -31,11 +31,15 @@ class PerformanceMonitor {
 
     // Only warn, don't block operations
     if (this.requestCount > 200) {
-      console.warn('High request rate detected. Consider implementing request batching.');
+      console.warn(
+        'High request rate detected. Consider implementing request batching.'
+      );
     }
 
     if (this.navigationCount > 20) {
-      console.warn('High navigation rate detected. Consider implementing navigation throttling.');
+      console.warn(
+        'High navigation rate detected. Consider implementing navigation throttling.'
+      );
     }
   }
 
@@ -72,10 +76,13 @@ export function throttle<T extends (...args: any[]) => any>(
       // Throttled
       if (options.trailing) {
         if (timeoutId) clearTimeout(timeoutId);
-        timeoutId = setTimeout(() => {
-          lastExecTime = now;
-          func(...args);
-        }, delay - (now - lastExecTime));
+        timeoutId = setTimeout(
+          () => {
+            lastExecTime = now;
+            func(...args);
+          },
+          delay - (now - lastExecTime)
+        );
       }
     } else {
       // Execute immediately
@@ -114,4 +121,4 @@ export function monitorRequest<T extends (...args: any[]) => Promise<any>>(
     performanceMonitor.incrementRequest();
     return requestFn(...args);
   }) as T;
-} 
+}

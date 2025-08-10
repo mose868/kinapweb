@@ -1,20 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Fingerprint, 
-  Camera, 
-  Mic, 
-  Eye, 
-  Hand, 
-  CheckCircle, 
-  XCircle, 
+import {
+  Fingerprint,
+  Camera,
+  Mic,
+  CheckCircle,
+  XCircle,
   Settings,
   Trash2,
   Shield,
-  Smartphone
+  Smartphone,
+  Loader2,
 } from 'lucide-react';
-import biometricAuthService, { 
-  BiometricSupport, 
-  BiometricCredential 
+import biometricAuthService, {
+  BiometricSupport,
+  BiometricCredential,
 } from '../../services/biometricAuth';
 import { useBetterAuthContext } from '../../contexts/BetterAuthContext';
 
@@ -24,10 +23,10 @@ interface BiometricAuthProps {
   mode?: 'register' | 'verify';
 }
 
-const BiometricAuth: React.FC<BiometricAuthProps> = ({ 
-  onSuccess, 
-  onCancel, 
-  mode = 'register' 
+const BiometricAuth: React.FC<BiometricAuthProps> = ({
+  onSuccess,
+  onCancel,
+  mode = 'register',
 }) => {
   const { user } = useBetterAuthContext();
   const [support, setSupport] = useState<BiometricSupport | null>(null);
@@ -76,14 +75,8 @@ const BiometricAuth: React.FC<BiometricAuthProps> = ({
         case 'fingerprint':
           credentialData = await biometricAuthService.registerFingerprint();
           break;
-        case 'face-recognition':
-          credentialData = await biometricAuthService.registerFaceRecognition();
-          break;
-        case 'voice-recognition':
-          credentialData = await biometricAuthService.registerVoiceRecognition();
-          break;
         default:
-          throw new Error('Unsupported biometric method');
+          throw new Error('Only fingerprint authentication is currently supported');
       }
 
       // Register with backend
@@ -93,14 +86,14 @@ const BiometricAuth: React.FC<BiometricAuthProps> = ({
       );
 
       setSuccess(`${method.replace('-', ' ')} registered successfully!`);
-      
+
       // Reload credentials
       await loadCredentials();
-      
+
+      // Auto-success after registration
       setTimeout(() => {
         onSuccess?.();
       }, 2000);
-
     } catch (error: any) {
       setError(error.message || 'Registration failed');
     } finally {
@@ -120,13 +113,9 @@ const BiometricAuth: React.FC<BiometricAuthProps> = ({
 
       switch (credential.type) {
         case 'fingerprint':
-          isVerified = await biometricAuthService.verifyFingerprint(credential.id);
-          break;
-        case 'face-recognition':
-          isVerified = await biometricAuthService.verifyFaceRecognition(credential.id);
-          break;
-        case 'voice-recognition':
-          isVerified = await biometricAuthService.verifyVoiceRecognition(credential.id);
+          isVerified = await biometricAuthService.verifyFingerprint(
+            credential.id
+          );
           break;
         default:
           throw new Error('Unsupported biometric method');
@@ -140,7 +129,6 @@ const BiometricAuth: React.FC<BiometricAuthProps> = ({
       } else {
         setError('Biometric verification failed. Please try again.');
       }
-
     } catch (error: any) {
       setError(error.message || 'Verification failed');
     } finally {
@@ -171,176 +159,189 @@ const BiometricAuth: React.FC<BiometricAuthProps> = ({
         return <Camera className="w-6 h-6" />;
       case 'voice-recognition':
         return <Mic className="w-6 h-6" />;
-      case 'iris-scan':
-        return <Eye className="w-6 h-6" />;
-      case 'palm-print':
-        return <Hand className="w-6 h-6" />;
       default:
         return <Shield className="w-6 h-6" />;
     }
   };
 
   const getMethodName = (method: string) => {
-    return method.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase());
+    switch (method) {
+      case 'fingerprint':
+        return 'Fingerprint';
+      case 'face-recognition':
+        return 'Face Recognition';
+      case 'voice-recognition':
+        return 'Voice Recognition';
+      default:
+        return method;
+    }
   };
 
-  if (!support) {
+  if (loading && !isRegistering) {
     return (
-      <div className="flex items-center justify-center p-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-ajira-primary"></div>
+      <div className="p-6 text-center">
+        <Loader2 className="w-8 h-8 animate-spin text-ajira-primary mx-auto mb-4" />
+        <p className="text-gray-600">Processing...</p>
       </div>
     );
   }
 
   return (
-    <div className="max-w-md mx-auto p-6 bg-white rounded-2xl shadow-lg">
-      <div className="text-center mb-6">
-        <div className="w-16 h-16 bg-ajira-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-          <Smartphone className="w-8 h-8 text-ajira-primary" />
+    <div className="p-6">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h2 className="text-xl font-bold text-gray-900">
+            {mode === 'register' ? 'Setup Biometric Authentication' : 'Biometric Login'}
+          </h2>
+          <p className="text-sm text-gray-600 mt-1">
+            {mode === 'register' 
+              ? 'Choose a biometric method to secure your account'
+              : 'Select your preferred authentication method'
+            }
+          </p>
         </div>
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">
-          {mode === 'register' ? 'Setup Biometric Authentication' : 'Biometric Login'}
-        </h2>
-        <p className="text-gray-600">
-          {mode === 'register' 
-            ? 'Choose a biometric method to secure your account'
-            : 'Select your preferred biometric method to login'
-          }
-        </p>
+        <button
+          onClick={onCancel}
+          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+        >
+          <XCircle className="w-5 h-5 text-gray-500" />
+        </button>
       </div>
 
+      {/* Error/Success Messages */}
       {error && (
-        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
-          <XCircle className="w-5 h-5 text-red-500" />
-          <span className="text-red-700 text-sm">{error}</span>
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+          <div className="flex items-center">
+            <XCircle className="w-5 h-5 text-red-500 mr-2" />
+            <span className="text-red-700 text-sm">{error}</span>
+          </div>
         </div>
       )}
 
       {success && (
-        <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2">
-          <CheckCircle className="w-5 h-5 text-green-500" />
-          <span className="text-green-700 text-sm">{success}</span>
+        <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+          <div className="flex items-center">
+            <CheckCircle className="w-5 h-5 text-green-500 mr-2" />
+            <span className="text-green-700 text-sm">{success}</span>
+          </div>
         </div>
       )}
 
       {mode === 'register' ? (
-        <div className="space-y-3">
-          {Object.entries(support).map(([method, isSupported]) => (
-            isSupported && (
+        /* Registration Mode */
+        <div>
+          {/* Available Methods */}
+          <div className="space-y-3">
+            {support?.fingerprint && (
               <button
-                key={method}
-                onClick={() => handleRegister(method)}
-                disabled={loading || isRegistering}
-                className={`w-full p-4 border-2 rounded-lg flex items-center gap-3 transition-all duration-200 ${
-                  selectedMethod === method
-                    ? 'border-ajira-primary bg-ajira-primary/5'
-                    : 'border-gray-200 hover:border-ajira-primary/50 hover:bg-gray-50'
-                } ${loading || isRegistering ? 'opacity-50 cursor-not-allowed' : ''}`}
+                onClick={() => handleRegister('fingerprint')}
+                disabled={loading}
+                className="w-full flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
               >
-                <div className="text-ajira-primary">
-                  {getMethodIcon(method)}
-                </div>
-                <div className="text-left flex-1">
-                  <div className="font-medium text-gray-900">
-                    {getMethodName(method)}
+                <div className="flex items-center">
+                  <div className="p-2 bg-blue-100 rounded-lg mr-3">
+                    <Fingerprint className="w-5 h-5 text-blue-600" />
                   </div>
-                  <div className="text-sm text-gray-500">
-                    {isRegistering && selectedMethod === method 
-                      ? 'Setting up...' 
-                      : 'Tap to register'
-                    }
+                  <div className="text-left">
+                    <h3 className="font-medium text-gray-900">Fingerprint</h3>
+                    <p className="text-sm text-gray-600">Use your device's fingerprint sensor</p>
                   </div>
                 </div>
-                {loading && selectedMethod === method && (
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-ajira-primary"></div>
+                {selectedMethod === 'fingerprint' && loading && (
+                  <Loader2 className="w-5 h-5 animate-spin text-ajira-primary" />
                 )}
               </button>
-            )
-          ))}
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {credentials.length === 0 ? (
-            <div className="text-center py-8">
-              <Shield className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-              <p className="text-gray-500 mb-4">No biometric credentials found</p>
-              <button
-                onClick={() => onCancel?.()}
-                className="text-ajira-primary hover:underline"
-              >
-                Use password instead
-              </button>
-            </div>
-          ) : (
-            credentials.map((credential) => (
-              <div
-                key={credential.id}
-                className="p-4 border-2 border-gray-200 rounded-lg flex items-center gap-3"
-              >
-                <div className="text-ajira-primary">
-                  {getMethodIcon(credential.type)}
-                </div>
-                <div className="flex-1">
-                  <div className="font-medium text-gray-900">
-                    {getMethodName(credential.type)}
+            )}
+
+            {!support?.fingerprint && (
+              <div className="p-4 border border-gray-200 rounded-lg bg-gray-50">
+                <div className="flex items-center">
+                  <div className="p-2 bg-gray-100 rounded-lg mr-3">
+                    <Fingerprint className="w-5 h-5 text-gray-400" />
                   </div>
-                  <div className="text-sm text-gray-500">
-                    Registered {new Date(credential.createdAt).toLocaleDateString()}
+                  <div className="text-left">
+                    <h3 className="font-medium text-gray-500">Fingerprint</h3>
+                    <p className="text-sm text-gray-500">Not available on this device</p>
                   </div>
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => handleVerify(credential)}
-                    disabled={loading}
-                    className="p-2 text-ajira-primary hover:bg-ajira-primary/10 rounded-lg transition-colors"
-                  >
-                    {loading && selectedMethod === credential.type ? (
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-ajira-primary"></div>
-                    ) : (
-                      <CheckCircle className="w-4 h-4" />
-                    )}
-                  </button>
-                  <button
-                    onClick={() => handleRemoveCredential(credential.id)}
-                    className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
                 </div>
               </div>
-            ))
+            )}
+          </div>
+
+          {/* Info */}
+          <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="flex items-start">
+              <Shield className="w-5 h-5 text-blue-600 mr-2 mt-0.5" />
+              <div className="text-sm text-blue-800">
+                <p className="font-medium mb-1">Security Note</p>
+                <p>Your biometric data is stored securely on your device and is never shared with our servers.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : (
+        /* Verification Mode */
+        <div>
+          {credentials.length > 0 ? (
+            <div className="space-y-3">
+              {credentials.map((credential) => (
+                <button
+                  key={credential.id}
+                  onClick={() => handleVerify(credential)}
+                  disabled={loading}
+                  className="w-full flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+                >
+                  <div className="flex items-center">
+                    <div className="p-2 bg-green-100 rounded-lg mr-3">
+                      {getMethodIcon(credential.type)}
+                    </div>
+                    <div className="text-left">
+                      <h3 className="font-medium text-gray-900">
+                        {getMethodName(credential.type)}
+                      </h3>
+                      <p className="text-sm text-gray-600">
+                        Registered on {new Date(credential.createdAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    {selectedMethod === credential.type && loading && (
+                      <Loader2 className="w-5 h-5 animate-spin text-ajira-primary" />
+                    )}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRemoveCredential(credential.id);
+                      }}
+                      className="p-1 hover:bg-red-100 rounded transition-colors"
+                      title="Remove credential"
+                    >
+                      <Trash2 className="w-4 h-4 text-red-500" />
+                    </button>
+                  </div>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <Smartphone className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No Biometric Credentials</h3>
+              <p className="text-gray-600 mb-4">
+                You haven't set up any biometric authentication methods yet.
+              </p>
+              <button
+                onClick={onCancel}
+                className="px-4 py-2 bg-ajira-primary text-white rounded-lg hover:bg-ajira-primary/90 transition-colors"
+              >
+                Set Up Now
+              </button>
+            </div>
           )}
         </div>
       )}
-
-      <div className="mt-6 pt-4 border-t border-gray-200">
-        <div className="flex gap-3">
-          {onCancel && (
-            <button
-              onClick={onCancel}
-              className="flex-1 px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-            >
-              Cancel
-            </button>
-          )}
-          {mode === 'verify' && credentials.length > 0 && (
-            <button
-              onClick={() => onCancel?.()}
-              className="flex-1 px-4 py-2 text-ajira-primary border border-ajira-primary rounded-lg hover:bg-ajira-primary/5 transition-colors"
-            >
-              Use Password
-            </button>
-          )}
-        </div>
-      </div>
-
-      <div className="mt-4 text-center">
-        <p className="text-xs text-gray-500">
-          🔒 Your biometric data is stored securely on your device and never shared
-        </p>
-      </div>
     </div>
   );
 };
 
-export default BiometricAuth; 
+export default BiometricAuth;

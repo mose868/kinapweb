@@ -40,12 +40,21 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
 
       if (theme === 'system') {
         // Check system preference
-        shouldBeDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        shouldBeDark = window.matchMedia(
+          '(prefers-color-scheme: dark)'
+        ).matches;
       } else {
         shouldBeDark = theme === 'dark';
       }
 
       setIsDark(shouldBeDark);
+      // Toggle the `dark` class on the root html element for Tailwind's dark: classes
+      const root = document.documentElement;
+      if (shouldBeDark) {
+        root.classList.add('dark');
+      } else {
+        root.classList.remove('dark');
+      }
     };
 
     updateTheme();
@@ -66,8 +75,6 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   };
 
   return (
-    <ThemeContext.Provider value={value}>
-      {children}
-    </ThemeContext.Provider>
+    <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
   );
-}; 
+};

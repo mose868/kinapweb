@@ -2,7 +2,7 @@ const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch
 
 class MentorVettingService {
   constructor() {
-    this.GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+    this.GEMINI_API_KEY = process.env.GEMINI_API_KEY || 'AIzaSyDhj7xhHayAaoFeL8QKkm7c4yhi9b8-lPU';
     this.GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
   }
 

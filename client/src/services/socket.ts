@@ -1,197 +1,238 @@
-import { io, Socket } from 'socket.io-client';
+// Native WebSocket Service for KiNaP Community Hub
+// Replacing Socket.IO with native WebSocket to match backend implementation
 
-class SocketService {
-  private socket: Socket | null = null;
+class WebSocketService {
+  private ws: WebSocket | null = null;
   private isConnected = false;
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
+  private reconnectTimeout: NodeJS.Timeout | null = null;
+  private eventListeners: Map<string, Function[]> = new Map();
+  private userId: string | null = null;
+  private userName: string | null = null;
+  private userAvatar: string | null = null;
 
-  // Initialize socket connection
+  // Initialize WebSocket connection
   connect(userId: string, userName: string, userAvatar: string) {
-    if (this.socket && this.isConnected) {
-      return this.socket;
+    if (this.ws && this.isConnected) {
+      return this.ws;
     }
 
+    this.userId = userId;
+    this.userName = userName;
+    this.userAvatar = userAvatar;
+
     const serverUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-    
-    this.socket = io(serverUrl, {
-      transports: ['websocket', 'polling'],
-      autoConnect: true,
-      reconnection: true,
-      reconnectionAttempts: this.maxReconnectAttempts,
-      reconnectionDelay: 1000,
-      timeout: 20000,
-    });
+    const wsUrl = serverUrl.replace('http', 'ws').replace('/api', '');
 
-    this.socket.on('connect', () => {
-      console.log('🔌 Socket.IO connected');
-      this.isConnected = true;
-      this.reconnectAttempts = 0;
-      
-      // Join with user info
-      this.socket?.emit('join', userId);
-      this.socket?.emit('user_online', { userId, userName, userAvatar });
-    });
+    try {
+      this.ws = new WebSocket(wsUrl);
 
-    this.socket.on('disconnect', () => {
-      console.log('🔌 Socket.IO disconnected');
-      this.isConnected = false;
-    });
+      this.ws.onopen = () => {
+        console.log('🔌 WebSocket connected successfully');
+        this.isConnected = true;
+        this.reconnectAttempts = 0;
 
-    this.socket.on('connect_error', (error) => {
-      console.error('🔌 Socket.IO connection error:', error);
-      this.reconnectAttempts++;
-      
-      if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-        console.error('🔌 Max reconnection attempts reached');
+        // Send a ping message to verify connection
+        this.sendMessage({
+          type: 'ping',
+          data: { timestamp: Date.now() }
+        });
+
+        // Join with user info after a short delay
+        setTimeout(() => {
+          this.sendMessage({
+            type: 'join_community',
+            data: { userId, userName, userAvatar }
+          });
+        }, 100);
+      };
+
+      this.ws.onmessage = (event) => {
+        try {
+          const message = JSON.parse(event.data);
+          console.log('🔌 WebSocket message received:', message.type);
+          this.handleMessage(message);
+        } catch (error) {
+          console.error('Error parsing WebSocket message:', error);
+        }
+      };
+
+      this.ws.onclose = (event) => {
+        console.log('🔌 WebSocket disconnected:', event.code, event.reason);
+        this.isConnected = false;
+        this.handleReconnect();
+      };
+
+      this.ws.onerror = (error) => {
+        console.error('🔌 WebSocket error:', error);
+        this.isConnected = false;
+      };
+
+    } catch (error) {
+      console.error('🔌 WebSocket connection error:', error);
+      this.handleReconnect();
+    }
+
+    return this.ws;
+  }
+
+  private handleReconnect() {
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+      console.error('🔌 Max reconnection attempts reached');
+      return;
+    }
+
+    if (this.reconnectTimeout) {
+      clearTimeout(this.reconnectTimeout);
+    }
+
+    this.reconnectAttempts++;
+    const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 10000);
+
+    console.log(`🔌 Attempting to reconnect in ${delay}ms (attempt ${this.reconnectAttempts})`);
+
+    this.reconnectTimeout = setTimeout(() => {
+      if (this.userId && this.userName && this.userAvatar) {
+        this.connect(this.userId, this.userName, this.userAvatar);
       }
-    });
+    }, delay);
+  }
 
-    this.socket.on('reconnect', (attemptNumber) => {
-      console.log(`🔌 Socket.IO reconnected after ${attemptNumber} attempts`);
-      this.isConnected = true;
-      this.reconnectAttempts = 0;
-      
-      // Re-join with user info
-      this.socket?.emit('join', userId);
-      this.socket?.emit('user_online', { userId, userName, userAvatar });
-    });
+  private handleMessage(message: any) {
+    const { type, data } = message;
+    
+    // Handle pong response
+    if (type === 'pong') {
+      console.log('🔌 WebSocket ping-pong successful');
+      return;
+    }
+    
+    // Emit event to listeners
+    if (this.eventListeners.has(type)) {
+      this.eventListeners.get(type)?.forEach(callback => {
+        try {
+          callback(data);
+        } catch (error) {
+          console.error(`Error in event listener for ${type}:`, error);
+        }
+      });
+    }
+  }
 
-    return this.socket;
+  private sendMessage(message: any) {
+    if (this.ws && this.isConnected) {
+      try {
+        this.ws.send(JSON.stringify(message));
+      } catch (error) {
+        console.error('Error sending WebSocket message:', error);
+      }
+    }
   }
 
   // Join a group
   joinGroup(groupId: string, userId: string, userName: string) {
-    if (this.socket && this.isConnected) {
-      this.socket.emit('join_group', { groupId, userId, userName });
-    }
+    this.sendMessage({
+      type: 'join_group',
+      data: { groupId, userId, userName }
+    });
   }
 
   // Leave a group
   leaveGroup(groupId: string, userId: string) {
-    if (this.socket && this.isConnected) {
-      this.socket.emit('leave_group', { groupId, userId });
-    }
+    this.sendMessage({
+      type: 'leave_group',
+      data: { groupId, userId }
+    });
   }
 
   // Send a group message
-  sendGroupMessage(groupId: string, sender: string, content: string, type: string = 'text', userName: string) {
-    if (this.socket && this.isConnected) {
-      this.socket.emit('group_message', { sender, groupId, content, type, userName });
-    }
+  sendGroupMessage(
+    groupId: string,
+    sender: string,
+    content: string,
+    type: string = 'text',
+    userName: string
+  ) {
+    this.sendMessage({
+      type: 'send_group_message',
+      data: {
+        groupId,
+        sender,
+        content,
+        type,
+        userName,
+        timestamp: new Date().toISOString()
+      }
+    });
   }
 
-  // Send private message
-  sendPrivateMessage(sender: string, recipient: string, content: string, type: string = 'text') {
-    if (this.socket && this.isConnected) {
-      this.socket.emit('private_message', { sender, recipient, content, type });
-    }
+  // Load group messages
+  loadGroupMessages(groupId: string, limit: number = 50) {
+    this.sendMessage({
+      type: 'load_group_messages',
+      data: { groupId, limit }
+    });
+  }
+
+  // Delete message
+  deleteMessage(messageId: string, groupId: string, userId: string) {
+    this.sendMessage({
+      type: 'delete_message',
+      data: { messageId, groupId, userId }
+    });
   }
 
   // Typing indicators
   startTyping(groupId: string, userId: string, userName: string) {
-    if (this.socket && this.isConnected) {
-      this.socket.emit('user_typing', { groupId, userId, userName });
-    }
+    this.sendMessage({
+      type: 'typing_start',
+      data: { groupId, userId, userName }
+    });
   }
 
   stopTyping(groupId: string, userId: string) {
-    if (this.socket && this.isConnected) {
-      this.socket.emit('user_stop_typing', { groupId, userId });
-    }
+    this.sendMessage({
+      type: 'typing_stop',
+      data: { groupId, userId }
+    });
   }
 
-  // Message status
-  markMessageRead(messageId: string, groupId: string, userId: string) {
-    if (this.socket && this.isConnected) {
-      this.socket.emit('message_read', { messageId, groupId, userId });
-    }
+  // Update user status
+  updateStatus(userId: string, status: string) {
+    this.sendMessage({
+      type: 'update_status',
+      data: { userId, status }
+    });
   }
 
-  markMessageDelivered(messageId: string, groupId: string, userId: string) {
-    if (this.socket && this.isConnected) {
-      this.socket.emit('message_delivered', { messageId, groupId, userId });
-    }
-  }
-
-  // Reactions
-  addReaction(messageId: string, groupId: string, userId: string, reaction: string) {
-    if (this.socket && this.isConnected) {
-      this.socket.emit('reaction_added', { messageId, groupId, userId, reaction });
-    }
-  }
-
-  // Message editing
-  editMessage(messageId: string, groupId: string, newContent: string, userId: string) {
-    if (this.socket && this.isConnected) {
-      this.socket.emit('message_edited', { messageId, groupId, newContent, userId });
-    }
-  }
-
-  // Message deletion
-  deleteMessage(messageId: string, groupId: string, userId: string) {
-    if (this.socket && this.isConnected) {
-      this.socket.emit('message_deleted', { messageId, groupId, userId });
-    }
-  }
-
-  // File upload progress
-  sendFileUploadProgress(groupId: string, userId: string, fileName: string, progress: number) {
-    if (this.socket && this.isConnected) {
-      this.socket.emit('file_upload_progress', { groupId, userId, fileName, progress });
-    }
-  }
-
-  // Voice messages
-  startVoiceMessage(groupId: string, userId: string) {
-    if (this.socket && this.isConnected) {
-      this.socket.emit('voice_message_start', { groupId, userId });
-    }
-  }
-
-  stopVoiceMessage(groupId: string, userId: string) {
-    if (this.socket && this.isConnected) {
-      this.socket.emit('voice_message_stop', { groupId, userId });
-    }
-  }
-
-  // Call functionality
-  requestCall(fromUserId: string, toUserId: string, callType: 'audio' | 'video') {
-    if (this.socket && this.isConnected) {
-      this.socket.emit('call_request', { fromUserId, toUserId, callType });
-    }
-  }
-
-  acceptCall(fromUserId: string, toUserId: string) {
-    if (this.socket && this.isConnected) {
-      this.socket.emit('call_accepted', { fromUserId, toUserId });
-    }
-  }
-
-  rejectCall(fromUserId: string, toUserId: string) {
-    if (this.socket && this.isConnected) {
-      this.socket.emit('call_rejected', { fromUserId, toUserId });
-    }
-  }
-
-  endCall(fromUserId: string, toUserId: string) {
-    if (this.socket && this.isConnected) {
-      this.socket.emit('call_ended', { fromUserId, toUserId });
-    }
+  // Get user status
+  getUserStatus(userIds: string[]) {
+    this.sendMessage({
+      type: 'get_user_status',
+      data: { userIds }
+    });
   }
 
   // Disconnect
   disconnect() {
-    if (this.socket) {
-      this.socket.disconnect();
-      this.socket = null;
-      this.isConnected = false;
+    if (this.reconnectTimeout) {
+      clearTimeout(this.reconnectTimeout);
+      this.reconnectTimeout = null;
     }
+
+    if (this.ws) {
+      this.ws.close();
+      this.ws = null;
+    }
+    
+    this.isConnected = false;
+    this.eventListeners.clear();
   }
 
-  // Get socket instance
-  getSocket(): Socket | null {
-    return this.socket;
+  // Get WebSocket instance
+  getSocket(): WebSocket | null {
+    return this.ws;
   }
 
   // Check connection status
@@ -200,24 +241,29 @@ class SocketService {
   }
 
   // Listen to events
-  on(event: string, callback: (...args: any[]) => void) {
-    if (this.socket) {
-      this.socket.on(event, callback);
+  on(event: string, callback: Function) {
+    if (!this.eventListeners.has(event)) {
+      this.eventListeners.set(event, []);
     }
+    this.eventListeners.get(event)?.push(callback);
   }
 
   // Remove event listener
-  off(event: string, callback?: (...args: any[]) => void) {
-    if (this.socket) {
-      if (callback) {
-        this.socket.off(event, callback);
-      } else {
-        this.socket.off(event);
+  off(event: string, callback?: Function) {
+    if (!this.eventListeners.has(event)) return;
+
+    if (callback) {
+      const listeners = this.eventListeners.get(event) || [];
+      const index = listeners.indexOf(callback);
+      if (index > -1) {
+        listeners.splice(index, 1);
       }
+    } else {
+      this.eventListeners.delete(event);
     }
   }
 }
 
 // Create singleton instance
-const socketService = new SocketService();
-export default socketService; 
+const webSocketService = new WebSocketService();
+export default webSocketService;
