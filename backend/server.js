@@ -4,6 +4,7 @@ const cors = require('cors');
 const mongoose = require('mongoose');
 const cookieParser = require('cookie-parser');
 const http = require('http');
+const path = require('path');
 const WebSocketServer = require('./websocketServer');
 
 const studentRoutes = require('./routes/students');
@@ -56,12 +57,32 @@ const wss = new WebSocketServer(server);
 
 // Middleware
 app.use(cors({ 
-  origin: true, // Allow all origins temporarily for testing
-  credentials: true 
+  origin: [
+    'http://localhost:3000',
+    'http://localhost:5173',
+    'https://kinapweb.vercel.app',
+    'https://kinapweb.onrender.com'
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
 app.use(express.json({ limit: '10mb' })); // Increase limit for base64 images
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 app.use(cookieParser());
+
+// Serve static files
+app.use('/videos', express.static('uploads'));
+app.use('/uploads', express.static('uploads'));
+
+// Serve specific video files
+app.get('/videos/digital-transformation.mp4', (req, res) => {
+  res.sendFile(path.join(__dirname, 'uploads', 'digital-transformation.mp4'));
+});
+
+app.get('/videos/kinap-promo.webm', (req, res) => {
+  res.sendFile(path.join(__dirname, 'uploads', 'kinap-promo.webm'));
+});
 
 // Routes
 app.use('/api/students', studentRoutes);
@@ -96,6 +117,16 @@ app.use('/api/files', fileUploadRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/chat-messages', chatMessagesRoutes);
 app.use('/api/verification', verificationRoutes);
+
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+  res.json({ 
+    status: 'OK', 
+    message: 'KiNaP API is running',
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development'
+  });
+});
 
 // Health check endpoint for Railway
 app.get('/api/health', (req, res) => {
