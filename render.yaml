@@ -1,0 +1,36 @@
+services:
+  - type: web
+    name: kinap-backend
+    env: node
+    plan: free
+    buildCommand: cd backend && npm install
+    startCommand: cd backend && npm start
+    envVars:
+      - key: MONGODB_URI
+        value: mongodb+srv://moseskimani414:moseskim@cluster0.njyg51i.mongodb.net/kinapweb?retryWrites=true&w=majority&appName=Cluster0
+      - key: GEMINI_API_KEY
+        value: AIzaSyDhj7xhHayAaoFeL8QKkm7c4yhi9b8-lPU
+      - key: JWT_SECRET
+        value: your-super-secret-jwt-key-here
+      - key: GMAIL_USER
+        value: kinapajira@gmail.com
+      - key: GMAIL_APP_PASSWORD
+        value: nwbyktcngzpfawzq
+      - key: EMAIL_FROM
+        value: kinapajira@gmail.com
+      - key: EMAIL_HOST
+        value: smtp.gmail.com
+      - key: EMAIL_PORT
+        value: 587
+      - key: EMAIL_SECURE
+        value: false
+      - key: EMAIL_USER
+        value: kinapajira@gmail.com
+      - key: EMAIL_PASS
+        value: nwbyktcngzpfawzq
+      - key: BETTER_AUTH_SECRET
+        value: zk4xiM145chzOXr3jYPcHLSSRQ9G7oQP
+      - key: BETTER_AUTH_URL
+        value: https://kinap-backend.onrender.com
+      - key: FRONTEND_URL
+        value: https://your-vercel-frontend-url.com
