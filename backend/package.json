@@ -5,6 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
+    "build": "echo 'Build completed'",
     "dev": "nodemon server.js",
     "health": "node -e \"console.log('Health check passed')\"",
     "create-test-user": "node scripts/createTestUser.js",
