@@ -113,13 +113,12 @@ app.get('/', (req, res) => {
 
 // WebSocket status endpoint
 app.get('/api/websocket-status', (req, res) => {
-  const stats = wss.getStats();
   res.json({
-    status: 'running',
+    status: 'disabled',
     websocket: {
-      totalClients: stats.totalClients,
-      totalGroups: stats.totalGroups,
-      groups: stats.groups
+      totalClients: 0,
+      totalGroups: 0,
+      groups: []
     },
     timestamp: new Date().toISOString()
   });
@@ -234,6 +233,4 @@ const startServerWithMongoDB = async () => {
   startServer();
 };
 
-startServerWithMongoDB(); / /   F o r c e   r e b u i l d 
- 
- 
+startServerWithMongoDB();
