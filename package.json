@@ -1,9 +1,14 @@
 {
-  "dependencies": {
-    "@babel/runtime": "^7.27.6",
-    "better-auth": "^1.3.4",
-    "multer": "^2.0.2",
-    "node-fetch": "^3.3.2",
-    "nodemailer": "^7.0.5"
-  }
+  "name": "kinapweb",
+  "version": "1.0.0",
+  "description": "Kinap Ajira Club Web Application",
+  "scripts": {
+    "start": "cd backend && npm start",
+    "dev": "cd backend && npm run dev",
+    "build": "cd backend && npm install",
+    "install-backend": "cd backend && npm install"
+  },
+  "keywords": ["kinap", "ajira", "club", "web"],
+  "author": "Moses Kimani",
+  "license": "MIT"
 }
