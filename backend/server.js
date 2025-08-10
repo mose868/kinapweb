@@ -4,7 +4,7 @@ const cors = require('cors');
 const mongoose = require('mongoose');
 const cookieParser = require('cookie-parser');
 const http = require('http');
-// const WebSocketServer = require('./websocketServer');
+const WebSocketServer = require('./websocketServer');
 
 const studentRoutes = require('./routes/students');
 const aboutUsRoutes = require('./routes/aboutUs');
@@ -45,7 +45,7 @@ const app = express();
 const server = http.createServer(app);
 
 // Initialize WebSocket server
-// const wss = new WebSocketServer(server);
+const wss = new WebSocketServer(server);
 
 // WebSocket server is now handled by the WebSocketServer class
 // Real-time communication is handled by the custom WebSocket server
@@ -113,12 +113,13 @@ app.get('/', (req, res) => {
 
 // WebSocket status endpoint
 app.get('/api/websocket-status', (req, res) => {
+  const stats = wss.getStats();
   res.json({
-    status: 'disabled',
+    status: 'running',
     websocket: {
-      totalClients: 0,
-      totalGroups: 0,
-      groups: []
+      totalClients: stats.totalClients,
+      totalGroups: stats.totalGroups,
+      groups: stats.groups
     },
     timestamp: new Date().toISOString()
   });
