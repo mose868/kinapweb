@@ -97,6 +97,15 @@ app.use('/api/chat', chatRoutes);
 app.use('/api/chat-messages', chatMessagesRoutes);
 app.use('/api/verification', verificationRoutes);
 
+// Health check endpoint for Railway
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    mongodb: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected'
+  });
+});
+
 // Root health check
 app.get('/', (req, res) => {
   res.send('Ajira Digital Backend API running');
@@ -161,6 +170,12 @@ const connectToMongoDB = async (retries = 3) => {
   for (let i = 0; i < retries; i++) {
     try {
       console.log(`🔄 Attempting MongoDB connection (attempt ${i + 1}/${retries})...`);
+      
+      // Check if MONGODB_URI is set
+      if (!process.env.MONGODB_URI) {
+        console.warn('⚠️ MONGODB_URI not set, skipping database connection');
+        return false;
+      }
       
       await mongoose.connect(process.env.MONGODB_URI, {
         serverSelectionTimeoutMS: 30000, // 30 second timeout

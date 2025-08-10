@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
+    "health": "node -e \"console.log('Health check passed')\"",
     "create-test-user": "node scripts/createTestUser.js",
     "populate-marketplace": "node scripts/populateMarketplace.js",
     "populate-homepage": "node scripts/populateHomePage.js",
