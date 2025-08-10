@@ -661,7 +661,35 @@ const CommunityPage: React.FC = () => {
           console.log('AI processing timeout - resetting state');
           setIsAIProcessing(false);
           setAiProcessingLock(false); // Reset lock
-        }, 8000); // 8 second safety timeout (reduced for faster response)
+          
+          // Add fallback response when AI times out
+          const timeoutResponse = "I'm having trouble responding right now. Please try again in a moment! 😊";
+          const timeoutMessage: ChatMessage = {
+            id: Date.now().toString() + '-ai-timeout',
+            userId: 'kinap-ai',
+            userName: 'Kinap AI',
+            userAvatar: 'https://ui-avatars.com/api/?name=Kinap+AI&background=8B5CF6&color=FFFFFF&bold=true&size=40',
+            message: timeoutResponse,
+            timestamp: new Date(),
+            messageType: 'text',
+            status: 'sent',
+            content: timeoutResponse,
+          };
+          
+          setGroups(prev => prev.map(group => 
+            group.id === selectedGroup.id 
+              ? { ...group, messages: [...group.messages, timeoutMessage] }
+              : group
+          ));
+          setSelectedGroup(prev => prev ? { ...prev, messages: [...prev.messages, timeoutMessage] } : null);
+          
+          // Save timeout message to backend
+          try {
+            saveAIMessageViaAPI(timeoutMessage.id, selectedGroup.id, timeoutResponse, userProfile);
+          } catch (error) {
+            console.error('Failed to save timeout message:', error);
+          }
+        }, 10000); // 10 second safety timeout
         
         const userProfile = {
           name: user?.displayName || 'Student',
@@ -775,10 +803,11 @@ const CommunityPage: React.FC = () => {
           setIsAIProcessing(false);
           setAiProcessingLock(false); // Reset lock
           
+          // Show error toast to user
+          toast.error('AI is having trouble responding. Please try again!');
+          
           // Backend AI error: use fallback response and optional sound
-          const fallbackResponse = fallbackResponses.default[
-            Math.floor(Math.random() * fallbackResponses.default.length)
-          ];
+          const fallbackResponse = "I'm having trouble connecting right now. Please try again in a moment! 😊";
           
           console.log('Using fallback response:', fallbackResponse);
 
@@ -2445,13 +2474,25 @@ const CommunityPage: React.FC = () => {
                 {isAIProcessing && selectedGroup?.name === 'Kinap AI' && (
                   <div className="flex justify-start mb-4 px-2 sm:px-6 animate-pulse">
                     <div className="bg-gradient-to-r from-purple-500 to-indigo-600 text-white rounded-2xl rounded-bl-none px-4 py-3 shadow-lg max-w-[90vw] sm:max-w-xs md:max-w-md border-2 border-purple-300">
-                      <div className="flex items-center gap-3">
-                        <div className="flex gap-1">
-                          <div className="w-3 h-3 bg-white rounded-full animate-bounce"></div>
-                          <div className="w-3 h-3 bg-white rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                          <div className="w-3 h-3 bg-white rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <div className="flex gap-1">
+                            <div className="w-3 h-3 bg-white rounded-full animate-bounce"></div>
+                            <div className="w-3 h-3 bg-white rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                            <div className="w-3 h-3 bg-white rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                          </div>
+                          <div className="text-sm font-semibold">🤖 Kinap AI is typing...</div>
                         </div>
-                        <div className="text-sm font-semibold">🤖 Kinap AI is typing...</div>
+                        <button
+                          onClick={() => {
+                            setIsAIProcessing(false);
+                            setAiProcessingLock(false);
+                            toast.error('AI response cancelled. Please try again!');
+                          }}
+                          className="text-xs bg-white/20 hover:bg-white/30 px-2 py-1 rounded transition-colors"
+                        >
+                          Cancel
+                        </button>
                       </div>
                     </div>
                   </div>
