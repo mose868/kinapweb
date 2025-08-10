@@ -56,7 +56,13 @@ const wss = new WebSocketServer(server);
 
 // Middleware
 app.use(cors({ 
-  origin: ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:5174', 'http://localhost:4173'], 
+  origin: [
+    'http://localhost:3000', 
+    'http://localhost:5173', 
+    'http://localhost:5174', 
+    'http://localhost:4173',
+    'https://your-vercel-domain.vercel.app' // Replace with your actual Vercel domain
+  ], 
   credentials: true 
 }));
 app.use(express.json({ limit: '10mb' })); // Increase limit for base64 images
