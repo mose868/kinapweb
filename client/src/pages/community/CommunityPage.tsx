@@ -397,7 +397,74 @@ const CommunityPage: React.FC = () => {
     return result;
   };
 
-  // Fallback function to save AI message via REST API
+  // Save user message to Kinap AI endpoint
+  const saveUserMessageToKinapAI = async (message: ChatMessage, conversationId: string) => {
+    try {
+      const base = (import.meta as any).env?.VITE_API_URL || 'http://localhost:5000/api';
+      const userId = (user as any)?.id || (user as any)?._id || 'anonymous';
+      
+      const response = await fetch(`${base}/chatbot/kinap-ai`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: message.content,
+          conversationId: conversationId,
+          userId: userId
+        })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Failed to save user message to Kinap AI:', response.status, errorText);
+        return false;
+      } else {
+        console.log('✅ User message saved successfully to Kinap AI MongoDB');
+        return true;
+      }
+    } catch (error) {
+      console.error('Error saving user message to Kinap AI:', error);
+      return false;
+    }
+  };
+
+  // Save AI message to Kinap AI endpoint
+  const saveAIMessageToKinapAI = async (messageId: string, conversationId: string, content: string, userProfile: any) => {
+    try {
+      const base = (import.meta as any).env?.VITE_API_URL || 'http://localhost:5000/api';
+      const userId = (user as any)?.id || (user as any)?._id || 'anonymous';
+      
+      // Save AI response to Kinap AI conversation
+      const aiSaveResponse = await fetch(`${base}/chatbot/kinap-ai`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: content,
+          conversationId: conversationId,
+          userId: userId,
+          isAIResponse: true,
+          messageId: messageId
+        })
+      });
+
+      if (!aiSaveResponse.ok) {
+        const errorText = await aiSaveResponse.text();
+        console.error('Failed to save AI message to Kinap AI MongoDB:', aiSaveResponse.status, errorText);
+        return false;
+      } else {
+        console.log('✅ AI message saved successfully to Kinap AI MongoDB');
+        return true;
+      }
+    } catch (error) {
+      console.error('Error saving AI message to Kinap AI MongoDB:', error);
+      return false;
+    }
+  };
+
+  // Fallback function to save AI message via REST API (for backward compatibility)
   const saveAIMessageViaAPI = async (messageId: string, groupId: string, content: string, userProfile: any) => {
     try {
       const base = (import.meta as any).env?.VITE_API_URL || 'http://localhost:5000/api';
@@ -566,22 +633,29 @@ const CommunityPage: React.FC = () => {
         replyTo: replyingTo?.id
       };
 
-      setSelectedGroup(prev => prev ? { ...prev, messages: [...prev.messages, message] } : null);
+      // Update state and save to localStorage in one go
+      setSelectedGroup(prev => {
+        if (!prev) return null;
+        const updatedGroup = { ...prev, messages: [...prev.messages, message] };
+        
+        // Save Kinap AI messages to localStorage for persistence
+        if (prev.id === 'kinap-ai') {
+          try {
+            localStorage.setItem('kinap-ai-conversation', JSON.stringify(updatedGroup.messages));
+            console.log('✅ Saved user message to Kinap AI localStorage:', message.content);
+          } catch (error) {
+            console.error('Error saving Kinap AI messages to localStorage:', error);
+          }
+        }
+        
+        return updatedGroup;
+      });
+      
       setGroups(prev => prev.map(group => 
         group.id === selectedGroup.id 
           ? { ...group, messages: [...group.messages, message], lastMessage: processedMessage, lastMessageTime: new Date() }
           : group
       ));
-      
-      // Save Kinap AI messages to localStorage for persistence
-      if (selectedGroup.id === 'kinap-ai') {
-        try {
-          const updatedMessages = [...selectedGroup.messages, message];
-          localStorage.setItem('kinap-ai-conversation', JSON.stringify(updatedMessages));
-        } catch (error) {
-          console.error('Error saving Kinap AI messages to localStorage:', error);
-        }
-      }
       setNewMessage('');
       setReplyingTo(null);
 
@@ -600,9 +674,22 @@ const CommunityPage: React.FC = () => {
       const saveWithRetry = async (retries = 3) => {
         for (let attempt = 1; attempt <= retries; attempt++) {
           try {
-            await sendMessageViaAPI(message, messageId);
-            updateMessageStatus('sent');
-            return true;
+            // For Kinap AI, use the specific endpoint
+            if (selectedGroup.id === 'kinap-ai') {
+              const userId = (user as any)?.id || (user as any)?._id || 'anonymous';
+              const success = await saveUserMessageToKinapAI(message, userId);
+              if (success) {
+                updateMessageStatus('sent');
+                return true;
+              } else {
+                throw new Error('Failed to save to Kinap AI');
+              }
+            } else {
+              // For regular groups, use the normal endpoint
+              await sendMessageViaAPI(message, messageId);
+              updateMessageStatus('sent');
+              return true;
+            }
           } catch (error) {
             if (attempt === retries) {
               updateMessageStatus('failed');
@@ -786,24 +873,29 @@ const CommunityPage: React.FC = () => {
           // Add AI message to UI immediately (simplified approach)
           clearTimeout(safetyTimeout);
           
-          // Update both groups and selectedGroup immediately
+          // Update both groups and selectedGroup immediately with localStorage saving
           setGroups(prev => prev.map(group => 
             group.id === selectedGroup.id 
               ? { ...group, messages: [...group.messages, aiMessage] }
               : group
           ));
           
-          setSelectedGroup(prev => prev ? { ...prev, messages: [...prev.messages, aiMessage] } : null);
-          
-          // Save Kinap AI messages to localStorage for persistence
-          if (selectedGroup.id === 'kinap-ai') {
-            try {
-              const updatedMessages = [...selectedGroup.messages, aiMessage];
-              localStorage.setItem('kinap-ai-conversation', JSON.stringify(updatedMessages));
-            } catch (error) {
-              console.error('Error saving Kinap AI messages to localStorage:', error);
+          setSelectedGroup(prev => {
+            if (!prev) return null;
+            const updatedGroup = { ...prev, messages: [...prev.messages, aiMessage] };
+            
+            // Save Kinap AI messages to localStorage for persistence
+            if (prev.id === 'kinap-ai') {
+              try {
+                localStorage.setItem('kinap-ai-conversation', JSON.stringify(updatedGroup.messages));
+                console.log('✅ Saved AI response to Kinap AI localStorage:', aiMessage.content);
+              } catch (error) {
+                console.error('Error saving Kinap AI messages to localStorage:', error);
+              }
             }
-          }
+            
+            return updatedGroup;
+          });
           
           // Reset AI processing state
           setIsAIProcessing(false);
@@ -816,8 +908,19 @@ const CommunityPage: React.FC = () => {
 
           // Save to backend immediately (blocking to ensure persistence)
           try {
-            await saveAIMessageViaAPI(aiMessageId, selectedGroup.id, aiText, userProfile);
-            console.log('✅ AI message saved to MongoDB successfully');
+            if (selectedGroup.id === 'kinap-ai') {
+              const userId = (user as any)?.id || (user as any)?._id || 'anonymous';
+              const success = await saveAIMessageToKinapAI(aiMessageId, userId, aiText, userProfile);
+              if (success) {
+                console.log('✅ AI message saved to Kinap AI MongoDB successfully');
+              } else {
+                console.error('❌ Failed to save AI message to Kinap AI backend');
+                toast.error('Failed to save AI message. Please try again.');
+              }
+            } else {
+              await saveAIMessageViaAPI(aiMessageId, selectedGroup.id, aiText, userProfile);
+              console.log('✅ AI message saved to MongoDB successfully');
+            }
           } catch (saveError) {
             console.error('❌ Failed to save AI message to backend:', saveError);
             // Show error to user since persistence failed
@@ -858,17 +961,22 @@ const CommunityPage: React.FC = () => {
                 : group,
             ),
           );
-          setSelectedGroup(prev => (prev ? { ...prev, messages: [...prev.messages, aiMessage] } : null));
-          
-          // Save fallback response to localStorage for Kinap AI
-          if (selectedGroup.id === 'kinap-ai') {
-            try {
-              const updatedMessages = [...selectedGroup.messages, aiMessage];
-              localStorage.setItem('kinap-ai-conversation', JSON.stringify(updatedMessages));
-            } catch (error) {
-              console.error('Error saving fallback AI message to localStorage:', error);
+          setSelectedGroup(prev => {
+            if (!prev) return null;
+            const updatedGroup = { ...prev, messages: [...prev.messages, aiMessage] };
+            
+            // Save fallback response to localStorage for Kinap AI
+            if (prev.id === 'kinap-ai') {
+              try {
+                localStorage.setItem('kinap-ai-conversation', JSON.stringify(updatedGroup.messages));
+                console.log('✅ Saved fallback AI response to Kinap AI localStorage:', aiMessage.content);
+              } catch (error) {
+                console.error('Error saving fallback AI message to localStorage:', error);
+              }
             }
-          }
+            
+            return updatedGroup;
+          });
           
           setIsAIProcessing(false);
           setAiProcessingLock(false); // Reset lock
@@ -876,8 +984,18 @@ const CommunityPage: React.FC = () => {
           // Save fallback response to backend as well
           try {
             const fallbackMessageId = Date.now().toString() + '-ai-fallback';
-            await saveAIMessageViaAPI(fallbackMessageId, selectedGroup.id, fallbackResponse, userProfile);
-            console.log('✅ Fallback AI message saved to MongoDB successfully');
+            if (selectedGroup.id === 'kinap-ai') {
+              const userId = (user as any)?.id || (user as any)?._id || 'anonymous';
+              const success = await saveAIMessageToKinapAI(fallbackMessageId, userId, fallbackResponse, userProfile);
+              if (success) {
+                console.log('✅ Fallback AI message saved to Kinap AI MongoDB successfully');
+              } else {
+                console.error('❌ Failed to save fallback AI message to Kinap AI backend');
+              }
+            } else {
+              await saveAIMessageViaAPI(fallbackMessageId, selectedGroup.id, fallbackResponse, userProfile);
+              console.log('✅ Fallback AI message saved to MongoDB successfully');
+            }
           } catch (saveError) {
             console.error('❌ Failed to save fallback AI message to backend:', saveError);
           }
@@ -1193,6 +1311,21 @@ const CommunityPage: React.FC = () => {
   // Load Kinap AI history on mount
   loadKinapAIHistory();
   
+  // Debug function to check localStorage (remove in production)
+  const debugLocalStorage = () => {
+    try {
+      const saved = localStorage.getItem('kinap-ai-conversation');
+      console.log('🔍 Current Kinap AI localStorage:', saved ? JSON.parse(saved) : 'empty');
+    } catch (error) {
+      console.error('Error reading localStorage:', error);
+    }
+  };
+  
+  // Check localStorage on mount for debugging
+  debugLocalStorage();
+  
+
+  
   // Function to save Kinap AI messages to localStorage as backup
   const saveKinapAIToLocalStorage = (messages: ChatMessage[]) => {
     try {
@@ -1200,6 +1333,70 @@ const CommunityPage: React.FC = () => {
       console.log('✅ Kinap AI conversation saved to localStorage');
     } catch (error) {
       console.error('Error saving Kinap AI conversation to localStorage:', error);
+    }
+  };
+
+  // Load Kinap AI conversation history from backend
+  const loadKinapAIHistoryFromBackend = async () => {
+    try {
+      const base = (import.meta as any).env?.VITE_API_URL || 'http://localhost:5000/api';
+      const userId = (user as any)?.id || (user as any)?._id || 'anonymous';
+      
+      // Try to load Kinap AI conversation history from backend
+      const response = await fetch(`${base}/chatbot/kinap-ai/conversation/${userId}`);
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.history && data.history.length > 0) {
+          console.log('✅ Loaded Kinap AI history from backend:', data.history.length, 'messages');
+          
+          // Convert backend format to frontend format
+          const messages = data.history.map((msg: any) => ({
+            id: msg.messageId || `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+            userId: msg.userId,
+            userName: msg.userName || (msg.role === 'user' ? activeUser.name : 'Kinap AI'),
+            userAvatar: msg.userAvatar || (msg.role === 'user' ? activeUser.avatar : 'https://ui-avatars.com/api/?name=Kinap+AI&background=8B5CF6&color=FFFFFF&bold=true&size=40'),
+            message: msg.content || msg.message,
+            timestamp: new Date(msg.timestamp),
+            messageType: 'text',
+            status: 'sent',
+            content: msg.content || msg.message,
+            isOwn: msg.role === 'user'
+          }));
+          
+          // Update Kinap AI group with loaded messages
+          setGroups(prev => prev.map(group => 
+            group.id === 'kinap-ai' 
+              ? { 
+                  ...group, 
+                  messages,
+                  lastMessage: messages[messages.length - 1]?.content || 'Say hello to start chatting! 😊',
+                  lastMessageTime: messages[messages.length - 1]?.timestamp || new Date()
+                }
+              : group
+          ));
+          
+          // Update selected group if it's Kinap AI
+          setSelectedGroup(prev => 
+            prev && prev.id === 'kinap-ai' 
+              ? { 
+                  ...prev, 
+                  messages,
+                  lastMessage: messages[messages.length - 1]?.content || 'Say hello to start chatting! 😊',
+                  lastMessageTime: messages[messages.length - 1]?.timestamp || new Date()
+                }
+              : prev
+          );
+          
+          // Save to localStorage as backup
+          localStorage.setItem('kinap-ai-conversation', JSON.stringify(messages));
+        }
+      } else {
+        console.log('📭 No Kinap AI history found in backend, using localStorage fallback');
+      }
+    } catch (error) {
+      console.error('❌ Error loading Kinap AI history from backend:', error);
+      // Fallback to localStorage is already handled by loadKinapAIHistory
     }
   };
   }, []);
@@ -1453,7 +1650,7 @@ const CommunityPage: React.FC = () => {
                         if (Array.isArray(localMessages) && localMessages.length > 0) {
                           // Merge backend and localStorage messages, avoiding duplicates
                           const backendMessageIds = new Set(messages.map(m => m.id));
-                          const uniqueLocalMessages = localMessages.filter(m => !backendMessageIds.has(m.id));
+                          const uniqueLocalMessages = localMessages.filter((m: any) => !backendMessageIds.has(m.id));
                           finalMessages = [...messages, ...uniqueLocalMessages].sort((a, b) => 
                             new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
                           );
@@ -1522,6 +1719,9 @@ const CommunityPage: React.FC = () => {
         ];
         setGroups(fallback);
         if (!selectedGroup) handleGroupSelection(fallback[0]);
+        
+        // Load Kinap AI conversation history from backend
+        loadKinapAIHistoryFromBackend();
       }
     } catch (error) {
       console.error('❌ Error loading groups:', error);
