@@ -22,7 +22,7 @@ class WebSocketService {
     this.userName = userName;
     this.userAvatar = userAvatar;
 
-    const serverUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+    const serverUrl = import.meta.env.VITE_API_URL || 'https://kinapweb.onrender.com';
     const wsUrl = serverUrl.replace('http', 'ws').replace('/api', '');
 
     try {
