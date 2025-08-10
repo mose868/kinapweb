@@ -4,7 +4,7 @@ const cors = require('cors');
 const mongoose = require('mongoose');
 const cookieParser = require('cookie-parser');
 const http = require('http');
-const WebSocketServer = require('./websocketServer');
+// const WebSocketServer = require('./websocketServer');
 
 const studentRoutes = require('./routes/students');
 const aboutUsRoutes = require('./routes/aboutUs');
@@ -45,7 +45,7 @@ const app = express();
 const server = http.createServer(app);
 
 // Initialize WebSocket server
-const wss = new WebSocketServer(server);
+// const wss = new WebSocketServer(server);
 
 // WebSocket server is now handled by the WebSocketServer class
 // Real-time communication is handled by the custom WebSocket server
@@ -234,5 +234,6 @@ const startServerWithMongoDB = async () => {
   startServer();
 };
 
-startServerWithMongoDB(); / /   F o r c e   r e b u i l d  
+startServerWithMongoDB(); / /   F o r c e   r e b u i l d 
+ 
  
