@@ -400,7 +400,8 @@ const CommunityPage: React.FC = () => {
   // Fallback function to save AI message via REST API
   const saveAIMessageViaAPI = async (messageId: string, groupId: string, content: string, userProfile: any) => {
     try {
-      const aiSaveResponse = await fetch('http://localhost:5000/api/chat-messages', {
+      const base = (import.meta as any).env?.VITE_API_URL || 'http://localhost:5000/api';
+      const aiSaveResponse = await fetch(`${base}/chat-messages`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -421,10 +422,15 @@ const CommunityPage: React.FC = () => {
       });
 
       if (!aiSaveResponse.ok) {
-        console.error('Failed to save AI message to MongoDB');
+        const errorText = await aiSaveResponse.text();
+        console.error('Failed to save AI message to MongoDB:', aiSaveResponse.status, errorText);
+        toast.error('Failed to save AI message to database');
+      } else {
+        console.log('✅ AI message saved successfully to MongoDB');
       }
     } catch (error) {
       console.error('Error saving AI message to MongoDB:', error);
+      toast.error('Failed to save AI message to database');
     }
   };
 
@@ -566,6 +572,16 @@ const CommunityPage: React.FC = () => {
           ? { ...group, messages: [...group.messages, message], lastMessage: processedMessage, lastMessageTime: new Date() }
           : group
       ));
+      
+      // Save Kinap AI messages to localStorage for persistence
+      if (selectedGroup.id === 'kinap-ai') {
+        try {
+          const updatedMessages = [...selectedGroup.messages, message];
+          localStorage.setItem('kinap-ai-conversation', JSON.stringify(updatedMessages));
+        } catch (error) {
+          console.error('Error saving Kinap AI messages to localStorage:', error);
+        }
+      }
       setNewMessage('');
       setReplyingTo(null);
 
@@ -779,6 +795,16 @@ const CommunityPage: React.FC = () => {
           
           setSelectedGroup(prev => prev ? { ...prev, messages: [...prev.messages, aiMessage] } : null);
           
+          // Save Kinap AI messages to localStorage for persistence
+          if (selectedGroup.id === 'kinap-ai') {
+            try {
+              const updatedMessages = [...selectedGroup.messages, aiMessage];
+              localStorage.setItem('kinap-ai-conversation', JSON.stringify(updatedMessages));
+            } catch (error) {
+              console.error('Error saving Kinap AI messages to localStorage:', error);
+            }
+          }
+          
           // Reset AI processing state
           setIsAIProcessing(false);
           setAiProcessingLock(false); // Reset lock
@@ -833,6 +859,17 @@ const CommunityPage: React.FC = () => {
             ),
           );
           setSelectedGroup(prev => (prev ? { ...prev, messages: [...prev.messages, aiMessage] } : null));
+          
+          // Save fallback response to localStorage for Kinap AI
+          if (selectedGroup.id === 'kinap-ai') {
+            try {
+              const updatedMessages = [...selectedGroup.messages, aiMessage];
+              localStorage.setItem('kinap-ai-conversation', JSON.stringify(updatedMessages));
+            } catch (error) {
+              console.error('Error saving fallback AI message to localStorage:', error);
+            }
+          }
+          
           setIsAIProcessing(false);
           setAiProcessingLock(false); // Reset lock
           
@@ -1110,21 +1147,61 @@ const CommunityPage: React.FC = () => {
       }
     }
 
-    // Instant groups from cache for fast first paint
-    const cachedGroups = localStorage.getItem('kinap-chat-groups');
-    if (cachedGroups) {
-      try {
-        const parsed = JSON.parse(cachedGroups);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setGroups(parsed);
-          if (!selectedGroup) {
-            setSelectedGroup(parsed[0]);
-          }
+      // Instant groups from cache for fast first paint
+  const cachedGroups = localStorage.getItem('kinap-chat-groups');
+  if (cachedGroups) {
+    try {
+      const parsed = JSON.parse(cachedGroups);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        setGroups(parsed);
+        if (!selectedGroup) {
+          setSelectedGroup(parsed[0]);
         }
-      } catch (e) {
-        // ignore cache parse errors
       }
+    } catch (e) {
+      // ignore cache parse errors
     }
+  }
+
+  // Load Kinap AI conversation history from localStorage as fallback
+  const loadKinapAIHistory = () => {
+    try {
+      const kinapAIHistory = localStorage.getItem('kinap-ai-conversation');
+      if (kinapAIHistory) {
+        const parsedHistory = JSON.parse(kinapAIHistory);
+        if (Array.isArray(parsedHistory) && parsedHistory.length > 0) {
+          // Update Kinap AI group with saved messages
+          setGroups(prev => prev.map(group => 
+            group.id === 'kinap-ai' 
+              ? { ...group, messages: parsedHistory }
+              : group
+          ));
+          
+          // Update selected group if it's Kinap AI
+          setSelectedGroup(prev => 
+            prev && prev.id === 'kinap-ai' 
+              ? { ...prev, messages: parsedHistory }
+              : prev
+          );
+        }
+      }
+    } catch (error) {
+      console.error('Error loading Kinap AI history from localStorage:', error);
+    }
+  };
+
+  // Load Kinap AI history on mount
+  loadKinapAIHistory();
+  
+  // Function to save Kinap AI messages to localStorage as backup
+  const saveKinapAIToLocalStorage = (messages: ChatMessage[]) => {
+    try {
+      localStorage.setItem('kinap-ai-conversation', JSON.stringify(messages));
+      console.log('✅ Kinap AI conversation saved to localStorage');
+    } catch (error) {
+      console.error('Error saving Kinap AI conversation to localStorage:', error);
+    }
+  };
   }, []);
 
   // Compute filtered groups for sidebar list
@@ -1366,13 +1443,35 @@ const CommunityPage: React.FC = () => {
                       reactions: msg.reactions,
                       replyTo: msg.replyTo
                     }));
+                  // Special handling for Kinap AI: merge with localStorage data
+                  let finalMessages = messages;
+                  if (g.id === 'kinap-ai') {
+                    try {
+                      const localStorageHistory = localStorage.getItem('kinap-ai-conversation');
+                      if (localStorageHistory) {
+                        const localMessages = JSON.parse(localStorageHistory);
+                        if (Array.isArray(localMessages) && localMessages.length > 0) {
+                          // Merge backend and localStorage messages, avoiding duplicates
+                          const backendMessageIds = new Set(messages.map(m => m.id));
+                          const uniqueLocalMessages = localMessages.filter(m => !backendMessageIds.has(m.id));
+                          finalMessages = [...messages, ...uniqueLocalMessages].sort((a, b) => 
+                            new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+                          );
+                          console.log('✅ Merged Kinap AI messages from backend and localStorage');
+                        }
+                      }
+                    } catch (error) {
+                      console.error('Error merging Kinap AI messages:', error);
+                    }
+                  }
+                  
                   setGroups((prev) => prev.map((x) => x.id === g.id ? {
                     ...x,
-                    messages,
-                      lastMessage: messages[messages.length - 1]?.content || 'No messages yet',
-                      lastMessageTime: messages[messages.length - 1]?.timestamp || new Date(),
+                    messages: finalMessages,
+                      lastMessage: finalMessages[finalMessages.length - 1]?.content || 'No messages yet',
+                      lastMessageTime: finalMessages[finalMessages.length - 1]?.timestamp || new Date(),
                   } : x));
-                  setSelectedGroup((prev) => prev && prev.id === g.id ? { ...prev, messages } : prev);
+                  setSelectedGroup((prev) => prev && prev.id === g.id ? { ...prev, messages: finalMessages } : prev);
                 }
               }
             } catch (err) {
@@ -1399,6 +1498,9 @@ const CommunityPage: React.FC = () => {
           ];
           setGroups(fallback);
           if (!selectedGroup) handleGroupSelection(fallback[0]);
+          
+          // Load Kinap AI conversation history from backend
+          loadKinapAIHistoryFromBackend();
         }
       } else {
         console.error('❌ Failed to load groups:', response?.status);
@@ -1423,22 +1525,22 @@ const CommunityPage: React.FC = () => {
       }
     } catch (error) {
       console.error('❌ Error loading groups:', error);
-      const fallback: ChatGroup[] = [
-        {
-          id: 'kinap-ai-local',
-          name: 'Kinap AI',
-          description: 'Your AI assistant for programming help, study guidance, and career advice',
-          avatar: 'https://ui-avatars.com/api/?name=Kinap+AI&background=8B5CF6&color=FFFFFF&bold=true&size=150',
-          members: 1,
-          messages: [],
-          lastMessage: 'Say hello to start chatting! 😊',
-          lastMessageTime: new Date(),
-          unreadCount: 0,
-          admins: [],
-          type: 'ai',
-          category: 'AI'
-        }
-      ];
+              const fallback: ChatGroup[] = [
+          {
+            id: 'kinap-ai',
+            name: 'Kinap AI',
+            description: 'Your AI assistant for programming help, study guidance, and career advice',
+            avatar: 'https://ui-avatars.com/api/?name=Kinap+AI&background=8B5CF6&color=FFFFFF&bold=true&size=150',
+            members: 1,
+            messages: [],
+            lastMessage: 'Say hello to start chatting! 😊',
+            lastMessageTime: new Date(),
+            unreadCount: 0,
+            admins: [],
+            type: 'ai',
+            category: 'AI'
+          }
+        ];
       setGroups(fallback);
       if (!selectedGroup) handleGroupSelection(fallback[0]);
     }
