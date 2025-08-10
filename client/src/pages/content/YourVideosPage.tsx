@@ -1,12 +1,52 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import onlineWorkVideos from '../../../../online_work_videos.json';
+
+// Mock data for user's videos (smaller than the large JSON file)
+const mockUserVideos = [
+  {
+    id: '1',
+    title: 'How to Build a React App from Scratch',
+    thumbnail: 'https://via.placeholder.com/320x180/3B82F6/FFFFFF?text=React+Tutorial',
+    duration: '25:15',
+    views: '2.1K',
+    uploadDate: '1 week ago',
+    channel: {
+      name: 'Kinap Hub',
+      avatar: 'https://ui-avatars.com/api/?name=Kinap+Hub&background=3B82F6&color=fff'
+    }
+  },
+  {
+    id: '2',
+    title: 'Advanced JavaScript Concepts',
+    thumbnail: 'https://via.placeholder.com/320x180/F59E0B/FFFFFF?text=JavaScript+Advanced',
+    duration: '32:45',
+    views: '1.8K',
+    uploadDate: '2 weeks ago',
+    channel: {
+      name: 'Kinap Hub',
+      avatar: 'https://ui-avatars.com/api/?name=Kinap+Hub&background=3B82F6&color=fff'
+    }
+  },
+  {
+    id: '3',
+    title: 'CSS Grid Layout Masterclass',
+    thumbnail: 'https://via.placeholder.com/320x180/10B981/FFFFFF?text=CSS+Grid',
+    duration: '18:30',
+    views: '956',
+    uploadDate: '3 weeks ago',
+    channel: {
+      name: 'Kinap Hub',
+      avatar: 'https://ui-avatars.com/api/?name=Kinap+Hub&background=3B82F6&color=fff'
+    }
+  }
+];
+
 const DEFAULT_AVATAR =
   'https://ui-avatars.com/api/?name=User&background=0D8ABC&color=fff';
 
 // For demo, show videos where channel.name is 'Kinap Hub' (replace with real user channel in production)
 const myChannelName = 'Kinap Hub';
-const myVideos = onlineWorkVideos.filter(
+const myVideos = mockUserVideos.filter(
   (video) => video.channel.name === myChannelName
 );
 

@@ -19,6 +19,7 @@ import EmojiPicker from '../../components/common/EmojiPicker';
 import FileUpload from '../../components/common/FileUpload';
 import { fallbackResponses } from '../../services/geminiAI';
 import websocketService from '../../services/websocketService';
+import toast from 'react-hot-toast';
 
 type Theme = 'light' | 'dark' | 'system';
 
@@ -759,12 +760,14 @@ const CommunityPage: React.FC = () => {
             if (!isUserScrolledUp) scrollToBottom(true);
           }, 50);
 
-          // Save to backend in background (non-blocking)
+          // Save to backend immediately (blocking to ensure persistence)
           try {
             await saveAIMessageViaAPI(aiMessageId, selectedGroup.id, aiText, userProfile);
+            console.log('✅ AI message saved to MongoDB successfully');
           } catch (saveError) {
-            console.error('Failed to save AI message to backend:', saveError);
-            // Don't show error to user since message is already displayed
+            console.error('❌ Failed to save AI message to backend:', saveError);
+            // Show error to user since persistence failed
+            toast.error('Failed to save AI message. Please try again.');
           }
         } catch (error) {
           console.error('Kinap AI error:', error);
@@ -804,6 +807,15 @@ const CommunityPage: React.FC = () => {
           setIsAIProcessing(false);
           setAiProcessingLock(false); // Reset lock
           
+          // Save fallback response to backend as well
+          try {
+            const fallbackMessageId = Date.now().toString() + '-ai-fallback';
+            await saveAIMessageViaAPI(fallbackMessageId, selectedGroup.id, fallbackResponse, userProfile);
+            console.log('✅ Fallback AI message saved to MongoDB successfully');
+          } catch (saveError) {
+            console.error('❌ Failed to save fallback AI message to backend:', saveError);
+          }
+
           // Scroll to bottom after a short delay to ensure message is rendered
           setTimeout(() => {
             if (!isUserScrolledUp) scrollToBottom(true);
@@ -1251,7 +1263,7 @@ const CommunityPage: React.FC = () => {
         // No identity available; ensure UI shows a safe default
         const fallback: ChatGroup[] = [
           {
-            id: 'kinap-ai-local',
+            id: 'kinap-ai',
             name: 'Kinap AI',
             description: 'Your AI assistant for programming help, study guidance, and career advice',
             avatar: 'https://ui-avatars.com/api/?name=Kinap+AI&background=8B5CF6&color=FFFFFF&bold=true&size=150',
@@ -1342,7 +1354,7 @@ const CommunityPage: React.FC = () => {
           console.log('📭 No groups found for user; showing Kinap AI');
           const fallback: ChatGroup[] = [
             {
-              id: 'kinap-ai-local',
+              id: 'kinap-ai',
               name: 'Kinap AI',
               description: 'Your AI assistant for programming help, study guidance, and career advice',
               avatar: 'https://ui-avatars.com/api/?name=Kinap+AI&background=8B5CF6&color=FFFFFF&bold=true&size=150',
@@ -1363,7 +1375,7 @@ const CommunityPage: React.FC = () => {
         console.error('❌ Failed to load groups:', response?.status);
         const fallback: ChatGroup[] = [
           {
-            id: 'kinap-ai-local',
+            id: 'kinap-ai',
             name: 'Kinap AI',
             description: 'Your AI assistant for programming help, study guidance, and career advice',
             avatar: 'https://ui-avatars.com/api/?name=Kinap+AI&background=8B5CF6&color=FFFFFF&bold=true&size=150',

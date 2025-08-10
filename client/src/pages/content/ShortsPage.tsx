@@ -1,5 +1,69 @@
 import React from 'react';
-import onlineWorkVideos from '../../../../online_work_videos.json';
+
+// Mock data for shorts videos (smaller than the large JSON file)
+const mockShortsVideos = [
+  {
+    id: 1,
+    title: 'Quick React Tip: UseCallback Hook',
+    thumbnail: 'https://via.placeholder.com/180x320/3B82F6/FFFFFF?text=React+Tip',
+    duration: '0:45',
+    channel: {
+      name: 'Web Dev Pro',
+      avatar: 'https://ui-avatars.com/api/?name=Web+Dev+Pro&background=3B82F6&color=fff'
+    }
+  },
+  {
+    id: 2,
+    title: 'AI Coding Assistant Demo',
+    thumbnail: 'https://via.placeholder.com/180x320/10B981/FFFFFF?text=AI+Coding',
+    duration: '0:52',
+    channel: {
+      name: 'AI Learning Hub',
+      avatar: 'https://ui-avatars.com/api/?name=AI+Learning+Hub&background=10B981&color=fff'
+    }
+  },
+  {
+    id: 3,
+    title: 'CSS Grid in 30 Seconds',
+    thumbnail: 'https://via.placeholder.com/180x320/F59E0B/FFFFFF?text=CSS+Grid',
+    duration: '0:30',
+    channel: {
+      name: 'CSS Master',
+      avatar: 'https://ui-avatars.com/api/?name=CSS+Master&background=F59E0B&color=fff'
+    }
+  },
+  {
+    id: 4,
+    title: 'JavaScript Array Methods',
+    thumbnail: 'https://via.placeholder.com/180x320/EF4444/FFFFFF?text=JS+Arrays',
+    duration: '0:58',
+    channel: {
+      name: 'JS Mastery',
+      avatar: 'https://ui-avatars.com/api/?name=JS+Mastery&background=EF4444&color=fff'
+    }
+  },
+  {
+    id: 5,
+    title: 'Git Commands You Need to Know',
+    thumbnail: 'https://via.placeholder.com/180x320/8B5CF6/FFFFFF?text=Git+Commands',
+    duration: '0:42',
+    channel: {
+      name: 'Dev Tips',
+      avatar: 'https://ui-avatars.com/api/?name=Dev+Tips&background=8B5CF6&color=fff'
+    }
+  },
+  {
+    id: 6,
+    title: 'Python List Comprehension',
+    thumbnail: 'https://via.placeholder.com/180x320/06B6D4/FFFFFF?text=Python+Lists',
+    duration: '0:35',
+    channel: {
+      name: 'Python Pro',
+      avatar: 'https://ui-avatars.com/api/?name=Python+Pro&background=06B6D4&color=fff'
+    }
+  }
+];
+
 const DEFAULT_AVATAR =
   'https://ui-avatars.com/api/?name=User&background=0D8ABC&color=fff';
 
@@ -12,7 +76,7 @@ function isShort(video) {
   return false;
 }
 
-const shorts = onlineWorkVideos.filter(isShort);
+const shorts = mockShortsVideos.filter(isShort);
 
 const ShortsPage = () => (
   <div className='min-h-screen bg-white px-4 py-8'>

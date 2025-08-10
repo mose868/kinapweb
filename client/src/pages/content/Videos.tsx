@@ -1,38 +1,155 @@
-import React, { useState, useEffect, useRef } from 'react';
-import YouTube from 'react-youtube';
-import { motion } from 'framer-motion';
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useMemo,
+} from 'react';
 import {
   Search,
-  Bell,
-  User,
-  Menu,
-  Home,
-  TrendingUp,
-  PlayCircle,
-  Clock,
-  ThumbsUp,
-  ThumbsDown,
+  Filter,
+  Grid,
+  List,
+  Play,
+  Pause,
+  Volume2,
+  VolumeX,
+  Maximize,
+  Minimize,
   Share2,
   Download,
+  Heart,
+  ThumbsDown,
+  MessageCircle,
   MoreHorizontal,
-  Filter,
-  Grid3X3,
-  List,
-  SlidersHorizontal,
+  Clock,
+  Eye,
+  User,
   CheckCircle,
-  Verified,
-  Settings,
-  History,
-  Star,
-  Bookmark,
-  Plus,
-  UploadCloud,
   Flag,
   Copy,
   ExternalLink,
 } from 'lucide-react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
-import onlineWorkVideos from '../../../../online_work_videos.json';
+
+// Mock data for videos (smaller than the large JSON file)
+const mockVideos = [
+  {
+    id: 1,
+    title: 'Complete React Tutorial for Beginners 2024',
+    description: 'Learn React from scratch with this comprehensive tutorial. We cover everything from basic concepts to advanced patterns including hooks, context, and performance optimization.',
+    thumbnail: 'https://via.placeholder.com/320x180/3B82F6/FFFFFF?text=React+Tutorial',
+    videoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+    duration: '45:30',
+    views: '125K',
+    uploadDate: '2 weeks ago',
+    channel: {
+      name: 'Web Dev Pro',
+      avatar: 'https://ui-avatars.com/api/?name=Web+Dev+Pro&background=3B82F6&color=fff',
+      verified: true,
+      subscribers: '1.2M'
+    },
+    likes: '12K',
+    dislikes: '234',
+    category: 'Programming'
+  },
+  {
+    id: 2,
+    title: 'AI and Machine Learning Fundamentals',
+    description: 'Introduction to artificial intelligence and machine learning concepts. Perfect for beginners who want to understand the basics of AI.',
+    thumbnail: 'https://via.placeholder.com/320x180/10B981/FFFFFF?text=AI+ML+Basics',
+    videoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+    duration: '32:15',
+    views: '89K',
+    uploadDate: '1 week ago',
+    channel: {
+      name: 'AI Learning Hub',
+      avatar: 'https://ui-avatars.com/api/?name=AI+Learning+Hub&background=10B981&color=fff',
+      verified: true,
+      subscribers: '850K'
+    },
+    likes: '8.5K',
+    dislikes: '156',
+    category: 'Technology'
+  },
+  {
+    id: 3,
+    title: 'Project Management Best Practices',
+    description: 'Learn the essential project management techniques used by successful teams. From planning to execution and monitoring.',
+    thumbnail: 'https://via.placeholder.com/320x180/F59E0B/FFFFFF?text=Project+Management',
+    videoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+    duration: '28:45',
+    views: '67K',
+    uploadDate: '3 days ago',
+    channel: {
+      name: 'PM Academy',
+      avatar: 'https://ui-avatars.com/api/?name=PM+Academy&background=F59E0B&color=fff',
+      verified: false,
+      subscribers: '320K'
+    },
+    likes: '6.2K',
+    dislikes: '89',
+    category: 'Business'
+  },
+  {
+    id: 4,
+    title: 'Advanced JavaScript ES6+ Features',
+    description: 'Deep dive into modern JavaScript features including arrow functions, destructuring, async/await, and more.',
+    thumbnail: 'https://via.placeholder.com/320x180/EF4444/FFFFFF?text=JavaScript+ES6',
+    videoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+    duration: '38:20',
+    views: '95K',
+    uploadDate: '5 days ago',
+    channel: {
+      name: 'JS Mastery',
+      avatar: 'https://ui-avatars.com/api/?name=JS+Mastery&background=EF4444&color=fff',
+      verified: true,
+      subscribers: '750K'
+    },
+    likes: '9.1K',
+    dislikes: '203',
+    category: 'Programming'
+  },
+  {
+    id: 5,
+    title: 'Data Science for Beginners',
+    description: 'Start your journey in data science with this comprehensive introduction covering Python, statistics, and data visualization.',
+    thumbnail: 'https://via.placeholder.com/320x180/8B5CF6/FFFFFF?text=Data+Science',
+    videoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+    duration: '52:10',
+    views: '78K',
+    uploadDate: '1 week ago',
+    channel: {
+      name: 'Data Science Pro',
+      avatar: 'https://ui-avatars.com/api/?name=Data+Science+Pro&background=8B5CF6&color=fff',
+      verified: true,
+      subscribers: '620K'
+    },
+    likes: '7.8K',
+    dislikes: '145',
+    category: 'Technology'
+  },
+  {
+    id: 6,
+    title: 'Mobile App Development with React Native',
+    description: 'Build cross-platform mobile applications using React Native. Learn the fundamentals and best practices.',
+    thumbnail: 'https://via.placeholder.com/320x180/06B6D4/FFFFFF?text=React+Native',
+    videoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+    duration: '41:35',
+    views: '112K',
+    uploadDate: '4 days ago',
+    channel: {
+      name: 'Mobile Dev Hub',
+      avatar: 'https://ui-avatars.com/api/?name=Mobile+Dev+Hub&background=06B6D4&color=fff',
+      verified: false,
+      subscribers: '450K'
+    },
+    likes: '10.2K',
+    dislikes: '178',
+    category: 'Programming'
+  }
+];
+
 import axios from 'axios';
 
 // Collapsible DescriptionBox component (must be top-level, not nested)
@@ -247,7 +364,7 @@ const Videos: React.FC = () => {
   ];
 
   // Use the imported JSON as the videos array
-  const videos = onlineWorkVideos;
+  const videos = mockVideos;
 
   // Helper function to get verification badge
   const getVerificationBadge = (channel: any) => {
