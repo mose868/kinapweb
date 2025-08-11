@@ -29,6 +29,7 @@ import {
   Flag,
   Copy,
   ExternalLink,
+  Home,
 } from 'lucide-react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
 
