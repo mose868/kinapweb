@@ -30,6 +30,7 @@ import {
   Copy,
   ExternalLink,
   Home,
+  PlayCircle,
 } from 'lucide-react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
 
