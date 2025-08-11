@@ -40,6 +40,16 @@
         min-height: 100vh;
       }
     </style>
+    <script>
+      // Force light mode before React mounts to avoid dark flash
+      try {
+        document.documentElement.classList.remove('dark');
+        var saved = localStorage.getItem('theme');
+        if (!saved || saved === 'light') {
+          document.documentElement.classList.remove('dark');
+        }
+      } catch (e) { /* no-op */ }
+    </script>
   </head>
   <body>
     <div id="root"></div>
