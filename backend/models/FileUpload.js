@@ -1,62 +1,179 @@
-const mongoose = require('mongoose');
+const { DataTypes } = require('sequelize');
+const { sequelize } = require('../config/database');
 
-const fileUploadSchema = new mongoose.Schema({
-  fileName: { type: String, required: true },
-  originalName: { type: String, required: true },
-  fileType: { type: String, required: true },
-  mimeType: { type: String, required: true },
-  fileSize: { type: Number, required: true },
-  fileSizeFormatted: { type: String, required: true },
-  
-  // Storage information
-  storagePath: { type: String, required: true },
-  downloadUrl: { type: String, required: true },
-  thumbnailUrl: { type: String }, // For images/videos
-  
-  // Upload context
-  uploadedBy: { type: String, required: true },
-  uploadContext: { 
-    type: String, 
-    enum: ['chat', 'profile', 'marketplace', 'general'], 
-    default: 'general' 
+const FileUpload = sequelize.define('FileUpload', {
+  id: {
+    type: DataTypes.INTEGER,
+    primaryKey: true,
+    autoIncrement: true,
   },
-  relatedId: { type: String }, // ID of related entity (message, user, etc.)
   
-  // File metadata
-  duration: { type: Number }, // For audio/video files in seconds
+  fileName: {
+    type: DataTypes.STRING(500),
+    allowNull: false,
+  },
+  
+  originalName: {
+    type: DataTypes.STRING(500),
+    allowNull: false,
+  },
+  
+  fileType: {
+    type: DataTypes.STRING(100),
+    allowNull: false,
+  },
+  
+  mimeType: {
+    type: DataTypes.STRING(200),
+    allowNull: false,
+  },
+  
+  fileSize: {
+    type: DataTypes.BIGINT,
+    allowNull: false,
+  },
+  
+  fileSizeFormatted: {
+    type: DataTypes.STRING(50),
+    allowNull: false,
+  },
+  
+  storagePath: {
+    type: DataTypes.TEXT,
+    allowNull: false,
+  },
+  
+  downloadUrl: {
+    type: DataTypes.TEXT,
+    allowNull: false,
+  },
+  
+  thumbnailUrl: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+  },
+  
+  uploadedBy: {
+    type: DataTypes.STRING(255),
+    allowNull: false,
+  },
+  
+  uploadContext: {
+    type: DataTypes.ENUM('chat', 'profile', 'marketplace', 'general'),
+    allowNull: false,
+    defaultValue: 'general',
+  },
+  
+  relatedId: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+  },
+  
+  duration: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'Duration in seconds for audio/video files'
+  },
+  
   dimensions: {
-    width: { type: Number },
-    height: { type: Number }
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: {},
   },
   
-  // Security and access
-  isPublic: { type: Boolean, default: true },
-  accessToken: { type: String },
-  expiresAt: { type: Date },
-  
-  // Status
-  status: { 
-    type: String, 
-    enum: ['uploading', 'processing', 'completed', 'failed', 'deleted'], 
-    default: 'uploading' 
+  isPublic: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: true,
   },
   
-  // Processing info
-  processingError: { type: String },
+  accessToken: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+  },
   
-  createdAt: { type: Date, default: Date.now },
-  updatedAt: { type: Date, default: Date.now }
+  expiresAt: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
+  
+  status: {
+    type: DataTypes.ENUM('uploading', 'processing', 'completed', 'failed', 'deleted'),
+    allowNull: false,
+    defaultValue: 'uploading',
+  },
+  
+  processingError: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+  },
+}, {
+  tableName: 'file_uploads',
+  timestamps: true,
+  indexes: [
+    {
+      fields: ['uploadedBy', 'uploadContext']
+    },
+    {
+      fields: ['relatedId']
+    },
+    {
+      fields: ['status']
+    },
+    {
+      fields: ['expiresAt']
+    },
+    {
+      fields: ['createdAt']
+    }
+  ]
 });
 
-// Update timestamp on save
-fileUploadSchema.pre('save', function(next) {
-  this.updatedAt = new Date();
-  next();
-});
+// Static method to get files by user
+FileUpload.getByUser = function(uploadedBy, options = {}) {
+  const { uploadContext, status = 'completed', limit = 50 } = options;
+  
+  let whereClause = {
+    uploadedBy,
+    status
+  };
 
-// Index for efficient queries
-fileUploadSchema.index({ uploadedBy: 1, uploadContext: 1 });
-fileUploadSchema.index({ relatedId: 1 });
-fileUploadSchema.index({ createdAt: -1 });
+  if (uploadContext) {
+    whereClause.uploadContext = uploadContext;
+  }
 
-module.exports = mongoose.model('FileUpload', fileUploadSchema); 
+  return this.findAll({
+    where: whereClause,
+    order: [['createdAt', 'DESC']],
+    limit
+  });
+};
+
+// Static method to clean expired files
+FileUpload.cleanExpired = function() {
+  const now = new Date();
+  return this.update(
+    { status: 'deleted' },
+    {
+      where: {
+        expiresAt: { [sequelize.Op.lt]: now },
+        status: { [sequelize.Op.not]: 'deleted' }
+      }
+    }
+  );
+};
+
+// Instance method to mark as completed
+FileUpload.prototype.markCompleted = function() {
+  this.status = 'completed';
+  return this.save();
+};
+
+// Instance method to mark as failed
+FileUpload.prototype.markFailed = function(error) {
+  this.status = 'failed';
+  this.processingError = error;
+  return this.save();
+};
+
+module.exports = FileUpload;

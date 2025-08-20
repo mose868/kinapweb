@@ -1,7 +1,7 @@
 const express = require('express');
 const dotenv = require('dotenv');
 const cors = require('cors');
-const mongoose = require('mongoose');
+const { sequelize, testConnection } = require('./config/database');
 const cookieParser = require('cookie-parser');
 const http = require('http');
 const path = require('path');
@@ -26,7 +26,8 @@ const successStoriesRoutes = require('./routes/successStories');
 const showcaseProfilesRoutes = require('./routes/showcaseProfiles');
 const ambassadorApplicationsRoutes = require('./routes/ambassadorApplications');
 const metricsRoutes = require('./routes/metrics');
-const Message = require('./models/Message');
+// Import models to ensure they're registered
+require('./models');
 const homePageRoutes = require('./routes/homePage');
 const contentRoutes = require('./routes/content');
 const chatbotRoutes = require('./routes/chatbot');
@@ -184,10 +185,10 @@ app.get('/api/chatbot-debug', (req, res) => {
   });
 });
 
-// MongoDB Connection & Server start
+// MySQL Connection & Server start
 const PORT = process.env.PORT || 5000;
 
-// Start server even if MongoDB fails (for WebSocket and chatbot functionality)
+// Start server even if MySQL fails (for WebSocket and chatbot functionality)
 const startServer = () => {
   server.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
@@ -196,73 +197,26 @@ const startServer = () => {
   });
 };
 
-// MongoDB connection with retry logic
-const connectToMongoDB = async (retries = 3) => {
-  for (let i = 0; i < retries; i++) {
-    try {
-      console.log(`🔄 Attempting MongoDB connection (attempt ${i + 1}/${retries})...`);
-      
-      // Check if MONGODB_URI is set
-      if (!process.env.MONGODB_URI) {
-        console.warn('⚠️ MONGODB_URI not set, skipping database connection');
-        return false;
-      }
-      
-      await mongoose.connect(process.env.MONGODB_URI, {
-        serverSelectionTimeoutMS: 30000, // 30 second timeout
-        socketTimeoutMS: 45000, // 45 second timeout
-        connectTimeoutMS: 30000, // 30 second connection timeout
-        maxPoolSize: 10, // Maximum number of connections in the pool
-        minPoolSize: 1, // Minimum number of connections in the pool
-        maxIdleTimeMS: 30000, // Maximum time a connection can remain idle
-        retryWrites: true,
-        w: 'majority',
-        useNewUrlParser: true,
-        useUnifiedTopology: true
-      });
-      
-      console.log('✅ MongoDB connected successfully');
-      return true;
-    } catch (err) {
-      console.warn(`⚠️ MongoDB connection attempt ${i + 1} failed:`, err.message);
-      
-      if (i < retries - 1) {
-        console.log(`⏳ Retrying in 5 seconds...`);
-        await new Promise(resolve => setTimeout(resolve, 5000));
-      }
-    }
-  }
-  return false;
+// MySQL connection with retry logic
+const connectToMySQL = async (retries = 3) => {
+  return await testConnection(retries);
 };
 
-// Handle MongoDB connection events
-mongoose.connection.on('error', (err) => {
-  console.error('❌ MongoDB connection error:', err);
-});
-
-mongoose.connection.on('disconnected', () => {
-  console.warn('⚠️ MongoDB disconnected');
-});
-
-mongoose.connection.on('reconnected', () => {
-  console.log('✅ MongoDB reconnected');
-});
-
-// Start server with MongoDB connection
-const startServerWithMongoDB = async () => {
-  const mongoConnected = await connectToMongoDB();
+// Start server with MySQL connection
+const startServerWithMySQL = async () => {
+  const mysqlConnected = await connectToMySQL();
   
-  if (!mongoConnected) {
-    console.warn('⚠️ Failed to connect to MongoDB after multiple attempts');
+  if (!mysqlConnected) {
+    console.warn('⚠️ Failed to connect to MySQL after multiple attempts');
     console.log('📝 Starting server without database (WebSocket and chatbot will still work)');
-    console.log('🔧 MongoDB troubleshooting:');
-    console.log('   1. Check your internet connection');
-    console.log('   2. Verify MongoDB Atlas credentials');
-    console.log('   3. Check if IP is whitelisted in MongoDB Atlas');
-    console.log('   4. Verify connection string format');
+    console.log('🔧 MySQL troubleshooting:');
+    console.log('   1. Check if MySQL server is running');
+    console.log('   2. Verify MySQL credentials (MYSQL_HOST, MYSQL_USERNAME, MYSQL_PASSWORD)');
+    console.log('   3. Check if database exists (MYSQL_DATABASE)');
+    console.log('   4. Verify firewall/network settings');
   }
   
   startServer();
 };
 
-startServerWithMongoDB();
+startServerWithMySQL();

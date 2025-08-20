@@ -1,13 +1,48 @@
-const mongoose = require('mongoose');
+const { DataTypes } = require('sequelize');
+const { sequelize } = require('../config/database');
 
-const contentSchema = new mongoose.Schema({
-  title: { type: String, required: true },
-  description: { type: String },
-  content: { type: String },
-  image: { type: String },
-  author: { type: String },
-  createdAt: { type: Date, default: Date.now },
-  updatedAt: { type: Date, default: Date.now }
+const Content = sequelize.define('Content', {
+  id: {
+    type: DataTypes.INTEGER,
+    primaryKey: true,
+    autoIncrement: true,
+  },
+  
+  title: {
+    type: DataTypes.STRING(500),
+    allowNull: false,
+  },
+  
+  description: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+  },
+  
+  content: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+  },
+  
+  image: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+  },
+  
+  author: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+  },
+}, {
+  tableName: 'contents',
+  timestamps: true,
+  indexes: [
+    {
+      fields: ['author']
+    },
+    {
+      fields: ['createdAt']
+    }
+  ]
 });
 
-module.exports = mongoose.model('Content', contentSchema); 
+module.exports = Content;

@@ -13,6 +13,7 @@
     "populate-homepage": "node scripts/populateHomePage.js",
     "clear-training": "node scripts/clearTrainingData.js",
     "populate-mentors": "node scripts/populateMentors.js",
+    "migrate-to-mysql": "node scripts/migrateFromMongoToMySQL.js",
     "setup-env": "node setup-env.js",
     "test-email": "node test-email.js",
     "test-venom": "node test-venom-whatsapp.js",
@@ -22,7 +23,7 @@
   "keywords": [
     "api",
     "backend",
-    "mongodb",
+    "mysql",
     "authentication"
   ],
   "author": "",
@@ -34,12 +35,14 @@
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
+    "drizzle-orm": "^0.44.4",
     "express": "^4.21.2",
     "jsonwebtoken": "^9.0.2",
-    "mongoose": "^8.9.6",
     "multer": "^2.0.2",
+    "mysql2": "^3.14.3",
     "node-fetch": "^3.3.2",
     "nodemailer": "^7.0.5",
+    "sequelize": "^6.37.7",
     "uuid": "^11.1.0",
     "ws": "^8.18.3"
   },

@@ -211,7 +211,7 @@ class WebSocketServer {
         userAvatar = 'https://ui-avatars.com/api/?name=Kinap+AI&background=8B5CF6&color=FFFFFF&bold=true&size=40';
       }
 
-      // Save to MongoDB
+      // Save to MySQL database
       const messageId = Date.now().toString();
       const savedMessage = await ChatMessage.create({
         messageId,

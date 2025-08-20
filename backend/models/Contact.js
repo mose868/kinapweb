@@ -1,62 +1,149 @@
-const mongoose = require('mongoose');
+const { DataTypes } = require('sequelize');
+const { sequelize } = require('../config/database');
 
-const contactSchema = new mongoose.Schema(
-  {
-    name: { type: String, required: true },
-    email: { type: String, required: true },
-    phone: { type: String },
-    subject: { type: String, required: true },
-    message: { type: String, required: true },
-    category: { 
-      type: String, 
-      enum: ['General Inquiry', 'Technical Support', 'Partnership', 'Training', 'Complaint', 'Suggestion', 'Other'],
-      default: 'General Inquiry'
-    },
-    priority: {
-      type: String,
-      enum: ['Low', 'Medium', 'High', 'Urgent'],
-      default: 'Medium'
-    },
-    status: {
-      type: String,
-      enum: ['New', 'In Progress', 'Responded', 'Resolved', 'Closed'],
-      default: 'New'
-    },
-    source: {
-      type: String,
-      enum: ['Website', 'WhatsApp', 'Email', 'Phone', 'Social Media'],
-      default: 'Website'
-    },
-    emailSent: { type: Boolean, default: false },
-    emailSentAt: { type: Date },
-    responseNotes: { type: String }, // Admin notes for response
-    assignedTo: { type: String }, // Admin email who handles this
-    followUpDate: { type: Date },
-    isRead: { type: Boolean, default: false },
-    isArchived: { type: Boolean, default: false },
-    attachments: [{ 
-      name: { type: String },
-      url: { type: String },
-      type: { type: String }
-    }],
-    metadata: {
-      userAgent: { type: String },
-      ipAddress: { type: String },
-      referrer: { type: String }
-    }
+const Contact = sequelize.define('Contact', {
+  id: {
+    type: DataTypes.INTEGER,
+    primaryKey: true,
+    autoIncrement: true,
   },
-  { timestamps: true }
-);
+  
+  name: {
+    type: DataTypes.STRING(255),
+    allowNull: false,
+  },
+  
+  email: {
+    type: DataTypes.STRING(255),
+    allowNull: false,
+    validate: {
+      isEmail: true,
+    },
+  },
+  
+  phone: {
+    type: DataTypes.STRING(50),
+    allowNull: true,
+  },
+  
+  subject: {
+    type: DataTypes.STRING(500),
+    allowNull: false,
+  },
+  
+  message: {
+    type: DataTypes.TEXT,
+    allowNull: false,
+  },
+  
+  category: {
+    type: DataTypes.ENUM('General Inquiry', 'Technical Support', 'Partnership', 'Training', 'Complaint', 'Suggestion', 'Other'),
+    allowNull: false,
+    defaultValue: 'General Inquiry',
+  },
+  
+  priority: {
+    type: DataTypes.ENUM('Low', 'Medium', 'High', 'Urgent'),
+    allowNull: false,
+    defaultValue: 'Medium',
+  },
+  
+  status: {
+    type: DataTypes.ENUM('New', 'In Progress', 'Responded', 'Resolved', 'Closed'),
+    allowNull: false,
+    defaultValue: 'New',
+  },
+  
+  source: {
+    type: DataTypes.ENUM('Website', 'WhatsApp', 'Email', 'Phone', 'Social Media'),
+    allowNull: false,
+    defaultValue: 'Website',
+  },
+  
+  emailSent: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false,
+  },
+  
+  emailSentAt: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
+  
+  responseNotes: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+  },
+  
+  assignedTo: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+  },
+  
+  followUpDate: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
+  
+  isRead: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false,
+  },
+  
+  isArchived: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false,
+  },
+  
+  attachments: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: [],
+  },
+  
+  metadata: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: {},
+  },
+}, {
+  tableName: 'contacts',
+  timestamps: true,
+  indexes: [
+    {
+      fields: ['status', 'createdAt']
+    },
+    {
+      fields: ['category', 'priority']
+    },
+    {
+      fields: ['isRead', 'isArchived']
+    },
+    {
+      fields: ['email']
+    },
+    {
+      fields: ['createdAt']
+    },
+    {
+      fields: ['assignedTo']
+    }
+  ],
+  hooks: {
+    beforeSave: async (contact, options) => {
+      // Set emailSentAt when emailSent is true
+      if (contact.changed('emailSent') && contact.emailSent && !contact.emailSentAt) {
+        contact.emailSentAt = new Date();
+      }
+    }
+  }
+});
 
-// Indexes for better query performance
-contactSchema.index({ status: 1, createdAt: -1 });
-contactSchema.index({ category: 1, priority: 1 });
-contactSchema.index({ isRead: 1, isArchived: 1 });
-contactSchema.index({ email: 1 });
-contactSchema.index({ createdAt: -1 });
-
-// Virtual for formatting created date
-contactSchema.virtual('formattedDate').get(function() {
+// Virtual for formatted date
+Contact.prototype.getFormattedDate = function() {
   return this.createdAt.toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'long',
@@ -64,28 +151,63 @@ contactSchema.virtual('formattedDate').get(function() {
     hour: '2-digit',
     minute: '2-digit'
   });
-});
+};
 
 // Static method to get unread messages count
-contactSchema.statics.getUnreadCount = function() {
-  return this.countDocuments({ isRead: false, isArchived: false });
+Contact.getUnreadCount = function() {
+  return this.count({ 
+    where: { 
+      isRead: false, 
+      isArchived: false 
+    } 
+  });
 };
 
 // Static method to get messages by status
-contactSchema.statics.getByStatus = function(status, limit = 50) {
-  return this.find({ status, isArchived: false })
-    .sort({ createdAt: -1 })
-    .limit(limit);
+Contact.getByStatus = function(status, limit = 50) {
+  return this.findAll({ 
+    where: { 
+      status, 
+      isArchived: false 
+    },
+    order: [['createdAt', 'DESC']],
+    limit 
+  });
 };
 
-// Method to mark as read
-contactSchema.methods.markAsRead = function() {
+// Static method to get messages by category
+Contact.getByCategory = function(category, limit = 50) {
+  return this.findAll({ 
+    where: { 
+      category, 
+      isArchived: false 
+    },
+    order: [['createdAt', 'DESC']],
+    limit 
+  });
+};
+
+// Static method to get urgent messages
+Contact.getUrgent = function(limit = 20) {
+  return this.findAll({ 
+    where: { 
+      priority: 'Urgent',
+      status: ['New', 'In Progress'],
+      isArchived: false 
+    },
+    order: [['createdAt', 'DESC']],
+    limit 
+  });
+};
+
+// Instance method to mark as read
+Contact.prototype.markAsRead = function() {
   this.isRead = true;
   return this.save();
 };
 
-// Method to update status
-contactSchema.methods.updateStatus = function(newStatus, notes = '') {
+// Instance method to update status
+Contact.prototype.updateStatus = function(newStatus, notes = '') {
   this.status = newStatus;
   if (notes) {
     this.responseNotes = notes;
@@ -93,12 +215,19 @@ contactSchema.methods.updateStatus = function(newStatus, notes = '') {
   return this.save();
 };
 
-// Pre-save middleware to set emailSentAt when emailSent is true
-contactSchema.pre('save', function(next) {
-  if (this.isModified('emailSent') && this.emailSent && !this.emailSentAt) {
-    this.emailSentAt = new Date();
+// Instance method to assign to admin
+Contact.prototype.assignTo = function(adminEmail) {
+  this.assignedTo = adminEmail;
+  if (this.status === 'New') {
+    this.status = 'In Progress';
   }
-  next();
-});
+  return this.save();
+};
 
-module.exports = mongoose.model('Contact', contactSchema); 
+// Instance method to archive
+Contact.prototype.archive = function() {
+  this.isArchived = true;
+  return this.save();
+};
+
+module.exports = Contact;

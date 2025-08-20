@@ -1,10 +1,10 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const Student = require('../models/Student');
+const { Student, Group } = require('../models');
+const { Op } = require('sequelize');
 const crypto = require('crypto');
 const { sendVerificationEmail, sendWelcomeEmail } = require('../services/emailService');
-const Group = require('../models/Group');
 
 const router = express.Router();
 
@@ -22,7 +22,7 @@ router.post('/register-student', async (req, res) => {
       return res.status(400).json({ message: 'Please provide required fields' });
     }
 
-    const existingStudent = await Student.findOne({ email });
+    const existingStudent = await Student.findOne({ where: { email } });
     if (existingStudent) {
       return res.status(400).json({ message: 'Email already registered' });
     }
@@ -83,7 +83,7 @@ router.post('/register-student', async (req, res) => {
 router.post('/verify-code', async (req, res) => {
   try {
     const { email, code } = req.body;
-    const student = await Student.findOne({ email });
+    const student = await Student.findOne({ where: { email } });
     if (!student) {
       return res.status(400).json({ message: 'Invalid email' });
     }
@@ -96,10 +96,11 @@ router.post('/verify-code', async (req, res) => {
       return res.status(400).json({ message: 'Invalid or expired code' });
     }
 
-    student.isVerified = true;
-    student.verificationCode = undefined;
-    student.verificationCodeExpires = undefined;
-    await student.save();
+    await student.update({
+      isVerified: true,
+      verificationCode: null,
+      verificationCodeExpires: null
+    });
 
     // Send welcome email
     try {
@@ -119,7 +120,7 @@ router.post('/verify-code', async (req, res) => {
 router.post('/resend-code', async (req, res) => {
   try {
     const { email } = req.body;
-    const student = await Student.findOne({ email });
+    const student = await Student.findOne({ where: { email } });
     if (!student) return res.status(400).json({ message: 'Invalid email' });
 
     if (student.isVerified) return res.json({ message: 'Account already verified' });
@@ -143,7 +144,7 @@ router.post('/login-student', async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    const student = await Student.findOne({ email });
+    const student = await Student.findOne({ where: { email } });
     if (!student) {
       return res.status(400).json({ message: 'Invalid credentials' });
     }
@@ -180,7 +181,10 @@ router.post('/get-profile', async (req, res) => {
   try {
     const { email } = req.body;
     console.log('Get profile request for:', email);
-    const student = await Student.findOne({ email }).select('-password');
+    const student = await Student.findOne({ 
+      where: { email },
+      attributes: { exclude: ['password'] }
+    });
     if (!student) {
       return res.status(404).json({ message: 'Student not found' });
     }
@@ -188,7 +192,7 @@ router.post('/get-profile', async (req, res) => {
     if (student.photoURL) {
       console.log('PhotoURL length:', student.photoURL.length);
     }
-    res.json(student);
+    res.json(updatedStudent);
   } catch (error) {
     console.error('Get profile error:', error);
     res.status(500).json({ message: 'Server error' });
@@ -247,15 +251,20 @@ router.post('/update-profile', async (req, res) => {
       return res.status(400).json({ message: 'Email is required' });
     }
     
-    const student = await Student.findOneAndUpdate(
-      { email },
-      { $set: { ...updateData, updatedAt: new Date() } },
-      { new: true }
-    ).select('-password');
-    
+    const student = await Student.findOne({ where: { email } });
     if (!student) {
       return res.status(404).json({ message: 'Student not found' });
     }
+    
+    await student.update({ 
+      ...updateData, 
+      updatedAt: new Date() 
+    });
+    
+    const updatedStudent = await Student.findOne({ 
+      where: { email },
+      attributes: { exclude: ['password'] }
+    });
     
     // Auto-add to interest groups if interests are updated
     try {

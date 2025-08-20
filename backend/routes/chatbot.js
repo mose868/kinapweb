@@ -15,7 +15,7 @@ console.log('🔑 Gemini API Key Status:', {
   keyPrefix: GEMINI_API_KEY ? GEMINI_API_KEY.substring(0, 10) + '...' : 'NOT SET'
 });
 
-// Enhanced conversation memory with MongoDB persistence
+// Enhanced conversation memory with MySQL persistence
 const MAX_CONVERSATION_HISTORY = 10;
 const API_TIMEOUT = 30000; // 30 seconds timeout for more reliable responses
 
@@ -468,7 +468,7 @@ const generateFollowUpQuestions = (intent, userMessage) => {
   return `\n\n💭 Quick questions to help you better:\n${selectedQuestions.map(q => `• ${q}`).join('\n')}`;
 };
 
-// Enhanced response generation with hybrid approach and MongoDB persistence
+// Enhanced response generation with hybrid approach and MySQL persistence
 const generateResponse = async (userMessage, conversationId, userId = null) => {
   const startTime = Date.now();
   
@@ -502,7 +502,7 @@ const generateResponse = async (userMessage, conversationId, userId = null) => {
           ? `${livelyResponse}\n\n${followUpQuestions}`
           : livelyResponse;
         
-        // Save messages to MongoDB
+        // Save messages to MySQL
         await saveMessage(conversationId, userId, 'user', userMessage, 'chatbot');
         await saveMessage(conversationId, userId, 'assistant', fullResponse, 'chatbot', {
           source: 'gemini-ai',
@@ -550,7 +550,7 @@ const generateResponse = async (userMessage, conversationId, userId = null) => {
       fallbackResponse += `\n\n${contextualResp.followUp}`;
     }
     
-    // Save messages to MongoDB
+    // Save messages to MySQL
     await saveMessage(conversationId, userId, 'user', userMessage, 'chatbot');
     await saveMessage(conversationId, userId, 'assistant', fallbackResponse, 'chatbot', {
       source: 'contextual-ai',
@@ -575,7 +575,7 @@ const generateResponse = async (userMessage, conversationId, userId = null) => {
     // Ultimate fallback
     const fallbackMessage = "🤖 I'm here to help you with Ajira Digital! I can assist with mentorship, marketplace services, training programs, and more. What would you like to know?";
     
-    // Save fallback messages to MongoDB
+    // Save fallback messages to MySQL
     try {
       await saveMessage(conversationId, userId, 'user', userMessage, 'chatbot');
       await saveMessage(conversationId, userId, 'assistant', fallbackMessage, 'chatbot', {
@@ -603,7 +603,7 @@ const generateConversationId = () => {
   return `conv_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 };
 
-// Save message to MongoDB
+// Save message to MySQL
 const saveMessage = async (conversationId, userId, role, content, messageType = 'chatbot', metadata = {}) => {
   try {
     // Ensure required fields for ChatMessage schema are present
@@ -627,21 +627,23 @@ const saveMessage = async (conversationId, userId, role, content, messageType = 
     await message.save();
     return message;
   } catch (error) {
-    console.error('❌ Error saving message to MongoDB:', error);
+    console.error('❌ Error saving message to MySQL:', error);
     throw error;
   }
 };
 
-// Get conversation history from MongoDB
+// Get conversation history from MySQL
 const getConversationHistory = async (conversationId, messageType = 'chatbot', limit = MAX_CONVERSATION_HISTORY) => {
   try {
-    const messages = await ChatMessage.find({
-      conversationId,
-      messageType
-    })
-    .sort({ timestamp: 1 })
-    .limit(limit)
-    .lean();
+    const messages = await ChatMessage.findAll({
+      where: {
+        conversationId,
+        messageType
+      },
+      order: [['timestamp', 'ASC']],
+      limit: limit,
+      raw: true
+    });
     
     return messages.map(msg => ({
       role: msg.role,
@@ -654,12 +656,14 @@ const getConversationHistory = async (conversationId, messageType = 'chatbot', l
   }
 };
 
-// Clear conversation from MongoDB
+// Clear conversation from MySQL
 const clearConversation = async (conversationId, messageType = 'chatbot') => {
   try {
-    await ChatMessage.deleteMany({
-      conversationId,
-      messageType
+    await ChatMessage.destroy({
+      where: {
+        conversationId,
+        messageType
+      }
     });
     return true;
   } catch (error) {
@@ -668,7 +672,7 @@ const clearConversation = async (conversationId, messageType = 'chatbot') => {
   }
 };
 
-// Enhanced chat endpoint with better performance monitoring and MongoDB persistence
+// Enhanced chat endpoint with better performance monitoring and MySQL persistence
 router.post('/chat', async (req, res) => {
   const requestStart = Date.now();
   
@@ -730,7 +734,7 @@ router.post('/chat', async (req, res) => {
   }
 });
 
-// Get conversation history endpoint with MongoDB
+// Get conversation history endpoint with MySQL
 router.get('/conversation/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -752,7 +756,7 @@ router.get('/conversation/:id', async (req, res) => {
   }
 });
 
-// Clear conversation endpoint with MongoDB
+// Clear conversation endpoint with MySQL
 router.delete('/conversation/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -780,15 +784,15 @@ router.delete('/conversation/:id', async (req, res) => {
   }
 });
 
-// Enhanced health check with system status and MongoDB persistence
+// Enhanced health check with system status and MySQL persistence
 router.get('/health', async (req, res) => {
   const memoryUsage = process.memoryUsage();
   const uptime = process.uptime();
   
   try {
-    // Get conversation counts from MongoDB
-    const chatbotCount = await ChatMessage.countDocuments({ messageType: 'chatbot' });
-    const kinapAICount = await ChatMessage.countDocuments({ messageType: 'kinap-ai' });
+    // Get conversation counts from MySQL
+    const chatbotCount = await ChatMessage.count({ where: { messageType: 'chatbot' } });
+    const kinapAICount = await ChatMessage.count({ where: { messageType: 'kinap-ai' } });
     const uniqueConversations = await ChatMessage.distinct('conversationId');
     
     res.json({
@@ -826,12 +830,15 @@ router.get('/health', async (req, res) => {
   }
 });
 
-// Performance metrics endpoint with MongoDB
+// Performance metrics endpoint with MySQL
 router.get('/metrics', async (req, res) => {
   try {
-    const chatbotCount = await ChatMessage.countDocuments({ messageType: 'chatbot' });
-    const kinapAICount = await ChatMessage.countDocuments({ messageType: 'kinap-ai' });
-    const uniqueConversations = await ChatMessage.distinct('conversationId');
+    const chatbotCount = await ChatMessage.count({ where: { messageType: 'chatbot' } });
+    const kinapAICount = await ChatMessage.count({ where: { messageType: 'kinap-ai' } });
+    const uniqueConversations = await ChatMessage.findAll({
+      attributes: ['conversationId'],
+      group: ['conversationId']
+    });
     
     res.json({
       conversations: {
@@ -853,7 +860,7 @@ router.get('/metrics', async (req, res) => {
   }
 });
 
-// Kinap AI Chat Endpoint with MongoDB persistence
+// Kinap AI Chat Endpoint with MySQL persistence
 router.post('/kinap-ai', async (req, res) => {
   const startTime = Date.now();
   
@@ -873,7 +880,7 @@ router.post('/kinap-ai', async (req, res) => {
     // Get conversation history from MongoDB
     const conversationHistory = await getConversationHistory(convId, 'kinap-ai');
     
-    // Save user message to MongoDB
+    // Save user message to MySQL
     await saveMessage(convId, userId, 'user', message, 'kinap-ai');
 
     // Create optimized system prompt for Kinap AI
@@ -960,7 +967,7 @@ router.post('/kinap-ai', async (req, res) => {
       aiResponse = "I'm Kinap AI, your friendly assistant! I'm currently in basic mode, but I'd love to chat with you about anything! 😊 What's on your mind?";
     }
 
-    // Save AI response to MongoDB
+    // Save AI response to MySQL
     await saveMessage(convId, userId, 'model', aiResponse, 'kinap-ai', {
       source: GEMINI_API_KEY ? 'gemini-api' : 'fallback',
       confidence: 'high',
@@ -998,7 +1005,7 @@ router.post('/kinap-ai', async (req, res) => {
   }
 });
 
-// Get Kinap AI conversation history with MongoDB
+// Get Kinap AI conversation history with MySQL
 router.get('/kinap-ai/conversation/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -1020,7 +1027,7 @@ router.get('/kinap-ai/conversation/:id', async (req, res) => {
   }
 });
 
-// Clear Kinap AI conversation with MongoDB
+// Clear Kinap AI conversation with MySQL
 router.delete('/kinap-ai/conversation/:id', async (req, res) => {
   try {
     const { id } = req.params;

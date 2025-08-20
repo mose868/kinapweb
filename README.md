@@ -12,6 +12,26 @@ A full-stack web application for managing the Ajira Digital Club platform.
 - RESTful API architecture
 - Secure password handling and JWT tokens
 
+## 🌟 New User Guides
+
+**Are you new to KiNaP Ajira Club?** We've created comprehensive guides to help you get started:
+
+### 📖 [Complete Navigation Guide](./NAVIGATION_GUIDE.md)
+A detailed walkthrough of all platform features, pages, and navigation tips. Perfect for understanding how to move around the platform effectively.
+
+### 🎯 [What's Happening Guide](./WHATS_HAPPENING_GUIDE.md)
+Everything you need to know about KiNaP Ajira Club - what it is, current programs, community activities, and how to get involved. **Start here to understand the platform's purpose and opportunities!**
+
+### 🚀 [Quick Visual Start Guide](./QUICK_START_VISUAL.md)
+A visual overview with maps, charts, and quick reference guides. Perfect for visual learners who want to get started fast.
+
+**Quick Start for New Users:**
+1. **Complete Beginners**: Start with [What's Happening Guide](./WHATS_HAPPENING_GUIDE.md) to understand everything
+2. **Visual Learners**: Check the [Quick Visual Guide](./QUICK_START_VISUAL.md) for charts and maps
+3. **Ready to Navigate**: Use the [Navigation Guide](./NAVIGATION_GUIDE.md) to find your way around
+4. **Take Action**: Create your account and complete your profile (70% completion required)
+5. **Join & Thrive**: Connect with the community and start your digital skills journey!
+
 ## Tech Stack
 
 ### Backend

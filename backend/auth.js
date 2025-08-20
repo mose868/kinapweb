@@ -1,24 +1,14 @@
 const { betterAuth } = require('better-auth');
-const { mongodbAdapter } = require('better-auth/adapters/mongodb');
-const mongoose = require('mongoose');
 const { sendEmail } = require('./config/email');
-
-// Connect to MongoDB
-const connectDB = async () => {
-  try {
-    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/ajira_digital_kinap');
-    console.log('MongoDB connected for Better Auth');
-  } catch (error) {
-    console.error('MongoDB connection error:', error);
-    process.exit(1);
-  }
-};
-
-connectDB();
+const { drizzleAdapter } = require('better-auth/adapters/drizzle');
+const { db } = require('./config/drizzle');
 
 const auth = betterAuth({
-  // Database configuration
-  database: mongodbAdapter(mongoose.connection.db),
+  // Database configuration using Drizzle adapter
+  database: drizzleAdapter(db, {
+    provider: 'mysql',
+    debugLogs: process.env.NODE_ENV === 'development',
+  }),
   
   // Base URL configuration
   baseURL: process.env.BETTER_AUTH_URL || "http://localhost:5000",

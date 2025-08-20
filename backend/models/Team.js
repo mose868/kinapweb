@@ -1,46 +1,198 @@
-const mongoose = require('mongoose');
+const { DataTypes } = require('sequelize');
+const { sequelize } = require('../config/database');
 
-const teamSchema = new mongoose.Schema(
-  {
-    name: { type: String, required: true },
-    role: { type: String, required: true },
-    title: { type: String }, // Job title/position
-    department: { type: String }, // e.g., Development, Design, Management
-    bio: { type: String, required: true },
-    image: { type: String }, // base64 or URL
-    email: { type: String },
-    linkedinUrl: { type: String },
-    githubUrl: { type: String },
-    portfolioUrl: { type: String },
-    skills: [{ type: String }], // Array of skills
-    experience: { type: String }, // Years of experience
-    joinedDate: { type: Date, default: Date.now },
-    achievements: [{ type: String }], // Notable achievements
-    education: {
-      degree: { type: String },
-      institution: { type: String },
-      graduationYear: { type: String }
-    },
-    contact: {
-      phone: { type: String },
-      location: { type: String }
-    },
-    socialMedia: {
-      twitter: { type: String },
-      instagram: { type: String },
-      facebook: { type: String }
-    },
-    isActive: { type: Boolean, default: true },
-    displayOrder: { type: Number, default: 0 }, // For ordering team members
-    isFounder: { type: Boolean, default: false },
-    isLeadership: { type: Boolean, default: false },
-    lastUpdatedBy: { type: String }, // Email of admin who updated
+const Team = sequelize.define('Team', {
+  id: {
+    type: DataTypes.INTEGER,
+    primaryKey: true,
+    autoIncrement: true,
   },
-  { timestamps: true }
-);
+  
+  name: {
+    type: DataTypes.STRING(255),
+    allowNull: false,
+  },
+  
+  role: {
+    type: DataTypes.STRING(255),
+    allowNull: false,
+  },
+  
+  title: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+  },
+  
+  department: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+  },
+  
+  bio: {
+    type: DataTypes.TEXT,
+    allowNull: false,
+  },
+  
+  image: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+  },
+  
+  email: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+    validate: {
+      isEmail: true,
+    },
+  },
+  
+  linkedinUrl: {
+    type: DataTypes.STRING(500),
+    allowNull: true,
+  },
+  
+  githubUrl: {
+    type: DataTypes.STRING(500),
+    allowNull: true,
+  },
+  
+  portfolioUrl: {
+    type: DataTypes.STRING(500),
+    allowNull: true,
+  },
+  
+  skills: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: [],
+  },
+  
+  experience: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+  },
+  
+  joinedDate: {
+    type: DataTypes.DATE,
+    allowNull: false,
+    defaultValue: DataTypes.NOW,
+  },
+  
+  achievements: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: [],
+  },
+  
+  education: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: {},
+  },
+  
+  contact: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: {},
+  },
+  
+  socialMedia: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: {},
+  },
+  
+  isActive: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: true,
+  },
+  
+  displayOrder: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    defaultValue: 0,
+  },
+  
+  isFounder: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false,
+  },
+  
+  isLeadership: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false,
+  },
+  
+  lastUpdatedBy: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+  },
+}, {
+  tableName: 'team_members',
+  timestamps: true,
+  indexes: [
+    {
+      fields: ['isActive', 'displayOrder']
+    },
+    {
+      fields: ['department', 'isActive']
+    },
+    {
+      fields: ['isFounder']
+    },
+    {
+      fields: ['isLeadership']
+    }
+  ]
+});
 
-// Index for faster queries
-teamSchema.index({ isActive: 1, displayOrder: 1 });
-teamSchema.index({ department: 1, isActive: 1 });
+// Static method to get active team members
+Team.getActive = function(options = {}) {
+  const { department, leadership, limit = 50 } = options;
+  
+  let whereClause = {
+    isActive: true
+  };
 
-module.exports = mongoose.model('Team', teamSchema); 
+  if (department) {
+    whereClause.department = department;
+  }
+
+  if (leadership !== undefined) {
+    whereClause.isLeadership = leadership;
+  }
+
+  return this.findAll({
+    where: whereClause,
+    order: [
+      ['isFounder', 'DESC'],
+      ['isLeadership', 'DESC'],
+      ['displayOrder', 'ASC'],
+      ['joinedDate', 'ASC']
+    ],
+    limit
+  });
+};
+
+// Static method to get leadership team
+Team.getLeadership = function() {
+  return this.findAll({
+    where: {
+      isActive: true,
+      [sequelize.Op.or]: [
+        { isFounder: true },
+        { isLeadership: true }
+      ]
+    },
+    order: [
+      ['isFounder', 'DESC'],
+      ['displayOrder', 'ASC'],
+      ['joinedDate', 'ASC']
+    ]
+  });
+};
+
+module.exports = Team;

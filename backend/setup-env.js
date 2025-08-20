@@ -30,7 +30,11 @@ if (envExists) {
   // Check other required variables
   const requiredVars = [
     'JWT_SECRET',
-    'MONGODB_URI',
+    'MYSQL_HOST',
+    'MYSQL_PORT',
+    'MYSQL_DATABASE',
+    'MYSQL_USERNAME',
+    'MYSQL_PASSWORD',
     'PORT'
   ];
   
@@ -58,8 +62,12 @@ GMAIL_APP_PASSWORD=your-app-password
 # JWT Secret (Required)
 JWT_SECRET=your_jwt_secret_here
 
-# MongoDB Connection (Required)
-MONGODB_URI=your_mongodb_connection_string
+# MySQL Database Configuration (Required)
+MYSQL_HOST=localhost
+MYSQL_PORT=3306
+MYSQL_DATABASE=ajira_digital_kinap
+MYSQL_USERNAME=root
+MYSQL_PASSWORD=your_mysql_password_here
 
 # Server Configuration
 PORT=5000
@@ -105,7 +113,11 @@ EMAIL_PASS=your-app-password
   console.log('   - GMAIL_USER: Your Kinap Ajira Club Gmail address');
   console.log('   - GMAIL_APP_PASSWORD: Your Gmail app password');
   console.log('   - JWT_SECRET: A random secret string');
-  console.log('   - MONGODB_URI: Your MongoDB connection string\n');
+  console.log('   - MYSQL_HOST: Your MySQL server host (default: localhost)');
+  console.log('   - MYSQL_PORT: Your MySQL server port (default: 3306)');
+  console.log('   - MYSQL_DATABASE: Your MySQL database name');
+  console.log('   - MYSQL_USERNAME: Your MySQL username');
+  console.log('   - MYSQL_PASSWORD: Your MySQL password\n');
 }
 
 console.log('📖 Gmail Setup Instructions:');

@@ -1,174 +1,233 @@
-const mongoose = require('mongoose');
+const { DataTypes } = require('sequelize');
+const { sequelize } = require('../config/database');
 
-const chatMessageSchema = new mongoose.Schema({
+const ChatMessage = sequelize.define('ChatMessage', {
+  id: {
+    type: DataTypes.INTEGER,
+    primaryKey: true,
+    autoIncrement: true,
+  },
+  
   // Message identification
   messageId: {
-    type: String,
-    required: true,
-    unique: true
+    type: DataTypes.STRING(255),
+    allowNull: false,
+    unique: true,
   },
   
   // Group/Conversation identification
   groupId: {
-    type: String,
-    required: true
+    type: DataTypes.STRING(255),
+    allowNull: false,
   },
   
   conversationId: {
-    type: String,
-    required: false
+    type: DataTypes.STRING(255),
+    allowNull: true,
   },
   
   // Message type
   messageType: {
-    type: String,
-    required: true,
-    index: true
+    type: DataTypes.STRING(100),
+    allowNull: false,
   },
+  
   // User information
   userId: {
-    type: String,
-    required: false, // Optional for anonymous chats
-    index: true
+    type: DataTypes.STRING(255),
+    allowNull: true, // Optional for anonymous chats
   },
   
   userName: {
-    type: String,
-    required: false
+    type: DataTypes.STRING(255),
+    allowNull: true,
   },
   
   userAvatar: {
-    type: String,
-    default: 'https://via.placeholder.com/40'
+    type: DataTypes.TEXT,
+    allowNull: true,
+    defaultValue: 'https://via.placeholder.com/40',
   },
   
   role: {
-    type: String,
-    enum: ['user', 'assistant', 'model'],
-    required: false
+    type: DataTypes.ENUM('user', 'assistant', 'model'),
+    allowNull: true,
   },
   
   // Message content
   message: {
-    type: String,
-    required: true
+    type: DataTypes.TEXT,
+    allowNull: false,
   },
   
   content: {
-    type: String,
-    required: true
+    type: DataTypes.TEXT,
+    allowNull: false,
   },
+  
   // Message metadata
   contentType: {
-    type: String,
-    enum: ['text', 'image', 'file', 'voice', 'video', 'audio', 'system', 'chatbot', 'kinap-ai'],
-    default: 'text'
+    type: DataTypes.ENUM('text', 'image', 'file', 'voice', 'video', 'audio', 'system', 'chatbot', 'kinap-ai'),
+    allowNull: false,
+    defaultValue: 'text',
   },
   
   status: {
-    type: String,
-    enum: ['sending', 'sent', 'delivered', 'read'],
-    default: 'sent'
+    type: DataTypes.ENUM('sending', 'sent', 'delivered', 'read'),
+    allowNull: false,
+    defaultValue: 'sent',
   },
   
   // Media information (if applicable)
-  mediaUrl: String,
-  fileName: String,
-  fileSize: String,
-  fileType: String,
-  duration: String,
+  mediaUrl: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+  },
+  fileName: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+  },
+  fileSize: {
+    type: DataTypes.STRING(50),
+    allowNull: true,
+  },
+  fileType: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+  },
+  duration: {
+    type: DataTypes.STRING(50),
+    allowNull: true,
+  },
   
   // Message metadata
   timestamp: {
-    type: Date,
-    default: Date.now,
-    index: true
+    type: DataTypes.DATE,
+    allowNull: false,
+    defaultValue: DataTypes.NOW,
   },
   
   // Reply functionality
   replyTo: {
-    type: String,
-    default: null
+    type: DataTypes.STRING(255),
+    allowNull: true,
   },
   
   // Message editing
   isEdited: {
-    type: Boolean,
-    default: false
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false,
   },
   
-  editedAt: Date,
+  editedAt: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
   
   // Reactions
-  reactions: [{
-    emoji: String,
-    users: [String]
-  }],
+  reactions: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: [],
+  },
   
   // Soft delete functionality
   isDeleted: {
-    type: Boolean,
-    default: false
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false,
   },
   
-  deletedBy: [String],
-  deletedAt: Date,
+  deletedBy: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: [],
+  },
+  
+  deletedAt: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
   
   // AI message flag
   isAIMessage: {
-    type: Boolean,
-    default: false
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false,
   },
   
   // User profile context (for AI messages)
   userProfile: {
-    name: String,
-    course: String,
-    year: String,
-    skills: [String]
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: {},
   },
   
   metadata: {
-    source: String, // 'gemini-ai', 'contextual-ai', 'fallback', etc.
-    confidence: String, // 'high', 'medium', 'low'
-    responseTime: Number,
-    model: String // 'gemini-1.5-flash', 'contextual-ai', etc.
-  }
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: {},
+  },
 }, {
-  timestamps: true
+  tableName: 'chat_messages',
+  timestamps: true,
+  indexes: [
+    {
+      fields: ['conversationId', 'timestamp']
+    },
+    {
+      fields: ['userId', 'contentType']
+    },
+    {
+      fields: ['contentType', 'timestamp']
+    },
+    {
+      fields: ['groupId', 'timestamp']
+    },
+    {
+      fields: ['groupId', 'timestamp']
+    },
+    {
+      fields: ['userId', 'timestamp']
+    },
+    {
+      fields: ['isDeleted']
+    },
+    {
+      fields: ['messageType']
+    },
+    {
+      unique: true,
+      fields: ['messageId']
+    }
+  ]
 });
 
-// Index for efficient querying
-chatMessageSchema.index({ conversationId: 1, timestamp: 1 });
-chatMessageSchema.index({ userId: 1, contentType: 1 });
-chatMessageSchema.index({ contentType: 1, timestamp: -1 });
-chatMessageSchema.index({ groupId: 1, timestamp: 1 });
-
-// Indexes for better query performance
-chatMessageSchema.index({ groupId: 1, timestamp: -1 });
-chatMessageSchema.index({ userId: 1, timestamp: -1 });
-chatMessageSchema.index({ isDeleted: 1 });
-
 // Virtual for formatted timestamp
-chatMessageSchema.virtual('formattedTime').get(function() {
+ChatMessage.prototype.getFormattedTime = function() {
   return this.timestamp.toLocaleTimeString([], {
     hour: '2-digit',
     minute: '2-digit'
   });
-});
+};
 
 // Method to soft delete message
-chatMessageSchema.methods.softDelete = function(userId) {
-  this.isDeleted = true;
-  if (!this.deletedBy.includes(userId)) {
-    this.deletedBy.push(userId);
+ChatMessage.prototype.softDelete = function(userId) {
+  const deletedBy = this.deletedBy || [];
+  if (!deletedBy.includes(userId)) {
+    deletedBy.push(userId);
   }
+  
+  this.isDeleted = true;
+  this.deletedBy = deletedBy;
   this.deletedAt = new Date();
+  
   return this.save();
 };
 
 // Method to restore message
-chatMessageSchema.methods.restore = function() {
+ChatMessage.prototype.restore = function() {
   this.isDeleted = false;
   this.deletedBy = [];
   this.deletedAt = null;
@@ -176,55 +235,65 @@ chatMessageSchema.methods.restore = function() {
 };
 
 // Static method to get messages for a group
-chatMessageSchema.statics.getGroupMessages = function(groupId, limit = 50, offset = 0) {
-  return this.find({
-    groupId: groupId,
-    isDeleted: false
-  })
-  .sort({ timestamp: 1 })
-  .limit(limit)
-  .skip(offset)
-  .lean();
+ChatMessage.getGroupMessages = function(groupId, limit = 50, offset = 0) {
+  return this.findAll({
+    where: {
+      groupId: groupId,
+      isDeleted: false
+    },
+    order: [['timestamp', 'ASC']],
+    limit: limit,
+    offset: offset,
+    raw: true
+  });
 };
 
 // Static method to get recent messages for all groups
-chatMessageSchema.statics.getRecentMessages = function(limit = 20) {
-  return this.aggregate([
-    { $match: { isDeleted: false } },
-    { $sort: { timestamp: -1 } },
-    { $group: { 
-      _id: '$groupId', 
-      lastMessage: { $first: '$$ROOT' }
-    }},
-    { $sort: { 'lastMessage.timestamp': -1 } },
-    { $limit: limit }
-  ]);
+ChatMessage.getRecentMessages = function(limit = 20) {
+  return sequelize.query(`
+    SELECT DISTINCT ON (groupId) 
+      *, 
+      ROW_NUMBER() OVER (PARTITION BY groupId ORDER BY timestamp DESC) as rn
+    FROM chat_messages 
+    WHERE isDeleted = false 
+    ORDER BY groupId, timestamp DESC
+    LIMIT ?
+  `, {
+    replacements: [limit],
+    type: sequelize.QueryTypes.SELECT
+  });
 };
 
 // Static method to delete all messages for a group
-chatMessageSchema.statics.deleteGroupMessages = function(groupId) {
-  return this.updateMany(
-    { groupId: groupId },
+ChatMessage.deleteGroupMessages = function(groupId) {
+  return this.update(
     { 
       isDeleted: true,
       deletedAt: new Date()
+    },
+    {
+      where: {
+        groupId: groupId
+      }
     }
   );
 };
 
 // Static method to get message statistics
-chatMessageSchema.statics.getMessageStats = function(groupId) {
-  return this.aggregate([
-    { $match: { groupId: groupId, isDeleted: false } },
-    { $group: {
-      _id: null,
-      totalMessages: { $sum: 1 },
-      aiMessages: { $sum: { $cond: ['$isAIMessage', 1, 0] } },
-      userMessages: { $sum: { $cond: ['$isAIMessage', 0, 1] } },
-      firstMessage: { $min: '$timestamp' },
-      lastMessage: { $max: '$timestamp' }
-    }}
-  ]);
+ChatMessage.getMessageStats = function(groupId) {
+  return sequelize.query(`
+    SELECT 
+      COUNT(*) as totalMessages,
+      SUM(CASE WHEN isAIMessage = true THEN 1 ELSE 0 END) as aiMessages,
+      SUM(CASE WHEN isAIMessage = false THEN 1 ELSE 0 END) as userMessages,
+      MIN(timestamp) as firstMessage,
+      MAX(timestamp) as lastMessage
+    FROM chat_messages 
+    WHERE groupId = ? AND isDeleted = false
+  `, {
+    replacements: [groupId],
+    type: sequelize.QueryTypes.SELECT
+  });
 };
 
-module.exports = mongoose.model('ChatMessage', chatMessageSchema); 
+module.exports = ChatMessage;

@@ -1,111 +1,283 @@
-const mongoose = require('mongoose');
+const { DataTypes } = require('sequelize');
+const { sequelize } = require('../config/database');
 
-const faqSchema = new mongoose.Schema(
-  {
-    question: { type: String, required: true },
-    answer: { type: String, required: true },
-    category: { 
-      type: String, 
-      required: true,
-      enum: ['General', 'Membership', 'Events', 'Training', 'Technical', 'Certification', 'Career', 'Payment'],
-      default: 'General'
-    },
-    tags: [{ type: String }], // Array of tags for better searchability
-    priority: { 
-      type: Number, 
-      default: 0 
-    }, // Higher number = higher priority (for ordering)
-    isPublished: { type: Boolean, default: true },
-    isPopular: { type: Boolean, default: false }, // Mark as popular/featured FAQ
-    viewCount: { type: Number, default: 0 },
-    helpfulCount: { type: Number, default: 0 }, // Number of "helpful" votes
-    notHelpfulCount: { type: Number, default: 0 }, // Number of "not helpful" votes
-    relatedFAQs: [{ 
-      type: mongoose.Schema.Types.ObjectId, 
-      ref: 'FAQ' 
-    }], // References to related FAQs
-    lastUpdatedBy: { type: String }, // Email of admin who last updated
-    seoMeta: {
-      metaTitle: { type: String },
-      metaDescription: { type: String },
-      keywords: [{ type: String }]
-    },
-    displayOrder: { type: Number, default: 0 }, // For manual ordering within categories
-    isActive: { type: Boolean, default: true },
+const FAQ = sequelize.define('FAQ', {
+  id: {
+    type: DataTypes.INTEGER,
+    primaryKey: true,
+    autoIncrement: true,
   },
-  { timestamps: true }
-);
-
-// Indexes for better query performance
-faqSchema.index({ category: 1, isPublished: 1, isActive: 1 });
-faqSchema.index({ isPopular: 1, priority: -1 });
-faqSchema.index({ tags: 1 });
-faqSchema.index({ question: 'text', answer: 'text' }); // Full-text search
+  
+  question: {
+    type: DataTypes.TEXT,
+    allowNull: false,
+  },
+  
+  answer: {
+    type: DataTypes.TEXT,
+    allowNull: false,
+  },
+  
+  category: {
+    type: DataTypes.ENUM('General', 'Membership', 'Events', 'Training', 'Technical', 'Certification', 'Career', 'Payment'),
+    allowNull: false,
+    defaultValue: 'General',
+  },
+  
+  tags: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: [],
+  },
+  
+  priority: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    defaultValue: 0,
+  },
+  
+  isPublished: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: true,
+  },
+  
+  isPopular: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false,
+  },
+  
+  viewCount: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    defaultValue: 0,
+  },
+  
+  helpfulCount: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    defaultValue: 0,
+  },
+  
+  notHelpfulCount: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    defaultValue: 0,
+  },
+  
+  relatedFAQs: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: [],
+    comment: 'Array of FAQ IDs that are related to this FAQ'
+  },
+  
+  lastUpdatedBy: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+  },
+  
+  seoMeta: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: {},
+  },
+  
+  displayOrder: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    defaultValue: 0,
+  },
+  
+  isActive: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: true,
+  },
+}, {
+  tableName: 'faqs',
+  timestamps: true,
+  indexes: [
+    {
+      fields: ['category', 'isPublished', 'isActive']
+    },
+    {
+      fields: ['isPopular', 'priority']
+    },
+    {
+      fields: ['tags']
+    },
+    {
+      fields: ['viewCount']
+    },
+    {
+      fields: ['helpfulCount']
+    },
+    {
+      fields: ['displayOrder']
+    }
+  ],
+  hooks: {
+    beforeSave: async (faq, options) => {
+      // Generate SEO meta if not provided
+      const seoMeta = faq.seoMeta || {};
+      
+      if (!seoMeta.metaTitle) {
+        seoMeta.metaTitle = faq.question.length > 60 
+          ? faq.question.substring(0, 57) + '...' 
+          : faq.question;
+      }
+      
+      if (!seoMeta.metaDescription) {
+        seoMeta.metaDescription = faq.answer.length > 160 
+          ? faq.answer.substring(0, 157) + '...' 
+          : faq.answer;
+      }
+      
+      faq.seoMeta = seoMeta;
+    }
+  }
+});
 
 // Virtual for calculating helpfulness ratio
-faqSchema.virtual('helpfulnessRatio').get(function() {
+FAQ.prototype.getHelpfulnessRatio = function() {
   const total = this.helpfulCount + this.notHelpfulCount;
   if (total === 0) return 0;
   return (this.helpfulCount / total) * 100;
-});
+};
 
 // Static method to get published FAQs
-faqSchema.statics.getPublished = function(options = {}) {
-  const { category, popular, limit = 50, skip = 0 } = options;
+FAQ.getPublished = function(options = {}) {
+  const { category, popular, limit = 50, offset = 0 } = options;
   
-  let query = {
+  let whereClause = {
     isPublished: true,
     isActive: true
   };
 
   if (category && category !== 'all') {
-    query.category = category;
+    whereClause.category = category;
   }
 
   if (popular) {
-    query.isPopular = true;
+    whereClause.isPopular = true;
   }
 
-  return this.find(query)
-    .sort({ priority: -1, helpfulCount: -1, createdAt: -1 })
-    .limit(limit)
-    .skip(skip)
-    .populate('relatedFAQs', 'question category');
+  return this.findAll({
+    where: whereClause,
+    order: [
+      ['priority', 'DESC'],
+      ['helpfulCount', 'DESC'],
+      ['createdAt', 'DESC']
+    ],
+    limit,
+    offset
+  });
 };
 
-// Method to increment view count
-faqSchema.methods.incrementViews = function() {
+// Static method to search FAQs
+FAQ.searchFAQs = function(searchTerm, options = {}) {
+  const { category, limit = 20 } = options;
+  const { Op } = require('sequelize');
+  
+  let whereClause = {
+    isPublished: true,
+    isActive: true,
+    [Op.or]: [
+      { question: { [Op.like]: `%${searchTerm}%` } },
+      { answer: { [Op.like]: `%${searchTerm}%` } },
+      { tags: { [Op.like]: `%${searchTerm}%` } }
+    ]
+  };
+
+  if (category && category !== 'all') {
+    whereClause.category = category;
+  }
+
+  return this.findAll({
+    where: whereClause,
+    order: [
+      ['priority', 'DESC'],
+      ['helpfulCount', 'DESC']
+    ],
+    limit
+  });
+};
+
+// Static method to get popular FAQs
+FAQ.getPopular = function(limit = 10) {
+  return this.findAll({
+    where: {
+      isPublished: true,
+      isActive: true,
+      isPopular: true
+    },
+    order: [
+      ['priority', 'DESC'],
+      ['viewCount', 'DESC'],
+      ['helpfulCount', 'DESC']
+    ],
+    limit
+  });
+};
+
+// Static method to get FAQs by category
+FAQ.getByCategory = function(category, limit = 50) {
+  return this.findAll({
+    where: {
+      category,
+      isPublished: true,
+      isActive: true
+    },
+    order: [
+      ['displayOrder', 'ASC'],
+      ['priority', 'DESC'],
+      ['helpfulCount', 'DESC']
+    ],
+    limit
+  });
+};
+
+// Instance method to increment view count
+FAQ.prototype.incrementViews = function() {
   this.viewCount += 1;
   return this.save();
 };
 
-// Method to mark as helpful
-faqSchema.methods.markHelpful = function() {
+// Instance method to mark as helpful
+FAQ.prototype.markHelpful = function() {
   this.helpfulCount += 1;
   return this.save();
 };
 
-// Method to mark as not helpful
-faqSchema.methods.markNotHelpful = function() {
+// Instance method to mark as not helpful
+FAQ.prototype.markNotHelpful = function() {
   this.notHelpfulCount += 1;
   return this.save();
 };
 
-// Pre-save middleware to generate SEO meta if not provided
-faqSchema.pre('save', function(next) {
-  if (!this.seoMeta.metaTitle) {
-    this.seoMeta.metaTitle = this.question.length > 60 
-      ? this.question.substring(0, 57) + '...' 
-      : this.question;
+// Instance method to add related FAQ
+FAQ.prototype.addRelatedFAQ = function(faqId) {
+  const relatedFAQs = this.relatedFAQs || [];
+  if (!relatedFAQs.includes(faqId)) {
+    relatedFAQs.push(faqId);
+    this.relatedFAQs = relatedFAQs;
+    return this.save();
   }
-  
-  if (!this.seoMeta.metaDescription) {
-    this.seoMeta.metaDescription = this.answer.length > 160 
-      ? this.answer.substring(0, 157) + '...' 
-      : this.answer;
-  }
-  
-  next();
-});
+  return Promise.resolve(this);
+};
 
-module.exports = mongoose.model('FAQ', faqSchema); 
+// Instance method to remove related FAQ
+FAQ.prototype.removeRelatedFAQ = function(faqId) {
+  const relatedFAQs = this.relatedFAQs || [];
+  const index = relatedFAQs.indexOf(faqId);
+  if (index > -1) {
+    relatedFAQs.splice(index, 1);
+    this.relatedFAQs = relatedFAQs;
+    return this.save();
+  }
+  return Promise.resolve(this);
+};
+
+module.exports = FAQ;

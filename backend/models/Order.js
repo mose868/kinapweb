@@ -1,53 +1,54 @@
-const mongoose = require('mongoose');
+const { DataTypes } = require('sequelize');
+const { sequelize } = require('../config/database');
 
-const orderSchema = new mongoose.Schema({
-  buyer: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
+const Order = sequelize.define('Order', {
+  id: {
+    type: DataTypes.INTEGER,
+    primaryKey: true,
+    autoIncrement: true,
   },
-  seller: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
+  
+  buyerId: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    references: {
+      model: 'users',
+      key: 'id'
+    }
   },
-  gig: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Gig',
-    required: true
+  
+  sellerId: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    references: {
+      model: 'users',
+      key: 'id'
+    }
   },
+  
+  gigId: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    references: {
+      model: 'gigs',
+      key: 'id'
+    }
+  },
+  
   package: {
-    name: {
-      type: String,
-      required: true,
-      enum: ['basic', 'standard', 'premium']
-    },
-    title: String,
-    price: {
-      type: Number,
-      required: true
-    },
-    deliveryTime: {
-      type: Number,
-      required: true
-    },
-    revisions: {
-      type: Number,
-      default: 0
-    },
-    features: [String]
+    type: DataTypes.JSON,
+    allowNull: false,
+    defaultValue: {},
   },
-  requirements: [{
-    question: String,
-    answer: String,
-    files: [{
-      name: String,
-      url: String
-    }]
-  }],
+  
+  requirements: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: [],
+  },
+  
   status: {
-    type: String,
-    enum: [
+    type: DataTypes.ENUM(
       'pending',
       'confirmed',
       'in-progress',
@@ -56,127 +57,88 @@ const orderSchema = new mongoose.Schema({
       'completed',
       'cancelled',
       'disputed'
-    ],
-    default: 'pending'
+    ),
+    allowNull: false,
+    defaultValue: 'pending',
   },
+  
   payment: {
-    amount: {
-      type: Number,
-      required: true
-    },
-    currency: {
-      type: String,
-      default: 'KES',
-      enum: ['KES', 'USD', 'EUR']
-    },
-    method: {
-      type: String,
-      enum: ['mpesa', 'card', 'bank', 'paypal'],
-      required: true
-    },
-    transactionId: String,
-    status: {
-      type: String,
-      enum: ['pending', 'completed', 'failed', 'refunded'],
-      default: 'pending'
-    },
-    paidAt: Date
+    type: DataTypes.JSON,
+    allowNull: false,
+    defaultValue: {},
   },
+  
   delivery: {
-    dueDate: {
-      type: Date,
-      required: true
-    },
-    deliveredAt: Date,
-    files: [{
-      name: String,
-      url: String,
-      description: String
-    }],
-    message: String
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: {},
   },
+  
   revision: {
-    requestedAt: Date,
-    reason: String,
-    deadline: Date,
-    completedAt: Date
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: {},
   },
-  messages: [{
-    sender: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-      required: true
-    },
-    message: {
-      type: String,
-      required: true
-    },
-    attachments: [{
-      name: String,
-      url: String
-    }],
-    timestamp: {
-      type: Date,
-      default: Date.now
-    }
-  }],
+  
+  messages: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: [],
+  },
+  
   rating: {
-    score: {
-      type: Number,
-      min: 1,
-      max: 5
-    },
-    review: String,
-    ratedAt: Date
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: {},
   },
-  timeline: [{
-    status: String,
-    timestamp: {
-      type: Date,
-      default: Date.now
-    },
-    note: String
-  }],
+  
+  timeline: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: [],
+  },
+  
   cancellation: {
-    requestedBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User'
-    },
-    reason: String,
-    requestedAt: Date,
-    approvedAt: Date,
-    refundAmount: Number
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: {},
   },
+  
   dispute: {
-    openedBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User'
-    },
-    reason: String,
-    description: String,
-    openedAt: Date,
-    resolvedAt: Date,
-    resolution: String
-  }
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: {},
+  },
 }, {
-  timestamps: true
+  tableName: 'orders',
+  timestamps: true,
+  indexes: [
+    {
+      fields: ['buyerId', 'status']
+    },
+    {
+      fields: ['sellerId', 'status']
+    },
+    {
+      fields: ['gigId']
+    },
+    {
+      fields: ['status']
+    },
+    {
+      fields: ['createdAt']
+    }
+  ]
 });
-
-// Indexes
-orderSchema.index({ buyer: 1, status: 1 });
-orderSchema.index({ seller: 1, status: 1 });
-orderSchema.index({ gig: 1 });
-orderSchema.index({ 'payment.status': 1 });
-orderSchema.index({ createdAt: -1 });
 
 // Virtual for order total
-orderSchema.virtual('total').get(function() {
-  return this.payment.amount;
-});
+Order.prototype.getTotal = function() {
+  return this.payment?.amount || 0;
+};
 
 // Virtual for days remaining
-orderSchema.virtual('daysRemaining').get(function() {
-  if (this.status === 'in-progress' && this.delivery.dueDate) {
+Order.prototype.getDaysRemaining = function() {
+  if (this.status === 'in-progress' && this.delivery?.dueDate) {
     const now = new Date();
     const due = new Date(this.delivery.dueDate);
     const diffTime = due - now;
@@ -184,57 +146,113 @@ orderSchema.virtual('daysRemaining').get(function() {
     return Math.max(0, diffDays);
   }
   return null;
-});
+};
 
 // Method to add timeline event
-orderSchema.methods.addTimelineEvent = function(status, note = '') {
-  this.timeline.push({ status, note });
+Order.prototype.addTimelineEvent = function(status, note = '') {
+  const timeline = this.timeline || [];
+  timeline.push({ 
+    status, 
+    note, 
+    timestamp: new Date() 
+  });
+  this.timeline = timeline;
   return this.save();
 };
 
 // Method to update status
-orderSchema.methods.updateStatus = function(newStatus, note = '') {
+Order.prototype.updateStatus = function(newStatus, note = '') {
   this.status = newStatus;
-  this.addTimelineEvent(newStatus, note);
-  return this.save();
+  return this.addTimelineEvent(newStatus, note);
 };
 
 // Method to add message
-orderSchema.methods.addMessage = function(senderId, message, attachments = []) {
-  this.messages.push({
+Order.prototype.addMessage = function(senderId, message, attachments = []) {
+  const messages = this.messages || [];
+  messages.push({
     sender: senderId,
     message,
-    attachments
+    attachments,
+    timestamp: new Date()
   });
+  this.messages = messages;
   return this.save();
 };
 
 // Static method to get orders by user
-orderSchema.statics.getByUser = function(userId, role = 'buyer', status = null) {
-  const query = role === 'buyer' ? { buyer: userId } : { seller: userId };
-  if (status) query.status = status;
+Order.getByUser = function(userId, role = 'buyer', status = null) {
+  const whereClause = role === 'buyer' 
+    ? { buyerId: userId } 
+    : { sellerId: userId };
   
-  return this.find(query)
-    .populate('buyer', 'displayName avatar')
-    .populate('seller', 'displayName avatar')
-    .populate('gig', 'title images')
-    .sort({ createdAt: -1 });
+  if (status) {
+    whereClause.status = status;
+  }
+  
+  return this.findAll({
+    where: whereClause,
+    include: [
+      {
+        model: sequelize.models.User,
+        as: 'buyer',
+        attributes: ['id', 'displayName', 'avatar']
+      },
+      {
+        model: sequelize.models.User,
+        as: 'seller',
+        attributes: ['id', 'displayName', 'avatar']
+      },
+      {
+        model: sequelize.models.Gig,
+        as: 'gig',
+        attributes: ['id', 'title', 'images']
+      }
+    ],
+    order: [['createdAt', 'DESC']]
+  });
 };
 
 // Static method to get order statistics
-orderSchema.statics.getStats = function(userId, role = 'buyer') {
-  const query = role === 'buyer' ? { buyer: userId } : { seller: userId };
+Order.getStats = function(userId, role = 'buyer') {
+  const roleField = role === 'buyer' ? 'buyerId' : 'sellerId';
   
-  return this.aggregate([
-    { $match: query },
-    {
-      $group: {
-        _id: '$status',
-        count: { $sum: 1 },
-        totalAmount: { $sum: '$payment.amount' }
-      }
-    }
-  ]);
+  return sequelize.query(`
+    SELECT 
+      status,
+      COUNT(*) as count,
+      SUM(JSON_EXTRACT(payment, '$.amount')) as totalAmount
+    FROM orders 
+    WHERE ${roleField} = ?
+    GROUP BY status
+  `, {
+    replacements: [userId],
+    type: sequelize.QueryTypes.SELECT
+  });
 };
 
-module.exports = mongoose.model('Order', orderSchema); 
+// Static method to get recent orders
+Order.getRecent = function(limit = 10) {
+  return this.findAll({
+    include: [
+      {
+        model: sequelize.models.User,
+        as: 'buyer',
+        attributes: ['id', 'displayName', 'avatar']
+      },
+      {
+        model: sequelize.models.User,
+        as: 'seller',
+        attributes: ['id', 'displayName', 'avatar']
+      },
+      {
+        model: sequelize.models.Gig,
+        as: 'gig',
+        attributes: ['id', 'title', 'images']
+      }
+    ],
+    order: [['createdAt', 'DESC']],
+    limit: limit
+  });
+};
+
+module.exports = Order;

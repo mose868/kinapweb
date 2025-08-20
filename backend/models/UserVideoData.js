@@ -1,49 +1,21 @@
-const mongoose = require('mongoose');
+const { DataTypes } = require('sequelize');
+const { sequelize } = require('../config/database');
 
-const videoSchema = new mongoose.Schema({
-  id: String,
-  title: String,
-  thumbnail: String,
-  videoUrl: String,
-  duration: String,
-  views: String,
-  uploadDate: String,
-  channel: {
-    name: String,
-    avatar: String,
-    subscribers: String,
-    verified: Boolean,
-    verificationBadge: String
+const UserVideoData = sequelize.define('UserVideoData', {
+  id: {
+    type: DataTypes.INTEGER,
+    primaryKey: true,
+    autoIncrement: true,
   },
-  description: String,
-  category: String,
-  tags: [String],
-  likes: Number,
-  dislikes: Number,
-  isLive: Boolean,
-  quality: String,
-  isPremium: Boolean,
-  isSponsored: Boolean
-}, { _id: false });
+  userId: { type: DataTypes.INTEGER, allowNull: false },
+  videoId: { type: DataTypes.INTEGER, allowNull: false },
+  watchTime: { type: DataTypes.INTEGER, defaultValue: 0 },
+  completed: { type: DataTypes.BOOLEAN, defaultValue: false },
+  liked: { type: DataTypes.BOOLEAN, defaultValue: false },
+  bookmarked: { type: DataTypes.BOOLEAN, defaultValue: false }
+}, {
+  tableName: 'user_video_data',
+  timestamps: true
+});
 
-const playlistSchema = new mongoose.Schema({
-  name: String,
-  videos: [videoSchema]
-}, { _id: false });
-
-const userVideoDataSchema = new mongoose.Schema({
-  userId: { type: String, required: true },
-  watchLater: [videoSchema],
-  likedVideos: [videoSchema],
-  playlists: [playlistSchema],
-  history: [videoSchema],
-  subscriptions: [String], // channel names or IDs
-  likes: { type: Map, of: Boolean, default: {} }, // videoId -> boolean
-  dislikes: { type: Map, of: Boolean, default: {} }, // videoId -> boolean
-  comments: { type: Map, of: [String], default: {} } // videoId -> array of comments
-}, { timestamps: true });
-
-// Create unique index explicitly to avoid duplicate index warning
-userVideoDataSchema.index({ userId: 1 }, { unique: true });
-
-module.exports = mongoose.model('UserVideoData', userVideoDataSchema); 
+module.exports = UserVideoData;

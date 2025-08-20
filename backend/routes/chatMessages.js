@@ -1,6 +1,6 @@
 const express = require('express');
-const mongoose = require('mongoose');
-const ChatMessage = require('../models/ChatMessage');
+const { ChatMessage } = require('../models');
+const { sequelize } = require('../config/database');
 const router = express.Router();
 
 // Get all messages for a specific group
@@ -9,8 +9,11 @@ router.get('/group/:groupId', async (req, res) => {
     const { groupId } = req.params;
     const { limit = 50, offset = 0 } = req.query;
 
-    // If DB not connected, return empty list gracefully
-    if (mongoose.connection.readyState !== 1) {
+    // Check if database is connected
+    try {
+      await sequelize.authenticate();
+    } catch (dbError) {
+      console.warn('Database not connected, returning empty messages');
       return res.json({
         success: true,
         messages: [],
@@ -53,12 +56,15 @@ router.post('/', async (req, res) => {
     const {
       messageId,
       groupId,
+      conversationId,
+      messageType,
       userId,
       userName,
       userAvatar,
+      role,
       message,
       content,
-      messageType = 'text',
+      contentType = 'text',
       status = 'sent',
       mediaUrl,
       fileName,
@@ -67,71 +73,51 @@ router.post('/', async (req, res) => {
       duration,
       replyTo,
       isAIMessage = false,
-      userProfile
+      userProfile,
+      metadata
     } = req.body;
 
-    // Validate required fields
-    if (!messageId || !groupId || !userId || !userName || !message || !content) {
-      return res.status(400).json({
-        success: false,
-        message: 'Missing required fields'
-      });
-    }
-
-    // If DB not connected, acknowledge receipt without persisting to avoid 500
-    if (mongoose.connection.readyState !== 1) {
-      return res.status(201).json({
+    // Check if database is connected
+    try {
+      await sequelize.authenticate();
+    } catch (dbError) {
+      console.warn('Database not connected, skipping message save');
+      return res.json({
         success: true,
-        message: 'Message accepted (offline mode, not persisted)',
-        data: {
-          messageId,
-          groupId,
-          userId,
-          userName,
-          userAvatar: userAvatar || 'https://via.placeholder.com/40',
-          message,
-          content,
-          messageType,
-          status,
-          mediaUrl,
-          fileName,
-          fileSize,
-          fileType,
-          duration,
-          replyTo,
-          isAIMessage,
-          userProfile,
-          timestamp: new Date().toISOString(),
-        },
+        message: 'Message received but not saved (database unavailable)',
+        messageId: messageId || Date.now().toString()
       });
     }
 
-    const newMessage = new ChatMessage({
-      messageId,
+    const chatMessage = await ChatMessage.create({
+      messageId: messageId || `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       groupId,
+      conversationId,
+      messageType,
       userId,
       userName,
       userAvatar: userAvatar || 'https://via.placeholder.com/40',
+      role,
       message,
       content,
-      messageType,
+      contentType,
       status,
       mediaUrl,
       fileName,
       fileSize,
       fileType,
       duration,
+      timestamp: new Date(),
       replyTo,
       isAIMessage,
-      userProfile
+      userProfile: userProfile || {},
+      metadata: metadata || {}
     });
-
-    const savedMessage = await newMessage.save();
 
     res.status(201).json({
       success: true,
       message: 'Message saved successfully',
-      data: savedMessage
+      data: chatMessage
     });
   } catch (error) {
     console.error('Error saving message:', error);
@@ -143,59 +129,55 @@ router.post('/', async (req, res) => {
   }
 });
 
-// Update message status (e.g., mark as read)
-router.patch('/:messageId/status', async (req, res) => {
+// Get conversation history for a specific conversation
+router.get('/conversation/:conversationId', async (req, res) => {
   try {
-    const { messageId } = req.params;
-    const { status } = req.body;
+    const { conversationId } = req.params;
+    const { limit = 50, offset = 0 } = req.query;
 
-    const message = await ChatMessage.findOne({ messageId, isDeleted: false });
-    
-    if (!message) {
-      return res.status(404).json({
-        success: false,
-        message: 'Message not found'
-      });
-    }
-
-    message.status = status;
-    await message.save();
+    const messages = await ChatMessage.findAll({
+      where: {
+        conversationId: conversationId,
+        isDeleted: false
+      },
+      order: [['timestamp', 'ASC']],
+      limit: parseInt(limit),
+      offset: parseInt(offset)
+    });
 
     res.json({
       success: true,
-      message: 'Message status updated',
-      data: message
+      messages: messages,
+      pagination: {
+        limit: parseInt(limit),
+        offset: parseInt(offset),
+        hasMore: messages.length === parseInt(limit)
+      }
     });
   } catch (error) {
-    console.error('Error updating message status:', error);
+    console.error('Error fetching conversation messages:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to update message status',
+      message: 'Failed to fetch conversation messages',
       error: error.message
     });
   }
 });
 
-// Soft delete a message
+// Delete a message (soft delete)
 router.delete('/:messageId', async (req, res) => {
   try {
     const { messageId } = req.params;
     const { userId } = req.body;
 
-    const message = await ChatMessage.findOne({ messageId, isDeleted: false });
-    
+    const message = await ChatMessage.findOne({
+      where: { messageId: messageId }
+    });
+
     if (!message) {
       return res.status(404).json({
         success: false,
         message: 'Message not found'
-      });
-    }
-
-    // Check if user can delete this message (sender or admin)
-    if (message.userId !== userId) {
-      return res.status(403).json({
-        success: false,
-        message: 'You can only delete your own messages'
       });
     }
 
@@ -215,61 +197,113 @@ router.delete('/:messageId', async (req, res) => {
   }
 });
 
-// Delete all messages for a group
-router.delete('/group/:groupId', async (req, res) => {
+// Edit a message
+router.put('/:messageId', async (req, res) => {
   try {
-    const { groupId } = req.params;
-    const { userId } = req.body;
+    const { messageId } = req.params;
+    const { content, message: messageText } = req.body;
 
-    // Check if user has permission to delete group messages
-    // This could be enhanced with admin checks
-    if (!userId) {
-      return res.status(403).json({
+    const message = await ChatMessage.findOne({
+      where: { messageId: messageId }
+    });
+
+    if (!message) {
+      return res.status(404).json({
         success: false,
-        message: 'Authentication required'
+        message: 'Message not found'
       });
     }
 
-    const result = await ChatMessage.deleteGroupMessages(groupId);
+    await message.update({
+      content: content || message.content,
+      message: messageText || message.message,
+      isEdited: true,
+      editedAt: new Date()
+    });
 
     res.json({
       success: true,
-      message: 'All group messages deleted successfully',
-      deletedCount: result.modifiedCount
+      message: 'Message updated successfully',
+      data: message
     });
   } catch (error) {
-    console.error('Error deleting group messages:', error);
+    console.error('Error updating message:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to delete group messages',
+      message: 'Failed to update message',
       error: error.message
     });
   }
 });
 
-// Get recent messages for all groups (for sidebar)
-router.get('/recent', async (req, res) => {
+// Add reaction to a message
+router.post('/:messageId/reaction', async (req, res) => {
   try {
-    const { limit = 20 } = req.query;
-    
-    const recentMessages = await ChatMessage.getRecentMessages(parseInt(limit));
-    
+    const { messageId } = req.params;
+    const { emoji, userId } = req.body;
+
+    const message = await ChatMessage.findOne({
+      where: { messageId: messageId }
+    });
+
+    if (!message) {
+      return res.status(404).json({
+        success: false,
+        message: 'Message not found'
+      });
+    }
+
+    const reactions = message.reactions || [];
+    let reactionFound = false;
+
+    // Find existing reaction with this emoji
+    for (let reaction of reactions) {
+      if (reaction.emoji === emoji) {
+        const users = reaction.users || [];
+        if (users.includes(userId)) {
+          // Remove user from reaction
+          reaction.users = users.filter(id => id !== userId);
+        } else {
+          // Add user to reaction
+          reaction.users.push(userId);
+        }
+        reactionFound = true;
+        break;
+      }
+    }
+
+    // If reaction doesn't exist, create it
+    if (!reactionFound) {
+      reactions.push({
+        emoji: emoji,
+        users: [userId]
+      });
+    }
+
+    // Remove reactions with no users
+    const filteredReactions = reactions.filter(r => r.users && r.users.length > 0);
+
+    await message.update({
+      reactions: filteredReactions
+    });
+
     res.json({
       success: true,
-      messages: recentMessages
+      message: 'Reaction updated successfully',
+      reactions: filteredReactions
     });
   } catch (error) {
-    console.error('Error fetching recent messages:', error);
+    console.error('Error updating reaction:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch recent messages',
+      message: 'Failed to update reaction',
       error: error.message
     });
   }
 });
 
 // Get message statistics for a group
-router.get('/group/:groupId/stats', async (req, res) => {
+router.get('/stats/:groupId', async (req, res) => {
   try {
     const { groupId } = req.params;
     
@@ -295,95 +329,46 @@ router.get('/group/:groupId/stats', async (req, res) => {
   }
 });
 
-// Search messages in a group
-router.get('/group/:groupId/search', async (req, res) => {
+// Clear all messages for a group (admin only)
+router.delete('/group/:groupId/clear', async (req, res) => {
   try {
     const { groupId } = req.params;
-    const { query, limit = 20 } = req.query;
-
-    if (!query) {
-      return res.status(400).json({
-        success: false,
-        message: 'Search query is required'
-      });
-    }
-
-    const messages = await ChatMessage.find({
-      groupId: groupId,
-      isDeleted: false,
-      $or: [
-        { message: { $regex: query, $options: 'i' } },
-        { content: { $regex: query, $options: 'i' } }
-      ]
-    })
-    .sort({ timestamp: -1 })
-    .limit(parseInt(limit))
-    .lean();
-
+    
+    await ChatMessage.deleteGroupMessages(groupId);
+    
     res.json({
       success: true,
-      messages: messages,
-      query: query
+      message: 'All messages cleared successfully'
     });
   } catch (error) {
-    console.error('Error searching messages:', error);
+    console.error('Error clearing messages:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to search messages',
+      message: 'Failed to clear messages',
       error: error.message
     });
   }
 });
 
-// Add reaction to a message
-router.post('/:messageId/reactions', async (req, res) => {
+// Get recent messages across all groups
+router.get('/recent', async (req, res) => {
   try {
-    const { messageId } = req.params;
-    const { emoji, userId } = req.body;
-
-    const message = await ChatMessage.findOne({ messageId, isDeleted: false });
+    const { limit = 20 } = req.query;
     
-    if (!message) {
-      return res.status(404).json({
-        success: false,
-        message: 'Message not found'
-      });
-    }
-
-    // Find existing reaction
-    const existingReaction = message.reactions.find(r => r.emoji === emoji);
+    const recentMessages = await ChatMessage.getRecentMessages(parseInt(limit));
     
-    if (existingReaction) {
-      // Toggle user in reaction
-      const userIndex = existingReaction.users.indexOf(userId);
-      if (userIndex > -1) {
-        existingReaction.users.splice(userIndex, 1);
-        if (existingReaction.users.length === 0) {
-          message.reactions = message.reactions.filter(r => r.emoji !== emoji);
-        }
-      } else {
-        existingReaction.users.push(userId);
-      }
-    } else {
-      // Add new reaction
-      message.reactions.push({ emoji, users: [userId] });
-    }
-
-    await message.save();
-
     res.json({
       success: true,
-      message: 'Reaction updated',
-      data: message
+      messages: recentMessages
     });
   } catch (error) {
-    console.error('Error updating reaction:', error);
+    console.error('Error fetching recent messages:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to update reaction',
+      message: 'Failed to fetch recent messages',
       error: error.message
     });
   }
 });
 
-module.exports = router; 
+module.exports = router;

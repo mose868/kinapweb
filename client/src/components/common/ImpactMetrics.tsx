@@ -35,11 +35,23 @@ const ImpactMetrics = () => {
         // Fetch metrics from backend API
         const response = await api.get('/metrics');
         if (response.data) {
-          setMetrics(response.data);
+          // Merge API data with default metrics to ensure all properties exist
+          setMetrics(prevMetrics => ({
+            ...prevMetrics,
+            ...response.data,
+            // Ensure all values are numbers
+            totalMembers: Number(response.data.totalMembers) || prevMetrics.totalMembers,
+            projectsCompleted: Number(response.data.projectsCompleted) || prevMetrics.projectsCompleted,
+            totalEarnings: Number(response.data.totalEarnings) || prevMetrics.totalEarnings,
+            activeFreelancers: Number(response.data.activeFreelancers) || prevMetrics.activeFreelancers,
+            successRate: Number(response.data.successRate) || prevMetrics.successRate,
+            averageRating: Number(response.data.averageRating) || prevMetrics.averageRating,
+          }));
         }
         setLoading(false);
       } catch (error) {
         console.error('Error fetching metrics:', error);
+        // Keep default metrics on error
         setLoading(false);
       }
     };
@@ -68,25 +80,37 @@ const ImpactMetrics = () => {
       icon: <Users className='w-8 h-8 text-ajira-accent' />,
       label: 'Total Members',
       value: metrics.totalMembers ?? 0,
-      format: (value: number) => (value ?? 0).toLocaleString(),
+      format: (value: number) => {
+        const num = Number(value) || 0;
+        return num.toLocaleString();
+      },
     },
     {
       icon: <Briefcase className='w-8 h-8 text-ajira-primary' />,
       label: 'Projects Completed',
       value: metrics.projectsCompleted ?? 0,
-      format: (value: number) => (value ?? 0).toLocaleString(),
+      format: (value: number) => {
+        const num = Number(value) || 0;
+        return num.toLocaleString();
+      },
     },
     {
       icon: <DollarSign className='w-8 h-8 text-green-500' />,
       label: 'Total Earnings',
       value: metrics.totalEarnings ?? 0,
-      format: (value: number) => `KES ${(value ?? 0).toLocaleString()}`,
+      format: (value: number) => {
+        const num = Number(value) || 0;
+        return `KES ${num.toLocaleString()}`;
+      },
     },
     {
       icon: <Award className='w-8 h-8 text-yellow-500' />,
       label: 'Success Rate',
       value: metrics.successRate ?? 0,
-      format: (value: number) => `${(value ?? 0).toFixed(1)}%`,
+      format: (value: number) => {
+        const num = Number(value) || 0;
+        return `${num.toFixed(1)}%`;
+      },
     },
   ];
 
@@ -139,7 +163,7 @@ const ImpactMetrics = () => {
                 <Star
                   key={i}
                   className={`w-6 h-6 ${
-                    i < Math.round(metrics.averageRating ?? 0)
+                    i < Math.round(Number(metrics.averageRating) || 0)
                       ? 'text-yellow-400 fill-current'
                       : 'text-gray-300'
                   }`}
@@ -147,7 +171,7 @@ const ImpactMetrics = () => {
               ))}
             </div>
             <span className='ml-3 text-2xl font-bold text-ajira-primary'>
-              {(metrics.averageRating ?? 0).toFixed(1)}
+              {(Number(metrics.averageRating) || 0).toFixed(1)}
             </span>
           </div>
           <p className='text-sm text-gray-600 mt-2'>

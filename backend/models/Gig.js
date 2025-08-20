@@ -1,26 +1,34 @@
-const mongoose = require('mongoose');
+const { DataTypes } = require('sequelize');
+const { sequelize } = require('../config/database');
 
-const gigSchema = new mongoose.Schema({
-  seller: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
+const Gig = sequelize.define('Gig', {
+  id: {
+    type: DataTypes.INTEGER,
+    primaryKey: true,
+    autoIncrement: true,
   },
+  
+  sellerId: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    references: {
+      model: 'users',
+      key: 'id'
+    }
+  },
+  
   title: {
-    type: String,
-    required: true,
-    trim: true,
-    maxlength: 100
+    type: DataTypes.STRING(100),
+    allowNull: false,
   },
+  
   description: {
-    type: String,
-    required: true,
-    maxlength: 2000
+    type: DataTypes.TEXT(2000),
+    allowNull: false,
   },
+  
   category: {
-    type: String,
-    required: true,
-    enum: [
+    type: DataTypes.ENUM(
       'web-development',
       'mobile-development', 
       'graphic-design',
@@ -31,183 +39,225 @@ const gigSchema = new mongoose.Schema({
       'translation',
       'virtual-assistant',
       'other'
-    ]
+    ),
+    allowNull: false,
   },
+  
   subcategory: {
-    type: String,
-    trim: true
+    type: DataTypes.STRING(255),
+    allowNull: true,
   },
-  tags: [{
-    type: String,
-    trim: true
-  }],
+  
+  tags: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: [],
+  },
+  
   pricing: {
-    type: {
-      type: String,
-      enum: ['fixed', 'hourly'],
-      required: true
-    },
-    amount: {
-      type: Number,
-      required: true,
-      min: 1
-    },
-    currency: {
-      type: String,
-      default: 'KES',
-      enum: ['KES', 'USD', 'EUR']
-    }
+    type: DataTypes.JSON,
+    allowNull: false,
+    defaultValue: {},
   },
-  packages: [{
-    name: {
-      type: String,
-      required: true,
-      enum: ['basic', 'standard', 'premium']
-    },
-    title: {
-      type: String,
-      required: true
-    },
-    description: String,
-    price: {
-      type: Number,
-      required: true
-    },
-    deliveryTime: {
-      type: Number,
-      required: true,
-      min: 1
-    },
-    revisions: {
-      type: Number,
-      default: 0
-    },
-    features: [String]
-  }],
-  images: [{
-    url: String,
-    alt: String
-  }],
-  attachments: [{
-    name: String,
-    url: String,
-    type: String
-  }],
-  requirements: [{
-    question: String,
-    type: {
-      type: String,
-      enum: ['text', 'file', 'choice'],
-      default: 'text'
-    },
-    required: {
-      type: Boolean,
-      default: false
-    },
-    options: [String]
-  }],
+  
+  packages: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: [],
+  },
+  
+  images: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: [],
+  },
+  
+  attachments: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: [],
+  },
+  
+  requirements: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: [],
+  },
+  
   stats: {
-    views: {
-      type: Number,
-      default: 0
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: {
+      views: 0,
+      orders: 0,
+      rating: 0,
+      reviews: 0
     },
-    orders: {
-      type: Number,
-      default: 0
-    },
-    rating: {
-      type: Number,
-      default: 0,
-      min: 0,
-      max: 5
-    },
-    reviews: {
-      type: Number,
-      default: 0
-    }
   },
+  
   status: {
-    type: String,
-    enum: ['draft', 'active', 'paused', 'rejected'],
-    default: 'draft'
+    type: DataTypes.ENUM('draft', 'active', 'paused', 'rejected'),
+    allowNull: false,
+    defaultValue: 'draft',
   },
+  
   featured: {
-    type: Boolean,
-    default: false
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false,
   },
+  
   verified: {
-    type: Boolean,
-    default: false
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false,
   },
+  
   location: {
-    country: String,
-    city: String
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: {},
   },
-  languages: [{
-    type: String,
-    enum: ['English', 'Swahili', 'French', 'Spanish', 'Arabic', 'Chinese', 'Other']
-  }],
-  skills: [String],
-  portfolio: [{
-    title: String,
-    description: String,
-    image: String,
-    url: String
-  }],
+  
+  languages: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: [],
+  },
+  
+  skills: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: [],
+  },
+  
+  portfolio: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: [],
+  },
+  
   availability: {
-    type: String,
-    enum: ['available', 'busy', 'unavailable'],
-    default: 'available'
+    type: DataTypes.ENUM('available', 'busy', 'unavailable'),
+    allowNull: false,
+    defaultValue: 'available',
   },
+  
   responseTime: {
-    type: Number, // in hours
-    default: 24
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    defaultValue: 24, // in hours
   },
+  
   completionRate: {
-    type: Number,
-    default: 100,
-    min: 0,
-    max: 100
-  }
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    defaultValue: 100,
+    validate: {
+      min: 0,
+      max: 100,
+    },
+  },
 }, {
-  timestamps: true
+  tableName: 'gigs',
+  timestamps: true,
+  indexes: [
+    {
+      fields: ['sellerId', 'status']
+    },
+    {
+      fields: ['category', 'status']
+    },
+    {
+      fields: ['featured', 'status']
+    },
+    {
+      fields: ['createdAt']
+    },
+    {
+      fields: ['status']
+    }
+  ]
 });
-
-// Indexes for better performance
-gigSchema.index({ seller: 1, status: 1 });
-gigSchema.index({ category: 1, status: 1 });
-gigSchema.index({ title: 'text', description: 'text', tags: 'text' });
-gigSchema.index({ 'pricing.amount': 1 });
-gigSchema.index({ featured: 1, status: 1 });
-gigSchema.index({ createdAt: -1 });
 
 // Virtual for average rating
-gigSchema.virtual('averageRating').get(function() {
-  return this.stats.rating;
-});
+Gig.prototype.getAverageRating = function() {
+  return this.stats?.rating || 0;
+};
 
 // Method to update stats
-gigSchema.methods.updateStats = function() {
+Gig.prototype.updateStats = function(newStats) {
+  this.stats = { ...this.stats, ...newStats };
   return this.save();
 };
 
 // Static method to get featured gigs
-gigSchema.statics.getFeatured = function() {
-  return this.find({ 
-    status: 'active', 
-    featured: true 
-  }).populate('seller', 'displayName avatar rating');
+Gig.getFeatured = function() {
+  return this.findAll({
+    where: { 
+      status: 'active', 
+      featured: true 
+    },
+    include: [
+      {
+        model: sequelize.models.User,
+        as: 'seller',
+        attributes: ['id', 'displayName', 'avatar', 'rating']
+      }
+    ]
+  });
 };
 
 // Static method to get gigs by category
-gigSchema.statics.getByCategory = function(category, limit = 20) {
-  return this.find({ 
-    category, 
-    status: 'active' 
-  })
-  .populate('seller', 'displayName avatar rating')
-  .limit(limit)
-  .sort({ createdAt: -1 });
+Gig.getByCategory = function(category, limit = 20) {
+  return this.findAll({
+    where: { 
+      category, 
+      status: 'active' 
+    },
+    include: [
+      {
+        model: sequelize.models.User,
+        as: 'seller',
+        attributes: ['id', 'displayName', 'avatar', 'rating']
+      }
+    ],
+    limit: limit,
+    order: [['createdAt', 'DESC']]
+  });
 };
 
-module.exports = mongoose.model('Gig', gigSchema); 
+// Static method to search gigs
+Gig.searchGigs = function(searchTerm, limit = 20, offset = 0) {
+  const { Op } = sequelize.Sequelize;
+  
+  return this.findAll({
+    where: {
+      status: 'active',
+      [Op.or]: [
+        {
+          title: {
+            [Op.like]: `%${searchTerm}%`
+          }
+        },
+        {
+          description: {
+            [Op.like]: `%${searchTerm}%`
+          }
+        }
+      ]
+    },
+    include: [
+      {
+        model: sequelize.models.User,
+        as: 'seller',
+        attributes: ['id', 'displayName', 'avatar', 'rating']
+      }
+    ],
+    limit: limit,
+    offset: offset,
+    order: [['createdAt', 'DESC']]
+  });
+};
+
+module.exports = Gig;

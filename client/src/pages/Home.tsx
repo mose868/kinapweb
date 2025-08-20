@@ -37,14 +37,32 @@ const Home = () => {
             className="absolute inset-0 w-full h-full object-cover opacity-40"
             poster="/images/hero-poster.jpg"
             onError={(e) => {
+              // Hide video and show gradient background when video fails to load
               e.currentTarget.style.display = 'none';
               const parent = e.currentTarget.parentElement;
               if (parent) {
                 parent.style.background = 'linear-gradient(135deg, #000000 0%, #CE1126 35%, #006B3F 70%, #000000 100%)';
               }
+              // Suppress error logging for missing video files
+              console.warn('Video background not available, using gradient fallback');
             }}
             onLoadedData={() => {
               console.log('Background video loaded successfully');
+            }}
+            onLoadStart={() => {
+              // Precheck if videos exist to avoid 404 errors
+              fetch('/videos/digital-transformation.mp4', { method: 'HEAD' })
+                .catch(() => {
+                  // If main video doesn't exist, immediately fallback to gradient
+                  const video = document.querySelector('video');
+                  if (video) {
+                    video.style.display = 'none';
+                    const parent = video.parentElement;
+                    if (parent) {
+                      parent.style.background = 'linear-gradient(135deg, #000000 0%, #CE1126 35%, #006B3F 70%, #000000 100%)';
+                    }
+                  }
+                });
             }}
           >
             <source src="/videos/digital-transformation.mp4" type="video/mp4" />

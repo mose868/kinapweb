@@ -1,19 +1,25 @@
 const express = require('express');
 const router = express.Router();
-const mongoose = require('mongoose');
-const Group = require('../models/Group');
-const User = require('../models/User');
+const { Group, User } = require('../models');
+const { Op } = require('sequelize');
 
 // Create a group
 router.post('/create', async (req, res) => {
   try {
-    const { name, avatar, members, admins, description, createdBy } = req.body;
-    const group = new Group({ name, avatar, members, admins, description, createdBy });
-    await group.save();
-    // Add group to users
-    await User.updateMany({ _id: { $in: members } }, { $push: { groups: group._id } });
+    const { name, avatar, members, admins, description, createdById } = req.body;
+    
+    const group = await Group.create({
+      name,
+      avatar,
+      description,
+      createdById,
+      members: members || [],
+      admins: admins || []
+    });
+    
     res.status(201).json(group);
   } catch (err) {
+    console.error('Error creating group:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -25,86 +31,55 @@ router.post('/join/:category', async (req, res) => {
     const { category } = req.params;
 
     // Find or create group by category
-    let group = await Group.findOne({ 
-      name: { $regex: new RegExp(category, 'i') },
-      category: category 
+    let group = await Group.findOne({
+      where: {
+        [Op.or]: [
+          { name: { [Op.like]: `%${category}%` } },
+          { category: category }
+        ]
+      }
     });
 
     if (!group) {
       // Create new group for this category
-      group = new Group({
+      group = await Group.create({
         name: `${category} Community`,
         description: `${category.toLowerCase()} discussions and community`,
         category: category,
         members: [userId],
         admins: [userId],
-        createdBy: userId
+        createdById: userId
       });
-      await group.save();
     } else {
       // Add user to existing group if not already a member
-      if (!group.members.includes(userId)) {
-        group.members.push(userId);
+      const members = group.members || [];
+      if (!members.includes(userId)) {
+        members.push(userId);
+        group.members = members;
         await group.save();
       }
     }
 
-    // Add group to user's groups
-    await User.findByIdAndUpdate(userId, { 
-      $addToSet: { groups: group._id } 
-    });
-
-    res.json({ 
-      success: true, 
-      group,
-      message: `Successfully joined ${category} group`
+    res.json({
+      success: true,
+      group: group,
+      message: `Successfully joined ${group.name}`
     });
   } catch (err) {
+    console.error('Error joining group:', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// Leave group
-router.post('/leave/:groupId', async (req, res) => {
+// Get all groups
+router.get('/', async (req, res) => {
   try {
-    const { userId } = req.body;
-    const { groupId } = req.params;
-
-    // Remove user from group
-    const group = await Group.findByIdAndUpdate(
-      groupId,
-      { $pull: { members: userId } },
-      { new: true }
-    );
-
-    // Remove group from user's groups
-    await User.findByIdAndUpdate(userId, { 
-      $pull: { groups: groupId } 
+    const groups = await Group.findAll({
+      order: [['createdAt', 'DESC']]
     });
-
-    res.json({ 
-      success: true, 
-      message: 'Successfully left the group'
-    });
+    res.json(groups);
   } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Get user's groups
-router.get('/user/:userId', async (req, res) => {
-  try {
-    const { userId } = req.params;
-    const user = await User.findById(userId).populate({
-      path: 'groups',
-      populate: {
-        path: 'members',
-        select: 'displayName avatar'
-      }
-    });
-    
-    res.json(user.groups || []);
-  } catch (err) {
+    console.error('Error fetching groups:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -113,307 +88,242 @@ router.get('/user/:userId', async (req, res) => {
 router.get('/category/:category', async (req, res) => {
   try {
     const { category } = req.params;
-    const groups = await Group.find({ 
-      category: category 
-    }).populate('members', 'displayName avatar');
-    
+    const groups = await Group.getByCategory(category);
     res.json(groups);
   } catch (err) {
+    console.error('Error fetching groups by category:', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// Check if user is member of group
-router.get('/:groupId/member/:userId', async (req, res) => {
+// Get user's groups
+router.post('/user', async (req, res) => {
   try {
-    const { groupId, userId } = req.params;
-    const group = await Group.findById(groupId);
+    const { email, id } = req.body;
     
+    // Check if database is connected
+    const { sequelize } = require('../config/database');
+    try {
+      await sequelize.authenticate();
+    } catch (dbError) {
+      console.warn('Database not connected, returning default groups');
+      return res.json([{
+        id: 'kinap-ai',
+        name: 'Kinap AI',
+        description: 'Your AI assistant for programming help, study guidance, and career advice',
+        avatar: 'https://ui-avatars.com/api/?name=Kinap+AI&background=8B5CF6&color=FFFFFF&bold=true&size=150',
+        members: [1],
+        lastMessage: 'Say hello to start chatting! 😊',
+        lastMessageTime: new Date(),
+        unreadCount: 0,
+        admins: [],
+        type: 'ai',
+        category: 'AI'
+      }]);
+    }
+
+    let userId = id;
+    
+    // If no direct ID provided, try to find user by email
+    if (!userId && email) {
+      const user = await User.findOne({ where: { email } });
+      if (user) {
+        userId = user.id;
+      }
+    }
+
+    if (!userId) {
+      return res.json([{
+        id: 'kinap-ai',
+        name: 'Kinap AI',
+        description: 'Your AI assistant for programming help, study guidance, and career advice',
+        avatar: 'https://ui-avatars.com/api/?name=Kinap+AI&background=8B5CF6&color=FFFFFF&bold=true&size=150',
+        members: [1],
+        lastMessage: 'Say hello to start chatting! 😊',
+        lastMessageTime: new Date(),
+        unreadCount: 0,
+        admins: [],
+        type: 'ai',
+        category: 'AI'
+      }]);
+    }
+
+    // Get user's groups
+    const groups = await Group.getUserGroups(userId);
+    
+    // Always include Kinap AI group
+    const defaultGroups = [{
+      id: 'kinap-ai',
+      name: 'Kinap AI',
+      description: 'Your AI assistant for programming help, study guidance, and career advice',
+      avatar: 'https://ui-avatars.com/api/?name=Kinap+AI&background=8B5CF6&color=FFFFFF&bold=true&size=150',
+      members: [userId],
+      lastMessage: 'Say hello to start chatting! 😊',
+      lastMessageTime: new Date(),
+      unreadCount: 0,
+      admins: [],
+      type: 'ai',
+      category: 'AI'
+    }];
+
+    const allGroups = [...defaultGroups, ...groups];
+    res.json(allGroups);
+  } catch (err) {
+    console.error('Error fetching user groups:', err);
+    // Return safe default on any error
+    res.json([{
+      id: 'kinap-ai',
+      name: 'Kinap AI',
+      description: 'Your AI assistant for programming help, study guidance, and career advice',
+      avatar: 'https://ui-avatars.com/api/?name=Kinap+AI&background=8B5CF6&color=FFFFFF&bold=true&size=150',
+      members: [1],
+      lastMessage: 'Say hello to start chatting! 😊',
+      lastMessageTime: new Date(),
+      unreadCount: 0,
+      admins: [],
+      type: 'ai',
+      category: 'AI'
+    }]);
+  }
+});
+
+// Get user's groups by user ID
+router.get('/user/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const groups = await Group.getUserGroups(userId);
+    res.json(groups);
+  } catch (err) {
+    console.error('Error fetching user groups by ID:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Add user to group
+router.post('/:groupId/add-user', async (req, res) => {
+  try {
+    const { groupId } = req.params;
+    const { userId } = req.body;
+
+    const group = await Group.findByPk(groupId);
     if (!group) {
       return res.status(404).json({ error: 'Group not found' });
     }
 
-    const isMember = group.members.includes(userId);
-    res.json({ isMember });
+    await group.addMember(userId);
+    res.json({ success: true, message: 'User added to group' });
   } catch (err) {
+    console.error('Error adding user to group:', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// Add member to group
-router.post('/:groupId/add', async (req, res) => {
+// Remove user from group
+router.post('/:groupId/remove-user', async (req, res) => {
   try {
+    const { groupId } = req.params;
     const { userId } = req.body;
-    const group = await Group.findByIdAndUpdate(
-      req.params.groupId,
-      { $addToSet: { members: userId } },
-      { new: true }
-    );
-    await User.findByIdAndUpdate(userId, { $addToSet: { groups: group._id } });
-    res.json(group);
+
+    const group = await Group.findByPk(groupId);
+    if (!group) {
+      return res.status(404).json({ error: 'Group not found' });
+    }
+
+    await group.removeMember(userId);
+    res.json({ success: true, message: 'User removed from group' });
   } catch (err) {
+    console.error('Error removing user from group:', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// Remove member from group
-router.post('/:groupId/remove', async (req, res) => {
-  try {
-    const { userId } = req.body;
-    const group = await Group.findByIdAndUpdate(
-      req.params.groupId,
-      { $pull: { members: userId } },
-      { new: true }
-    );
-    await User.findByIdAndUpdate(userId, { $pull: { groups: group._id } });
-    res.json(group);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Get group info
+// Get group details
 router.get('/:groupId', async (req, res) => {
   try {
-    const group = await Group.findById(req.params.groupId).populate('members admins messages');
-    res.json(group);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// List all groups
-router.get('/', async (req, res) => {
-  try {
-    const groups = await Group.find().populate('members', 'displayName avatar');
-    res.json(groups);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Get user's groups based on email
-router.post('/user', async (req, res) => {
-  try {
-    const { email } = req.body;
+    const { groupId } = req.params;
     
-    if (!email) {
-      return res.status(400).json({ error: 'Email is required' });
-    }
-
-    // If MongoDB is not connected, return a safe default to avoid 500s on Community page
-    const isDbConnected = mongoose.connection.readyState === 1; // 1: connected
-    if (!isDbConnected) {
+    // Handle AI group special case
+    if (groupId === 'kinap-ai') {
       return res.json({
-        groups: [
-          {
-            _id: 'kinap-ai-offline',
-            name: 'Kinap AI',
-            description:
-              'Your AI assistant for programming help, study guidance, and career advice',
-            members: [],
-            admins: [],
-            createdBy: null,
-            avatar:
-              'https://ui-avatars.com/api/?name=Kinap+AI&background=8B5CF6&color=FFFFFF&bold=true&size=150',
-            type: 'ai',
-          },
-        ],
-      });
-    }
-
-    // First fetch both collections
-    const Student = require('../models/Student');
-    const User = require('../models/User');
-
-    let userDoc = await User.findOne({ email });
-    let studentDoc = await Student.findOne({ email });
-
-    // Prefer studentDoc for group membership (because Group refs Student)
-    let primaryDoc = studentDoc || userDoc;
-    
-    // If no user found, create a basic user document to ensure groups work
-    if (!primaryDoc) {
-      console.log('⚠️ User not found, creating basic user document for:', email);
-      try {
-        // Generate a unique username from email
-        const emailPrefix = email.split('@')[0];
-        let username = emailPrefix;
-        let counter = 1;
-        
-        // Check if username already exists and generate a unique one
-        while (await User.findOne({ username })) {
-          username = `${emailPrefix}${counter}`;
-          counter++;
-        }
-        
-        const basicUser = new User({
-          username: username,
-          email: email,
-          displayName: email.split('@')[0], // Use email prefix as display name
-          skills: ['Web Development', 'Programming'], // Default skills
-          interests: ['Technology', 'Learning'], // Default interests
-          createdAt: new Date(),
-          updatedAt: new Date()
-        });
-        await basicUser.save();
-        primaryDoc = basicUser;
-        console.log('✅ Created basic user document with ID:', primaryDoc._id);
-      } catch (createError) {
-        console.error('❌ Failed to create user document:', createError);
-        return res.status(500).json({ error: 'Failed to create user profile' });
-      }
-    }
-
-    // Merge skills / interests with fallbacks
-    let mergedSkills = [];
-    let mergedInterests = [];
-    if (studentDoc && Array.isArray(studentDoc.skills)) mergedSkills = mergedSkills.concat(studentDoc.skills);
-    if (userDoc && Array.isArray(userDoc.skills)) mergedSkills = mergedSkills.concat(userDoc.skills);
-    if (studentDoc && Array.isArray(studentDoc.interests)) mergedInterests = mergedInterests.concat(studentDoc.interests);
-    if (userDoc && Array.isArray(userDoc.interests)) mergedInterests = mergedInterests.concat(userDoc.interests);
-    
-    // If no skills/interests found, use defaults
-    if (mergedSkills.length === 0) {
-      mergedSkills = ['Web Development', 'Programming', 'Technology'];
-    }
-    if (mergedInterests.length === 0) {
-      mergedInterests = ['Learning', 'Career Growth', 'Community'];
-    }
-    
-    mergedSkills = [...new Set(mergedSkills.filter(Boolean))];
-    mergedInterests = [...new Set(mergedInterests.filter(Boolean))];
-
-    console.log('👤 Email:', email, '\n   Skills:', mergedSkills, '\n   Interests:', mergedInterests);
-
-    // Find groups where the user is a member
-    const groups = await Group.find({ 
-      members: primaryDoc._id 
-    }).populate('members', 'fullname email photoURL');
-
-    // Always ensure Kinap AI group exists and user is a member
-    let kinapAIGroup = await Group.findOne({ name: 'Kinap AI' });
-    if (!kinapAIGroup) {
-      kinapAIGroup = new Group({
+        id: 'kinap-ai',
         name: 'Kinap AI',
         description: 'Your AI assistant for programming help, study guidance, and career advice',
-        members: [primaryDoc._id],
-        admins: [primaryDoc._id],
-        createdBy: primaryDoc._id,
         avatar: 'https://ui-avatars.com/api/?name=Kinap+AI&background=8B5CF6&color=FFFFFF&bold=true&size=150',
-        type: 'ai'
+        members: [],
+        admins: [],
+        type: 'ai',
+        category: 'AI'
       });
-      await kinapAIGroup.save();
-    } else {
-      // Add user to Kinap AI group if not already a member
-      if (!kinapAIGroup.members.includes(primaryDoc._id)) {
-        kinapAIGroup.members.push(primaryDoc._id);
-        await kinapAIGroup.save();
-      }
     }
 
-    // Always include Kinap AI group
-    const allGroups = [...groups];
-    
-    // Check if Kinap AI is already in the groups list
-    const hasKinapAI = allGroups.some(group => group.name === 'Kinap AI');
-    if (!hasKinapAI) {
-      allGroups.unshift(kinapAIGroup); // Add Kinap AI at the beginning
-    }
-    
-    console.log('📊 Current groups for user:', allGroups.map(g => g.name));
-
-    // Always ensure user is added to groups based on their skills
-    if (mergedSkills.length > 0) {
-      console.log('🎯 Processing user skills:', mergedSkills);
-      
-      for (const skill of mergedSkills) {
-        let group = await Group.findOne({ name: skill });
-        
-        if (!group) {
-          // Create new group for this skill
-          console.log('📝 Creating new group for skill:', skill);
-          group = new Group({
-            name: skill,
-            description: `Community group for ${skill} enthusiasts`,
-            members: [primaryDoc._id],
-            admins: [primaryDoc._id],
-            createdBy: primaryDoc._id,
-            avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(skill)}&background=1B4F72&color=FFFFFF&bold=true&size=150`
-          });
-          await group.save();
-          
-          // Add to allGroups if not already there
-          if (!allGroups.some(g => g._id.equals(group._id))) {
-            allGroups.push(group);
-          }
-        } else {
-          // Add user to existing group if not already a member
-          if (!group.members.includes(primaryDoc._id)) {
-            console.log('👤 Adding user to existing group:', skill);
-            group.members.push(primaryDoc._id);
-            await group.save();
-          }
-          
-          // Add to allGroups if not already there
-          if (!allGroups.some(g => g._id.equals(group._id))) {
-            allGroups.push(group);
-          }
+    const group = await Group.findByPk(groupId, {
+      include: [
+        {
+          model: User,
+          as: 'creator',
+          attributes: ['id', 'displayName', 'avatar']
         }
-      }
+      ]
+    });
+
+    if (!group) {
+      return res.status(404).json({ error: 'Group not found' });
     }
 
-    // Always ensure user is added to groups based on their interests
-    if (mergedInterests.length > 0) {
-      console.log('🎯 Processing user interests:', mergedInterests);
-      
-      for (const interest of mergedInterests) {
-        let group = await Group.findOne({ name: interest });
-        
-        if (!group) {
-          // Create new group for this interest
-          console.log('📝 Creating new group for interest:', interest);
-          group = new Group({
-            name: interest,
-            description: `Community group for ${interest} enthusiasts`,
-            members: [primaryDoc._id],
-            admins: [primaryDoc._id],
-            createdBy: primaryDoc._id,
-            avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(interest)}&background=1B4F72&color=FFFFFF&bold=true&size=150`
-          });
-          await group.save();
-          
-          // Add to allGroups if not already there
-          if (!allGroups.some(g => g._id.equals(group._id))) {
-            allGroups.push(group);
-          }
-        } else {
-          // Add user to existing group if not already a member
-          if (!group.members.includes(primaryDoc._id)) {
-            console.log('👤 Adding user to existing interest group:', interest);
-            group.members.push(primaryDoc._id);
-            await group.save();
-          }
-          
-          // Add to allGroups if not already there
-          if (!allGroups.some(g => g._id.equals(group._id))) {
-            allGroups.push(group);
-          }
-        }
-      }
-    }
-
-    // Always return all groups (including skill-based ones we just processed)
-    const finalGroups = await Group.find({ 
-      _id: { $in: allGroups.map(g => g._id) }
-    }).populate('members', 'fullname email photoURL');
-    
-    console.log('📤 Returning', finalGroups.length, 'final groups for user:', email);
-    res.json({ groups: finalGroups });
+    res.json(group);
   } catch (err) {
-    console.error('Error fetching user groups:', err);
+    console.error('Error fetching group details:', err);
     res.status(500).json({ error: err.message });
   }
 });
 
-module.exports = router; 
+// Update group
+router.put('/:groupId', async (req, res) => {
+  try {
+    const { groupId } = req.params;
+    const updates = req.body;
+
+    const group = await Group.findByPk(groupId);
+    if (!group) {
+      return res.status(404).json({ error: 'Group not found' });
+    }
+
+    await group.update(updates);
+    res.json(group);
+  } catch (err) {
+    console.error('Error updating group:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Delete group
+router.delete('/:groupId', async (req, res) => {
+  try {
+    const { groupId } = req.params;
+
+    const group = await Group.findByPk(groupId);
+    if (!group) {
+      return res.status(404).json({ error: 'Group not found' });
+    }
+
+    await group.destroy();
+    res.json({ success: true, message: 'Group deleted successfully' });
+  } catch (err) {
+    console.error('Error deleting group:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Search groups
+router.get('/search/:term', async (req, res) => {
+  try {
+    const { term } = req.params;
+    const groups = await Group.searchGroups(term);
+    res.json(groups);
+  } catch (err) {
+    console.error('Error searching groups:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+module.exports = router;

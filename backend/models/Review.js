@@ -1,182 +1,140 @@
-const mongoose = require('mongoose');
+const { DataTypes } = require('sequelize');
+const { sequelize } = require('../config/database');
 
-const reviewSchema = new mongoose.Schema({
-  order: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Order',
-    required: true
+const Review = sequelize.define('Review', {
+  id: {
+    type: DataTypes.INTEGER,
+    primaryKey: true,
+    autoIncrement: true,
   },
-  gig: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Gig',
-    required: true
+  
+  orderId: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    references: {
+      model: 'orders',
+      key: 'id'
+    }
   },
-  reviewer: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
+  
+  gigId: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    references: {
+      model: 'gigs',
+      key: 'id'
+    }
   },
-  seller: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
+  
+  reviewerId: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    references: {
+      model: 'users',
+      key: 'id'
+    }
   },
+  
+  sellerId: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    references: {
+      model: 'users',
+      key: 'id'
+    }
+  },
+  
   rating: {
-    overall: {
-      type: Number,
-      required: true,
-      min: 1,
-      max: 5
-    },
-    communication: {
-      type: Number,
-      min: 1,
-      max: 5
-    },
-    quality: {
-      type: Number,
-      min: 1,
-      max: 5
-    },
-    value: {
-      type: Number,
-      min: 1,
-      max: 5
-    },
-    onTime: {
-      type: Number,
-      min: 1,
-      max: 5
-    }
-  },
-  title: {
-    type: String,
-    maxlength: 100,
-    trim: true
-  },
-  comment: {
-    type: String,
-    required: true,
-    maxlength: 1000,
-    trim: true
-  },
-  images: [{
-    url: String,
-    alt: String
-  }],
-  helpful: [{
-    user: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User'
-    },
-    helpful: {
-      type: Boolean,
-      default: true
-    }
-  }],
-  status: {
-    type: String,
-    enum: ['pending', 'approved', 'rejected'],
-    default: 'pending'
-  },
-  isVerified: {
-    type: Boolean,
-    default: false
-  },
-  response: {
-    seller: {
-      comment: String,
-      respondedAt: Date
-    }
-  }
-}, {
-  timestamps: true
-});
-
-// Indexes
-reviewSchema.index({ gig: 1, status: 1 });
-reviewSchema.index({ seller: 1, status: 1 });
-reviewSchema.index({ reviewer: 1 });
-reviewSchema.index({ order: 1 }, { unique: true });
-reviewSchema.index({ createdAt: -1 });
-
-// Virtual for average rating
-reviewSchema.virtual('averageRating').get(function() {
-  const ratings = [
-    this.rating.overall,
-    this.rating.communication,
-    this.rating.quality,
-    this.rating.value,
-    this.rating.onTime
-  ].filter(r => r);
-  
-  return ratings.length > 0 ? 
-    ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length : 
-    this.rating.overall;
-});
-
-// Method to mark as helpful
-reviewSchema.methods.markHelpful = function(userId, helpful = true) {
-  const existingIndex = this.helpful.findIndex(h => h.user.toString() === userId.toString());
-  
-  if (existingIndex >= 0) {
-    this.helpful[existingIndex].helpful = helpful;
-  } else {
-    this.helpful.push({ user: userId, helpful });
-  }
-  
-  return this.save();
-};
-
-// Static method to get reviews by gig
-reviewSchema.statics.getByGig = function(gigId, limit = 10, page = 1) {
-  return this.find({ gig: gigId, status: 'approved' })
-    .populate('reviewer', 'displayName avatar')
-    .populate('response.seller')
-    .sort({ createdAt: -1 })
-    .limit(limit)
-    .skip((page - 1) * limit);
-};
-
-// Static method to get reviews by seller
-reviewSchema.statics.getBySeller = function(sellerId, limit = 10, page = 1) {
-  return this.find({ seller: sellerId, status: 'approved' })
-    .populate('reviewer', 'displayName avatar')
-    .populate('gig', 'title images')
-    .sort({ createdAt: -1 })
-    .limit(limit)
-    .skip((page - 1) * limit);
-};
-
-// Static method to get average rating for seller
-reviewSchema.statics.getSellerRating = function(sellerId) {
-  return this.aggregate([
-    { $match: { seller: mongoose.Types.ObjectId(sellerId), status: 'approved' } },
-    {
-      $group: {
-        _id: null,
-        averageRating: { $avg: '$rating.overall' },
-        totalReviews: { $sum: 1 },
-        ratingDistribution: {
-          $push: '$rating.overall'
+    type: DataTypes.JSON,
+    allowNull: false,
+    defaultValue: {},
+    validate: {
+      isValidRating(value) {
+        if (value && typeof value === 'object') {
+          const overall = value.overall;
+          if (!overall || overall < 1 || overall > 5) {
+            throw new Error('Overall rating must be between 1 and 5');
+          }
         }
       }
     }
-  ]);
-};
-
-// Static method to get rating distribution
-reviewSchema.statics.getRatingDistribution = function(sellerId) {
-  return this.aggregate([
-    { $match: { seller: mongoose.Types.ObjectId(sellerId), status: 'approved' } },
+  },
+  
+  title: {
+    type: DataTypes.STRING(500),
+    allowNull: true,
+  },
+  
+  comment: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+  },
+  
+  images: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: [],
+  },
+  
+  isVerified: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false,
+  },
+  
+  isPublic: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: true,
+  },
+  
+  sellerResponse: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+  },
+  
+  sellerResponseDate: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
+  
+  helpfulVotes: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    defaultValue: 0,
+  },
+  
+  reportedCount: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    defaultValue: 0,
+  },
+  
+  isHidden: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false,
+  },
+}, {
+  tableName: 'reviews',
+  timestamps: true,
+  indexes: [
     {
-      $group: {
-        _id: '$rating.overall',
-        count: { $sum: 1 }
-      }
+      fields: ['gigId']
     },
-    { $sort: { _id: -1 } }
-  ]);
-};
+    {
+      fields: ['sellerId']
+    },
+    {
+      fields: ['reviewerId']
+    },
+    {
+      fields: ['orderId']
+    },
+    {
+      fields: ['isPublic', 'isHidden']
+    }
+  ]
+});
 
-module.exports = mongoose.model('Review', reviewSchema); 
+module.exports = Review;
