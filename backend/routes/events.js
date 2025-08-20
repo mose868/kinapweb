@@ -1,5 +1,7 @@
 const express = require('express');
 const Event = require('../models/Event');
+const { Op } = require('sequelize');
+const { sequelize } = require('../config/database');
 
 const router = express.Router();
 
@@ -37,23 +39,24 @@ router.get('/', async (req, res) => {
     if (search) {
       // Text search
       let query = {
-        status: { $in: ['Published', 'Registration Open'] },
+        status: { [Op.in]: ['Published', 'Registration Open'] },
         isPublished: true,
-        'schedule.startDate': { $gte: new Date() },
-        $text: { $search: search }
+        [Op.or]: [
+          { title: { [Op.like]: `%${search}%` } },
+          { description: { [Op.like]: `%${search}%` } }
+        ]
       };
       
       if (options.category) query.category = options.category;
       if (options.eventType) query.eventType = options.eventType;
-      if (options.isFree !== undefined) query['pricing.isFree'] = options.isFree;
-      if (options.city) query['location.city'] = options.city;
       if (options.featured) query.isFeatured = true;
       
-      events = await Event.find(query, { score: { $meta: 'textScore' } })
-        .sort({ score: { $meta: 'textScore' }, 'schedule.startDate': 1 })
-        .limit(parseInt(limit))
-        .skip(parseInt(skip))
-        .select('-attendees -reviews -internalNotes -moderationNotes -__v');
+      events = await Event.findAll({
+        where: query,
+        order: [['createdAt', 'DESC']],
+        limit: parseInt(limit),
+        offset: parseInt(skip)
+      });
     } else if (startDate && endDate) {
       // Date range search
       events = await Event.getEventsByDateRange(
@@ -63,24 +66,26 @@ router.get('/', async (req, res) => {
       );
     } else {
       // Regular upcoming events
-      events = await Event.getUpcomingEvents(options);
+      events = await Event.getUpcomingEvents(parseInt(limit));
     }
 
     // Calculate total count for pagination
     let totalQuery = {
-      status: { $in: ['Published', 'Registration Open'] },
-      isPublished: true,
-      'schedule.startDate': { $gte: new Date() }
+      status: { [Op.in]: ['Published', 'Registration Open'] },
+      isPublished: true
     };
     
     if (options.category) totalQuery.category = options.category;
     if (options.eventType) totalQuery.eventType = options.eventType;
-    if (options.isFree !== undefined) totalQuery['pricing.isFree'] = options.isFree;
-    if (options.city) totalQuery['location.city'] = options.city;
     if (options.featured) totalQuery.isFeatured = true;
-    if (search) totalQuery.$text = { $search: search };
+    if (search) {
+      totalQuery[Op.or] = [
+        { title: { [Op.like]: `%${search}%` } },
+        { description: { [Op.like]: `%${search}%` } }
+      ];
+    }
 
-    const total = await Event.countDocuments(totalQuery);
+    const total = await Event.count({ where: totalQuery });
 
     res.json({
       events,
@@ -374,40 +379,53 @@ router.post('/:id/reviews', async (req, res) => {
 // Get event categories and metadata (public)
 router.get('/meta/categories', async (req, res) => {
   try {
-    const categories = await Event.distinct('category', { 
-      status: { $in: ['Published', 'Registration Open'] },
-      isPublished: true
-    });
-
-    const eventTypes = await Event.distinct('eventType', { 
-      status: { $in: ['Published', 'Registration Open'] },
-      isPublished: true
-    });
-
-    const cities = await Event.distinct('location.city', { 
-      status: { $in: ['Published', 'Registration Open'] },
-      isPublished: true
-    });
-
-    const categoriesWithCounts = await Event.aggregate([
-      { 
-        $match: { 
-          status: { $in: ['Published', 'Registration Open'] },
-          isPublished: true,
-          'schedule.startDate': { $gte: new Date() }
-        } 
+    // Get unique categories
+    const categoriesResult = await Event.findAll({
+      where: {
+        status: { [Op.in]: ['Published', 'Registration Open'] },
+        isPublished: true
       },
-      { $group: { _id: '$category', count: { $sum: 1 } } },
-      { $sort: { _id: 1 } }
-    ]);
+      attributes: [[sequelize.fn('DISTINCT', sequelize.col('category')), 'category']],
+      raw: true
+    });
+    const categories = categoriesResult.map(item => item.category).filter(Boolean);
+
+    // Get unique event types
+    const eventTypesResult = await Event.findAll({
+      where: {
+        status: { [Op.in]: ['Published', 'Registration Open'] },
+        isPublished: true
+      },
+      attributes: [[sequelize.fn('DISTINCT', sequelize.col('eventType')), 'eventType']],
+      raw: true
+    });
+    const eventTypes = eventTypesResult.map(item => item.eventType).filter(Boolean);
+
+    // For now, return empty cities array since location.city is a JSON field
+    const cities = [];
+
+    // Get category counts
+    const categoriesWithCounts = await Event.findAll({
+      where: {
+        status: { [Op.in]: ['Published', 'Registration Open'] },
+        isPublished: true
+      },
+      attributes: [
+        'category',
+        [sequelize.fn('COUNT', sequelize.col('id')), 'count']
+      ],
+      group: ['category'],
+      order: [['category', 'ASC']],
+      raw: true
+    });
 
     res.json({ 
       categories,
       eventTypes,
       cities,
       categoriesWithCounts: categoriesWithCounts.map(cat => ({
-        category: cat._id,
-        count: cat.count
+        category: cat.category,
+        count: parseInt(cat.count)
       }))
     });
   } catch (error) {

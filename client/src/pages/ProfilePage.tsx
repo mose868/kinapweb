@@ -21,6 +21,8 @@ import {
   Mail,
 } from 'lucide-react';
 import axios from 'axios';
+import { calculateProfileCompletion as calculateProfileCompletionUtil } from '../utils/profileCompletion';
+import SuccessNotification from '../components/common/SuccessNotification';
 
 const BASEURL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
@@ -64,6 +66,17 @@ const ProfilePage = () => {
   const { user, isLoading } = useBetterAuthContext();
   const [isEditing, setIsEditing] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
+
+  // Success notification state
+  const [successNotification, setSuccessNotification] = useState({
+    isVisible: false,
+    title: '',
+    message: '',
+    type: 'success' as 'success' | 'complete',
+    completionPercentage: 0,
+    completedFields: [] as Array<{name: string; completed: boolean;}>,
+    hasInterests: false
+  });
 
   const [formData, setFormData] = useState<ClubMemberProfile>({
     displayName: user?.displayName || user?.name || '',
@@ -146,7 +159,7 @@ const ProfilePage = () => {
 
       try {
         const res = await axios.post(
-          `${BASEURL}/students/get-profile`,
+          `${BASEURL}/better-auth/get-profile`,
           { email: user.email },
           {
             headers: { 'Content-Type': 'application/json' },
@@ -201,39 +214,45 @@ const ProfilePage = () => {
 
   // Calculate profile completion percentage
   const calculateProfileCompletion = () => {
-    // Simplified completion check - only 4 essential fields
-    const essentialFields = ['bio', 'ajiraGoals', 'linkedinProfile'];
-
-    let completed = 0;
-    let total = essentialFields.length + 1; // +1 for required photo
-
-    // Check essential fields
-    essentialFields.forEach((field) => {
-      if (
-        formData[field as keyof ClubMemberProfile] &&
-        String(formData[field as keyof ClubMemberProfile]).trim() !== ''
-      ) {
-        // Special validation for LinkedIn
-        if (field === 'linkedinProfile') {
-          if (
-            validateLinkedInURL(
-              String(formData[field as keyof ClubMemberProfile])
-            )
-          ) {
-            completed++;
-          }
-        } else {
-          completed++;
-        }
-      }
+    // Debug: Log the actual data being passed to the utility
+    console.log('🔍 Debugging profile completion:');
+    console.log('FormData passed to utility:', formData);
+    
+    // Check each required field (updated to match new completion logic)
+    const requiredFields = [
+      'photoURL', 'bio', 'ajiraGoals', 'linkedinProfile'
+    ];
+    
+    const optionalFields = [
+      'displayName', 'email', 'interests'
+    ];
+    
+    console.log('📊 Required Field Analysis:');
+    requiredFields.forEach(field => {
+      const value = formData[field as keyof typeof formData];
+      const hasValue = value !== undefined && value !== null && value !== '';
+      const isArray = Array.isArray(value);
+      const arrayHasItems = isArray && value.length > 0;
+      
+      console.log(`${hasValue || arrayHasItems ? '✅' : '❌'} ${field}:`, 
+        isArray ? `[${value.length} items]` : (hasValue ? '✓' : '✗'));
     });
-
-    // Check required photo
-    if (formData.photoURL && formData.photoURL.trim() !== '') {
-      completed++;
-    }
-
-    return Math.round((completed / total) * 100);
+    
+    console.log('📊 Optional Field Analysis:');
+    optionalFields.forEach(field => {
+      const value = formData[field as keyof typeof formData];
+      const hasValue = value !== undefined && value !== null && value !== '';
+      const isArray = Array.isArray(value);
+      const arrayHasItems = isArray && value.length > 0;
+      
+      console.log(`${hasValue || arrayHasItems ? '✅' : '❌'} ${field}:`, 
+        isArray ? `[${value.length} items]` : (hasValue ? '✓' : '✗'));
+    });
+    
+    // Use the proper profile completion utility
+    const completion = calculateProfileCompletionUtil(formData);
+    console.log('📈 Calculated completion:', completion + '%');
+    return completion;
   };
 
   const profileCompletion = calculateProfileCompletion();
@@ -270,7 +289,7 @@ const ProfilePage = () => {
         try {
           console.log('Saving profile image to MongoDB...');
           await axios.post(
-            `${BASEURL}/students/update-profile`,
+            `${BASEURL}/better-auth/update-profile`,
             {
               email: user.email,
               photoURL: base64,
@@ -388,25 +407,60 @@ const ProfilePage = () => {
 
     try {
       await axios.post(
-        `${BASEURL}/students/update-profile`,
+        `${BASEURL}/better-auth/update-profile`,
         { email: user.email, ...updateData },
         { headers: { 'Content-Type': 'application/json' } }
       );
 
       console.log('Profile data saved successfully!');
-      alert('Profile updated and saved to database!');
+      
+      // Calculate final completion after save
+      const finalCompletion = calculateProfileCompletionUtil({
+        ...formData,
+        lastActive: new Date().toISOString(),
+      });
+      
       setFormData((prev) => ({
         ...prev,
         lastActive: new Date().toISOString(),
       }));
 
-      // Show detailed success message with timestamp
-      const timestamp = new Date().toLocaleString();
-      setTimeout(() => {
-        alert(
-          `✅ All profile data saved successfully at ${timestamp}!\n\n📊 Saved to MongoDB:\n• Bio\n• Goals\n• LinkedIn\n• Profile Photo\n• Skills (${formData.skills.length} skills)\n• Last Updated Time\n\n🎯 You've been automatically added to groups based on your skills!\nCheck the Community page to see your new groups.`
-        );
-      }, 500);
+      // Prepare fields data for notification
+      const completedFields = [
+        { name: 'Profile Photo', completed: !!formData.photoURL },
+        { name: 'Bio/About Me', completed: !!formData.bio },
+        { name: 'Digital Goals', completed: !!formData.ajiraGoals },
+        { name: 'LinkedIn Profile', completed: !!formData.linkedinProfile },
+        ...(formData.interests?.length ? [{ name: `Interests (${formData.interests.length} selected)`, completed: true }] : [])
+      ];
+
+      if (finalCompletion >= 100) {
+        // 100% completion celebration
+        setTimeout(() => {
+          setSuccessNotification({
+            isVisible: true,
+            title: 'Profile Complete! 🎉',
+            message: 'Congratulations! Your profile is now 100% complete and you have access to all Ajira Digital KiNaP features.',
+            type: 'complete',
+            completionPercentage: finalCompletion,
+            completedFields,
+            hasInterests: !!(formData.interests && formData.interests.length > 0)
+          });
+        }, 500);
+      } else {
+        // Regular success message
+        setTimeout(() => {
+          setSuccessNotification({
+            isVisible: true,
+            title: 'Profile Updated Successfully!',
+            message: `Your profile has been updated and saved. ${finalCompletion < 100 ? 'Complete the remaining fields to unlock all features!' : ''}`,
+            type: 'success',
+            completionPercentage: finalCompletion,
+            completedFields,
+            hasInterests: !!(formData.interests && formData.interests.length > 0)
+          });
+        }, 500);
+      }
 
       setIsEditing(false);
     } catch (error) {
@@ -540,7 +594,7 @@ const ProfilePage = () => {
                 </div>
               )}
               <img
-                src={formData.photoURL || '/images/default-avatar.png'}
+                src={formData.photoURL || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxjaXJjbGUgY3g9IjEwMCIgY3k9IjgwIiByPSIzMCIgZmlsbD0iIzlDQTNBRiIvPgo8cGF0aCBkPSJNMzAgMTgwQzMwIDE0MCA2MCAxMDAgMTAwIDEwMEMxNDAgMTAwIDE3MCAxNDAgMTcwIDE4MEgzMFoiIGZpbGw9IiM5Q0EzQUYiLz4KPC9zdmc+'}
                 alt={formData.displayName}
                 className={`w-24 sm:w-32 h-24 sm:h-32 rounded-full border-4 object-cover ${
                   formData.photoURL
@@ -659,17 +713,30 @@ const ProfilePage = () => {
           </div>
 
           {/* Profile Completion Alert */}
-          {profileCompletion < 100 && (
+          {profileCompletion >= 100 ? (
+            <div className='mb-6 bg-green-50 border border-green-200 rounded-lg p-4'>
+              <div className='flex items-start'>
+                <CheckCircle2 className='w-5 h-5 text-green-600 mr-3 mt-0.5' />
+                <div>
+                  <h3 className='text-xs sm:text-sm font-medium text-green-800'>
+                    🎉 Profile Complete! 🎉
+                  </h3>
+                  <p className='text-xs sm:text-sm text-green-700 mt-1'>
+                    Congratulations! Your profile is 100% complete. You now have access to all features including community groups, marketplace, and ambassador applications!
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : (
             <div className='mb-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4'>
               <div className='flex items-start'>
                 <AlertCircle className='w-5 h-5 text-yellow-600 mr-3 mt-0.5' />
                 <div>
                   <h3 className='text-xs sm:text-sm font-medium text-yellow-800'>
-                    5 required fields to complete!
+                    Profile {profileCompletion}% complete - missing fields detected
                   </h3>
                   <p className='text-xs sm:text-sm text-yellow-700 mt-1'>
-                    Your profile is {profileCompletion}% complete. Required:
-                    bio, goals, valid LinkedIn URL, and profile photo.
+                    Complete your profile to unlock all features. Check the console for detailed field analysis.
                   </p>
                 </div>
               </div>
@@ -743,12 +810,31 @@ const ProfilePage = () => {
               {/* Simple Profile Completion */}
               <div className='mb-6'>
                 <h3 className='text-lg font-medium text-gray-900 mb-4'>
-                  Complete Your Profile
+                  Complete Your Profile ({profileCompletion}% complete)
                 </h3>
                 <p className='text-sm text-gray-600 mb-4'>
-                  Just 4 simple fields to complete your profile and unlock all
-                  features!
+                  Fill out these {profileCompletion < 100 ? 'remaining ' : ''}fields to complete your profile:
                 </p>
+                <div className='bg-blue-50 p-4 rounded-lg mb-4'>
+                  <h4 className='font-medium text-blue-900 mb-2'>Required Fields:</h4>
+                  <ul className='text-sm text-blue-800 space-y-1'>
+                    <li className={`flex items-center ${formData.photoURL ? 'text-green-600' : ''}`}>
+                      {formData.photoURL ? '✅' : '📷'} Profile Photo
+                    </li>
+                    <li className={`flex items-center ${formData.bio ? 'text-green-600' : ''}`}>
+                      {formData.bio ? '✅' : '✍️'} About Me/Bio
+                    </li>
+                    <li className={`flex items-center ${formData.ajiraGoals ? 'text-green-600' : ''}`}>
+                      {formData.ajiraGoals ? '✅' : '🎯'} Your Digital Goals
+                    </li>
+                    <li className={`flex items-center ${formData.linkedinProfile ? 'text-green-600' : ''}`}>
+                      {formData.linkedinProfile ? '✅' : '💼'} LinkedIn Profile
+                    </li>
+                  </ul>
+                  {profileCompletion >= 100 && (
+                    <p className='text-green-700 font-medium mt-2'>🎉 Profile Complete!</p>
+                  )}
+                </div>
               </div>
 
               {/* Bio */}
@@ -1271,6 +1357,18 @@ const ProfilePage = () => {
           )}
         </div>
       </div>
+
+      {/* Success Notification */}
+      <SuccessNotification
+        isVisible={successNotification.isVisible}
+        onClose={() => setSuccessNotification(prev => ({ ...prev, isVisible: false }))}
+        title={successNotification.title}
+        message={successNotification.message}
+        type={successNotification.type}
+        completionPercentage={successNotification.completionPercentage}
+        completedFields={successNotification.completedFields}
+        hasInterests={successNotification.hasInterests}
+      />
     </div>
   );
 };

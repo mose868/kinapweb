@@ -1,5 +1,6 @@
 const express = require('express');
 const FAQ = require('../models/FAQ');
+const { Op } = require('sequelize');
 
 const router = express.Router();
 
@@ -29,21 +30,25 @@ router.get('/', async (req, res) => {
     }
 
     if (search) {
-      query.$text = { $search: search };
+      query[Op.or] = [
+        { question: { [Op.like]: `%${search}%` } },
+        { answer: { [Op.like]: `%${search}%` } }
+      ];
     }
 
-    const faqs = await FAQ.find(query)
-      .sort({ 
-        priority: -1, 
-        helpfulCount: -1, 
-        createdAt: -1 
-      })
-      .limit(parseInt(limit))
-      .skip(parseInt(skip))
-      .populate('relatedFAQs', 'question category')
-      .select('-lastUpdatedBy -__v');
+    const faqs = await FAQ.findAll({
+      where: query,
+      order: [
+        ['priority', 'DESC'],
+        ['helpfulCount', 'DESC'],
+        ['createdAt', 'DESC']
+      ],
+      limit: parseInt(limit),
+      offset: parseInt(skip),
+      attributes: { exclude: ['lastUpdatedBy'] }
+    });
 
-    const total = await FAQ.countDocuments(query);
+    const total = await FAQ.count({ where: query });
 
     res.json({
       faqs,

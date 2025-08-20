@@ -6,7 +6,10 @@ const router = express.Router();
 // Get About Us content (public)
 router.get('/', async (req, res) => {
   try {
-    const aboutUs = await AboutUs.findOne({ isActive: true }).sort({ createdAt: -1 });
+    const aboutUs = await AboutUs.findOne({ 
+      where: { isActive: true },
+      order: [['createdAt', 'DESC']]
+    });
     
     if (!aboutUs) {
       // Return default content if none exists
@@ -74,7 +77,7 @@ router.post('/', async (req, res) => {
     }
 
     // Deactivate previous entries
-    await AboutUs.updateMany({}, { isActive: false });
+    await AboutUs.update({ isActive: false }, { where: {} });
 
     // Create new entry
     const aboutUs = await AboutUs.create({
@@ -109,15 +112,13 @@ router.put('/:id', async (req, res) => {
     const { id } = req.params;
     const updateData = req.body;
 
-    const aboutUs = await AboutUs.findByIdAndUpdate(
-      id,
-      { ...updateData, updatedAt: new Date() },
-      { new: true }
-    );
+    const aboutUs = await AboutUs.findByPk(id);
 
     if (!aboutUs) {
       return res.status(404).json({ message: 'About Us content not found' });
     }
+
+    await aboutUs.update({ ...updateData, updatedAt: new Date() });
 
     res.json({ 
       message: 'About Us content updated successfully', 
@@ -134,11 +135,13 @@ router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
 
-    const aboutUs = await AboutUs.findByIdAndDelete(id);
+    const aboutUs = await AboutUs.findByPk(id);
     
     if (!aboutUs) {
       return res.status(404).json({ message: 'About Us content not found' });
     }
+
+    await aboutUs.destroy();
 
     res.json({ message: 'About Us content deleted successfully' });
   } catch (error) {
@@ -156,20 +159,16 @@ router.post('/upload-images', async (req, res) => {
       return res.status(400).json({ message: 'About Us ID and images are required' });
     }
 
-    const aboutUs = await AboutUs.findByIdAndUpdate(
-      aboutUsId,
-      { 
-        $set: { 
-          'images': images,
-          updatedAt: new Date()
-        }
-      },
-      { new: true }
-    );
+    const aboutUs = await AboutUs.findByPk(aboutUsId);
 
     if (!aboutUs) {
       return res.status(404).json({ message: 'About Us content not found' });
     }
+
+    await aboutUs.update({ 
+      images: images,
+      updatedAt: new Date()
+    });
 
     res.json({ 
       message: 'Images uploaded successfully', 
@@ -186,20 +185,18 @@ router.patch('/stats', async (req, res) => {
   try {
     const { stats } = req.body;
     
-    const aboutUs = await AboutUs.findOneAndUpdate(
-      { isActive: true },
-      { 
-        $set: { 
-          'stats': stats,
-          updatedAt: new Date()
-        }
-      },
-      { new: true }
-    );
+    const aboutUs = await AboutUs.findOne({
+      where: { isActive: true }
+    });
 
     if (!aboutUs) {
       return res.status(404).json({ message: 'About Us content not found' });
     }
+
+    await aboutUs.update({ 
+      stats: stats,
+      updatedAt: new Date()
+    });
 
     res.json({ 
       message: 'Stats updated successfully', 

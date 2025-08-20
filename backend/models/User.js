@@ -29,7 +29,7 @@ const User = sequelize.define('User', {
     allowNull: true,
   },
   avatar: {
-    type: DataTypes.TEXT,
+    type: DataTypes.TEXT('long'),
     allowNull: true,
   },
   phoneNumber: {
@@ -161,6 +161,25 @@ const User = sequelize.define('User', {
   },
   sessionExpiresAt: {
     type: DataTypes.DATE,
+    allowNull: true,
+  },
+  
+  // Additional profile fields
+  idNumber: {
+    type: DataTypes.STRING(50),
+    allowNull: true,
+  },
+  ajiraGoals: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+  },
+  interests: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: [],
+  },
+  linkedinProfile: {
+    type: DataTypes.STRING(255),
     allowNull: true,
   },
 }, {

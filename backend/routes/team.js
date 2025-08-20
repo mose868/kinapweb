@@ -1,5 +1,6 @@
 const express = require('express');
 const Team = require('../models/Team');
+const { sequelize } = require('../config/database');
 
 const router = express.Router();
 
@@ -18,9 +19,14 @@ router.get('/', async (req, res) => {
       filter.isLeadership = true;
     }
     
-    const team = await Team.find(filter)
-      .sort({ displayOrder: 1, createdAt: -1 })
-      .select('-lastUpdatedBy');
+    const team = await Team.findAll({
+      where: filter,
+      order: [
+        ['displayOrder', 'ASC'],
+        ['createdAt', 'DESC']
+      ],
+      attributes: { exclude: ['lastUpdatedBy'] }
+    });
 
     res.json(team);
   } catch (error) {
@@ -34,8 +40,9 @@ router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
     
-    const teamMember = await Team.findById(id)
-      .select('-lastUpdatedBy');
+    const teamMember = await Team.findByPk(id, {
+      attributes: { exclude: ['lastUpdatedBy'] }
+    });
 
     if (!teamMember) {
       return res.status(404).json({ message: 'Team member not found' });
@@ -118,15 +125,13 @@ router.put('/:id', async (req, res) => {
     const { id } = req.params;
     const updateData = req.body;
 
-    const teamMember = await Team.findByIdAndUpdate(
-      id,
-      { ...updateData, updatedAt: new Date() },
-      { new: true, runValidators: true }
-    );
+    const teamMember = await Team.findByPk(id);
 
     if (!teamMember) {
       return res.status(404).json({ message: 'Team member not found' });
     }
+
+    await teamMember.update({ ...updateData, updatedAt: new Date() });
 
     res.json({ 
       message: 'Team member updated successfully', 
@@ -143,11 +148,13 @@ router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
 
-    const teamMember = await Team.findByIdAndDelete(id);
+    const teamMember = await Team.findByPk(id);
     
     if (!teamMember) {
       return res.status(404).json({ message: 'Team member not found' });
     }
+
+    await teamMember.destroy();
 
     res.json({ message: 'Team member deleted successfully' });
   } catch (error) {
@@ -161,15 +168,16 @@ router.patch('/:id/deactivate', async (req, res) => {
   try {
     const { id } = req.params;
 
-    const teamMember = await Team.findByIdAndUpdate(
-      id,
-      { isActive: false, updatedAt: new Date() },
-      { new: true }
-    );
+    const teamMember = await Team.findByPk(id);
 
     if (!teamMember) {
       return res.status(404).json({ message: 'Team member not found' });
     }
+
+    await teamMember.update({ 
+      isActive: false, 
+      updatedAt: new Date() 
+    });
 
     res.json({ 
       message: 'Team member deactivated successfully', 
@@ -186,15 +194,16 @@ router.patch('/:id/activate', async (req, res) => {
   try {
     const { id } = req.params;
 
-    const teamMember = await Team.findByIdAndUpdate(
-      id,
-      { isActive: true, updatedAt: new Date() },
-      { new: true }
-    );
+    const teamMember = await Team.findByPk(id);
 
     if (!teamMember) {
       return res.status(404).json({ message: 'Team member not found' });
     }
+
+    await teamMember.update({ 
+      isActive: true, 
+      updatedAt: new Date() 
+    });
 
     res.json({ 
       message: 'Team member activated successfully', 
@@ -216,15 +225,16 @@ router.patch('/:id/image', async (req, res) => {
       return res.status(400).json({ message: 'Image data is required' });
     }
 
-    const teamMember = await Team.findByIdAndUpdate(
-      id,
-      { image, updatedAt: new Date() },
-      { new: true }
-    );
+    const teamMember = await Team.findByPk(id);
 
     if (!teamMember) {
       return res.status(404).json({ message: 'Team member not found' });
     }
+
+    await teamMember.update({ 
+      image, 
+      updatedAt: new Date() 
+    });
 
     res.json({ 
       message: 'Team member image updated successfully', 
@@ -239,21 +249,26 @@ router.patch('/:id/image', async (req, res) => {
 // Get team statistics
 router.get('/stats/overview', async (req, res) => {
   try {
-    const totalMembers = await Team.countDocuments({ isActive: true });
-    const founders = await Team.countDocuments({ isActive: true, isFounder: true });
-    const leadership = await Team.countDocuments({ isActive: true, isLeadership: true });
-    
-    const departmentStats = await Team.aggregate([
-      { $match: { isActive: true } },
-      { $group: { _id: '$department', count: { $sum: 1 } } },
-      { $sort: { count: -1 } }
+    const [totalMembers, founders, leadership] = await Promise.all([
+      Team.count({ where: { isActive: true } }),
+      Team.count({ where: { isActive: true, isFounder: true } }),
+      Team.count({ where: { isActive: true, isLeadership: true } })
     ]);
+    
+    // Get department statistics
+    const [results] = await sequelize.query(`
+      SELECT department, COUNT(*) as count 
+      FROM teams 
+      WHERE isActive = true AND department IS NOT NULL 
+      GROUP BY department 
+      ORDER BY count DESC
+    `);
 
     res.json({
       totalMembers,
       founders,
       leadership,
-      departments: departmentStats
+      departments: results
     });
   } catch (error) {
     console.error('Get team stats error:', error);

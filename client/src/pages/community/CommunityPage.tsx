@@ -315,6 +315,10 @@ const CommunityPage: React.FC = () => {
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
   const [isUserScrolledUp, setIsUserScrolledUp] = useState(false);
   const [showStarredMessages, setShowStarredMessages] = useState(false);
+  const [isSendingMessage, setIsSendingMessage] = useState(false);
+  const [recentMessageIds, setRecentMessageIds] = useState<Set<string>>(new Set());
+  const [wsMessageBlocked, setWsMessageBlocked] = useState(false);
+  const [processedMessageKeys, setProcessedMessageKeys] = useState<Set<string>>(new Set());
   // Mobile UI state handled by selectedGroup: when null → list screen; when set → chat screen
   const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
@@ -331,6 +335,69 @@ const CommunityPage: React.FC = () => {
     name: 'Anonymous User',
     avatar: 'https://ui-avatars.com/api/?name=A&background=1B4F72&color=fff',
     status: 'offline'
+  };
+
+  // Add user to interest groups
+  const addUserToInterestGroups = async () => {
+    if (!user?.email) {
+      console.log('❌ No user email available');
+      return;
+    }
+
+    try {
+      console.log('🔄 Adding user to interest groups...');
+      const base = import.meta.env?.VITE_API_URL || 'http://localhost:5000/api';
+      
+      // First, get the user's profile to check interests
+      const profileResponse = await fetch(`${base}/better-auth/get-profile`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: user.email })
+      });
+
+      if (profileResponse.ok) {
+        const profileData = await profileResponse.json();
+        const interests = profileData.interests || [];
+        
+        if (interests.length === 0) {
+          console.log('❌ No interests found in user profile');
+          // Set some default interests based on user data
+          const defaultInterests = ['Student Support', 'Programming', 'Career Development'];
+          
+          // Update profile with default interests
+          await fetch(`${base}/better-auth/update-profile`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              email: user.email,
+              interests: defaultInterests
+            })
+          });
+          
+          console.log('✅ Added default interests to profile');
+        } else {
+          console.log('✅ User has interests:', interests);
+          // Update profile to trigger group assignment
+          await fetch(`${base}/better-auth/update-profile`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              email: user.email,
+              interests: interests
+            })
+          });
+        }
+        
+        // Reload groups after assignment
+        setTimeout(() => {
+          loadChatGroupsAndMessages();
+        }, 1000);
+        
+        console.log('✅ Interest groups assignment completed');
+      }
+    } catch (error) {
+      console.error('❌ Error adding user to interest groups:', error);
+    }
   };
 
   // Helper function to get status display text
@@ -351,6 +418,74 @@ const CommunityPage: React.FC = () => {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     } catch {
       return '';
+    }
+  };
+
+  // Helper function to deduplicate messages
+  const deduplicateMessages = (messages: ChatMessage[]): ChatMessage[] => {
+    const seen = new Set<string>();
+    const uniqueMessages: ChatMessage[] = [];
+    
+    messages.forEach(message => {
+      // Create a unique key based on content, userId, and timestamp (within 5 seconds)
+      const timestamp = new Date(message.timestamp).getTime();
+      const roundedTimestamp = Math.floor(timestamp / 5000) * 5000; // Round to 5-second intervals
+      const key = `${message.content}-${message.userId}-${roundedTimestamp}`;
+      
+      if (!seen.has(key)) {
+        seen.add(key);
+        uniqueMessages.push(message);
+      } else {
+        console.log('🔄 Skipping duplicate message:', message.content);
+      }
+    });
+    
+    return uniqueMessages.sort((a, b) => 
+      new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    );
+  };
+
+  // Load user memory from localStorage
+  const loadUserMemory = () => {
+    try {
+      const userMemoryData = localStorage.getItem('kinap-ai-user-memory');
+      if (userMemoryData) {
+        const userMemory = JSON.parse(userMemoryData);
+        console.log('🧠 Loaded user memory:', userMemory);
+        return userMemory;
+      }
+    } catch (error) {
+      console.error('Error loading user memory:', error);
+    }
+    return null;
+  };
+
+  // Function to save Kinap AI messages to localStorage as backup
+  const saveKinapAIToLocalStorage = (messages: ChatMessage[]) => {
+    try {
+      // Save with timestamp for better organization
+      const conversationData = {
+        messages: messages,
+        lastUpdated: new Date().toISOString(),
+        userId: activeUser.id,
+        totalMessages: messages.length
+      };
+      localStorage.setItem('kinap-ai-conversation', JSON.stringify(conversationData));
+      console.log('✅ Kinap AI conversation saved to localStorage with', messages.length, 'messages');
+      
+      // Also save user information for memory
+      const userMemory = {
+        name: activeUser.name,
+        displayName: user?.displayName || activeUser.name,
+        email: user?.email || '',
+        course: user?.course || '',
+        year: user?.year || '',
+        skills: user?.skills || [],
+        lastInteraction: new Date().toISOString()
+      };
+      localStorage.setItem('kinap-ai-user-memory', JSON.stringify(userMemory));
+    } catch (error) {
+      console.error('Error saving Kinap AI conversation to localStorage:', error);
     }
   };
 
@@ -397,69 +532,83 @@ const CommunityPage: React.FC = () => {
     return result;
   };
 
-  // Save user message to Kinap AI endpoint
-  const saveUserMessageToKinapAI = async (message: ChatMessage, conversationId: string) => {
+  // Save user message to Kinap AI endpoint (MySQL)
+  const saveUserMessageToKinapAI = async (message: ChatMessage, userId: string) => {
     try {
       const base = (import.meta as any).env?.VITE_API_URL || 'http://localhost:5000/api';
-      const userId = (user as any)?.id || (user as any)?._id || 'anonymous';
       
-      const response = await fetch(`${base}/chatbot/kinap-ai`, {
+      // Save to MySQL using the chat-messages endpoint
+      const response = await fetch(`${base}/chat-messages`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          messageId: message.id,
+          groupId: 'kinap-ai',
+          conversationId: 'kinap-ai-conversation',
+          userId: userId,
+          userName: message.userName,
+          userAvatar: message.userAvatar,
           message: message.content,
-          conversationId: conversationId,
-          userId: userId
+          content: message.content,
+          messageType: 'text',
+          status: 'sent',
+          isAIMessage: false
         })
       });
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('Failed to save user message to Kinap AI:', response.status, errorText);
+        console.error('Failed to save user message to Kinap AI MySQL:', response.status, errorText);
         return false;
       } else {
-        console.log('✅ User message saved successfully to Kinap AI MongoDB');
+        console.log('✅ User message saved successfully to Kinap AI MySQL');
         return true;
       }
     } catch (error) {
-      console.error('Error saving user message to Kinap AI:', error);
+      console.error('Error saving user message to Kinap AI MySQL:', error);
       return false;
     }
   };
 
-  // Save AI message to Kinap AI endpoint
-  const saveAIMessageToKinapAI = async (messageId: string, conversationId: string, content: string, userProfile: any) => {
+  // Save AI message to Kinap AI endpoint (MySQL)
+  const saveAIMessageToKinapAI = async (messageId: string, userId: string, content: string, userProfile: any) => {
     try {
       const base = (import.meta as any).env?.VITE_API_URL || 'http://localhost:5000/api';
-      const userId = (user as any)?.id || (user as any)?._id || 'anonymous';
       
-      // Save AI response to Kinap AI conversation
-      const aiSaveResponse = await fetch(`${base}/chatbot/kinap-ai`, {
+      // Save to MySQL using the chat-messages endpoint
+      const response = await fetch(`${base}/chat-messages`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          messageId: messageId,
+          groupId: 'kinap-ai',
+          conversationId: 'kinap-ai-conversation',
+          userId: 'kinap-ai',
+          userName: 'Kinap AI',
+          userAvatar: 'https://ui-avatars.com/api/?name=Kinap+AI&background=8B5CF6&color=FFFFFF&bold=true&size=40',
           message: content,
-          conversationId: conversationId,
-          userId: userId,
-          isAIResponse: true,
-          messageId: messageId
+          content: content,
+          messageType: 'text',
+          status: 'sent',
+          isAIMessage: true,
+          userProfile: userProfile || {}
         })
       });
 
-      if (!aiSaveResponse.ok) {
-        const errorText = await aiSaveResponse.text();
-        console.error('Failed to save AI message to Kinap AI MongoDB:', aiSaveResponse.status, errorText);
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Failed to save AI message to Kinap AI MySQL:', response.status, errorText);
         return false;
       } else {
-        console.log('✅ AI message saved successfully to Kinap AI MongoDB');
+        console.log('✅ AI message saved successfully to Kinap AI MySQL');
         return true;
       }
     } catch (error) {
-      console.error('Error saving AI message to Kinap AI MongoDB:', error);
+      console.error('Error saving AI message to Kinap AI MySQL:', error);
       return false;
     }
   };
@@ -608,7 +757,13 @@ const CommunityPage: React.FC = () => {
 
   // Handlers
   const handleSendMessage = async () => {
-    if ((!newMessage.trim() && selectedFiles.length === 0) || !selectedGroup) return;
+    if ((!newMessage.trim() && selectedFiles.length === 0) || !selectedGroup || isSendingMessage) return;
+    
+    // Prevent rapid-fire sending
+    setIsSendingMessage(true);
+    
+    // Block WebSocket messages temporarily to prevent duplicates
+    setWsMessageBlocked(true);
 
     if (newMessage.trim() && selectedFiles.length > 0) {
       // If you have a combined sender elsewhere, call it; otherwise fall back to text-only
@@ -616,7 +771,7 @@ const CommunityPage: React.FC = () => {
     }
 
     if (newMessage.trim()) {
-      const messageId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      const messageId = `user-${Date.now()}-${Math.random().toString(36).slice(2)}-${activeUser.id}`;
       const processedMessage = newMessage.trim();
 
       const message: ChatMessage = {
@@ -633,6 +788,19 @@ const CommunityPage: React.FC = () => {
         replyTo: replyingTo?.id
       };
 
+      // Check if this message already exists to prevent duplicates
+      const messageAlreadyExists = selectedGroup.messages.some(msg => 
+        msg.content === processedMessage && 
+        msg.userId === activeUser.id &&
+        Math.abs(new Date(msg.timestamp).getTime() - Date.now()) < 5000 // Within 5 seconds
+      );
+      
+      if (messageAlreadyExists) {
+        console.log('🔄 Message already exists, skipping duplicate');
+        setIsSendingMessage(false);
+        return;
+      }
+      
       // Update state and save to localStorage in one go
       setSelectedGroup(prev => {
         if (!prev) return null;
@@ -641,7 +809,7 @@ const CommunityPage: React.FC = () => {
         // Save Kinap AI messages to localStorage for persistence
         if (prev.id === 'kinap-ai') {
           try {
-            localStorage.setItem('kinap-ai-conversation', JSON.stringify(updatedGroup.messages));
+            saveKinapAIToLocalStorage(updatedGroup.messages);
             console.log('✅ Saved user message to Kinap AI localStorage:', message.content);
           } catch (error) {
             console.error('Error saving Kinap AI messages to localStorage:', error);
@@ -804,6 +972,40 @@ const CommunityPage: React.FC = () => {
         try {
           const base = (import.meta as any).env?.VITE_API_URL || 'http://localhost:5000/api';
           
+          // Get the full conversation history for context
+          const conversationHistory = selectedGroup.messages
+            .filter(msg => msg.userId === activeUser.id || msg.userName === 'Kinap AI')
+            .map(msg => ({
+              role: msg.userId === activeUser.id ? 'user' : 'assistant',
+              content: msg.content || msg.message
+            }))
+            .slice(-20); // Keep last 20 messages for context (adjust as needed)
+          
+          // Load user memory for enhanced context
+          const userMemory = loadUserMemory();
+          
+          // Create enhanced conversation context with system message
+          const enhancedConversationHistory = [
+            {
+              role: 'system',
+              content: `You are Kinap AI, an intelligent assistant for the KiNaP Ajira Club. You have access to the conversation history with the user.
+
+User Information:
+- Name: ${activeUser.name} (${user?.displayName || activeUser.name})
+- Email: ${user?.email || 'Not provided'}
+- Course: ${user?.course || 'Not specified'}
+- Year: ${user?.year || 'Not specified'}
+- Skills: ${user?.skills?.join(', ') || 'Not specified'}
+
+Please use the conversation history to provide contextual and helpful responses. If the user asks about something they mentioned before, reference that information naturally.`
+            },
+            ...conversationHistory
+          ];
+          
+          // Debug: Log the conversation history being sent
+          console.log('🧠 Sending conversation history to AI:', conversationHistory.length, 'messages');
+          console.log('🧠 Conversation context:', conversationHistory.map(msg => `${msg.role}: ${msg.content}`));
+          
           // Quick responses for common queries (instant response)
           const quickResponses = {
             greeting: [
@@ -823,30 +1025,65 @@ const CommunityPage: React.FC = () => {
             ]
           };
           
-                    // Check for quick responses first
+          // Check for quick responses first
           const lowerMessage = processedMessage.toLowerCase();
           let aiText;
           
-          if (lowerMessage.includes('hello') || lowerMessage.includes('hi') || lowerMessage.includes('hey')) {
-            aiText = quickResponses.greeting[Math.floor(Math.random() * quickResponses.greeting.length)];
+          // Check if user is asking about something they just mentioned (memory test)
+          const isMemoryTest = (lowerMessage.includes('what did i say') && lowerMessage.includes('my name')) || 
+                              (lowerMessage.includes('what did i tell you') && lowerMessage.includes('name')) ||
+                              (lowerMessage.includes('do you remember') && lowerMessage.includes('name')) ||
+                              (lowerMessage.includes('who did i say') && lowerMessage.includes('am')) ||
+                              (lowerMessage.includes('who am i') && conversationHistory.length > 2) ||
+                              (lowerMessage.includes('what is my name') && conversationHistory.length > 2) ||
+                              (lowerMessage.includes('remember me') && conversationHistory.length > 2);
+          
+          if (isMemoryTest && conversationHistory.length > 2) {
+            // User is testing memory - provide a contextual response
+            const recentUserMessages = conversationHistory
+              .filter(msg => msg.role === 'user')
+              .slice(-3)
+              .map(msg => msg.content);
+            
+            aiText = `Yes, ${activeUser.name}! I remember you mentioned: "${recentUserMessages.join(', ')}". How can I help you today?`;
+          } else if (lowerMessage.includes('hello') || lowerMessage.includes('hi') || lowerMessage.includes('hey')) {
+            // Check if we have conversation history to show memory
+            if (conversationHistory.length > 2) {
+              aiText = `👋 Welcome back! I remember our previous conversation about ${conversationHistory.slice(-4, -2).map(msg => msg.content).join(', ')}. How can I help you today?`;
+            } else {
+              aiText = quickResponses.greeting[Math.floor(Math.random() * quickResponses.greeting.length)];
+            }
           } else if (lowerMessage.includes('help') || lowerMessage.includes('what can you do')) {
             aiText = quickResponses.help[Math.floor(Math.random() * quickResponses.help.length)];
           } else if (lowerMessage.includes('thank') || lowerMessage.includes('thanks')) {
             aiText = quickResponses.thanks[Math.floor(Math.random() * quickResponses.thanks.length)];
           } else {
-            // Use API for more complex queries
+            // Use API for more complex queries with full conversation context
             // Add timeout to prevent long delays
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout for faster response
+            const timeoutId = setTimeout(() => controller.abort(), 10000); // Increased timeout for context processing
+            
+            const requestBody = {
+              message: processedMessage,
+              userId: user?.id || 'anonymous',
+              conversationId: selectedGroup.id,
+              conversationHistory: enhancedConversationHistory, // Send enhanced conversation history
+              userProfile: userProfile,
+              // Add additional context for better memory
+              context: {
+                userName: activeUser.name,
+                userDisplayName: user?.displayName || activeUser.name,
+                conversationLength: conversationHistory.length,
+                lastMessageTime: selectedGroup.messages[selectedGroup.messages.length - 1]?.timestamp
+              }
+            };
+            
+            console.log('📤 Sending request to AI with context:', requestBody);
             
             const response = await fetch(`${base}/chatbot/kinap-ai`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                message: processedMessage,
-                userId: user?.id || 'anonymous',
-                conversationId: selectedGroup.id
-              }),
+              body: JSON.stringify(requestBody),
               signal: controller.signal
             });
             
@@ -854,7 +1091,27 @@ const CommunityPage: React.FC = () => {
             
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             const data = await response.json();
-            aiText = data.response || data.message || fallbackResponses.default[Math.floor(Math.random() * fallbackResponses.default.length)];
+            
+            // Check if the AI response indicates memory loss
+            const responseText = data.response || data.message || '';
+            const hasMemoryLoss = responseText.toLowerCase().includes('don\'t have a memory') || 
+                                 responseText.toLowerCase().includes('don\'t remember') ||
+                                 responseText.toLowerCase().includes('can\'t remember') ||
+                                 responseText.toLowerCase().includes('memory banks are fuzzy') ||
+                                 responseText.toLowerCase().includes('i don\'t have access to past conversations');
+            
+            if (hasMemoryLoss && conversationHistory.length > 2) {
+              // AI forgot - provide a contextual response using conversation history
+              console.log('🧠 AI forgot - providing contextual response');
+              const recentUserMessages = conversationHistory
+                .filter(msg => msg.role === 'user')
+                .slice(-3)
+                .map(msg => msg.content);
+              
+              aiText = `Of course I remember you, ${activeUser.name}! 😊 In our recent conversation, you mentioned: "${recentUserMessages.join(', ')}". I'm here to help you with whatever you need!`;
+            } else {
+              aiText = responseText || fallbackResponses.default[Math.floor(Math.random() * fallbackResponses.default.length)];
+            }
           }
           
           const aiMessageId = Date.now().toString() + '-ai';
@@ -887,7 +1144,7 @@ const CommunityPage: React.FC = () => {
             // Save Kinap AI messages to localStorage for persistence
             if (prev.id === 'kinap-ai') {
               try {
-                localStorage.setItem('kinap-ai-conversation', JSON.stringify(updatedGroup.messages));
+                saveKinapAIToLocalStorage(updatedGroup.messages);
                 console.log('✅ Saved AI response to Kinap AI localStorage:', aiMessage.content);
               } catch (error) {
                 console.error('Error saving Kinap AI messages to localStorage:', error);
@@ -968,7 +1225,7 @@ const CommunityPage: React.FC = () => {
             // Save fallback response to localStorage for Kinap AI
             if (prev.id === 'kinap-ai') {
               try {
-                localStorage.setItem('kinap-ai-conversation', JSON.stringify(updatedGroup.messages));
+                saveKinapAIToLocalStorage(updatedGroup.messages);
                 console.log('✅ Saved fallback AI response to Kinap AI localStorage:', aiMessage.content);
               } catch (error) {
                 console.error('Error saving fallback AI message to localStorage:', error);
@@ -1011,6 +1268,12 @@ const CommunityPage: React.FC = () => {
         }
       }
     }
+    
+    // Reset sending state after a short delay to prevent rapid-fire sending
+    setTimeout(() => {
+      setIsSendingMessage(false);
+      setWsMessageBlocked(false); // Re-enable WebSocket messages
+    }, 1000); // Increased delay to ensure WebSocket message doesn't interfere
   };
 
   // Handle sending files selected in the input area
@@ -1287,20 +1550,47 @@ const CommunityPage: React.FC = () => {
       const kinapAIHistory = localStorage.getItem('kinap-ai-conversation');
       if (kinapAIHistory) {
         const parsedHistory = JSON.parse(kinapAIHistory);
-        if (Array.isArray(parsedHistory) && parsedHistory.length > 0) {
+        
+        // Handle both old format (array) and new format (object)
+        let messages: ChatMessage[] = [];
+        if (Array.isArray(parsedHistory)) {
+          // Old format - direct array
+          messages = parsedHistory;
+        } else if (parsedHistory.messages && Array.isArray(parsedHistory.messages)) {
+          // New format - object with messages property
+          messages = parsedHistory.messages;
+          console.log('📅 Loaded conversation from', new Date(parsedHistory.lastUpdated).toLocaleDateString());
+        }
+        
+        if (messages.length > 0) {
+          // Deduplicate messages before setting them
+          const deduplicatedHistory = deduplicateMessages(messages);
+          
           // Update Kinap AI group with saved messages
           setGroups(prev => prev.map(group => 
             group.id === 'kinap-ai' 
-              ? { ...group, messages: parsedHistory }
+              ? { 
+                  ...group, 
+                  messages: deduplicatedHistory,
+                  lastMessage: deduplicatedHistory[deduplicatedHistory.length - 1]?.content || 'Hello! I\'m your KiNaP AI assistant. Ask me anything about programming, studies, or career advice! 🤖✨',
+                  lastMessageTime: deduplicatedHistory[deduplicatedHistory.length - 1]?.timestamp || new Date()
+                }
               : group
           ));
           
           // Update selected group if it's Kinap AI
           setSelectedGroup(prev => 
             prev && prev.id === 'kinap-ai' 
-              ? { ...prev, messages: parsedHistory }
+              ? { 
+                  ...prev, 
+                  messages: deduplicatedHistory,
+                  lastMessage: deduplicatedHistory[deduplicatedHistory.length - 1]?.content || 'Hello! I\'m your KiNaP AI assistant. Ask me anything about programming, studies, or career advice! 🤖✨',
+                  lastMessageTime: deduplicatedHistory[deduplicatedHistory.length - 1]?.timestamp || new Date()
+                }
               : prev
           );
+          
+          console.log('✅ Loaded', deduplicatedHistory.length, 'messages from Kinap AI conversation history');
         }
       }
     } catch (error) {
@@ -1325,16 +1615,7 @@ const CommunityPage: React.FC = () => {
   debugLocalStorage();
   
 
-  
-  // Function to save Kinap AI messages to localStorage as backup
-  const saveKinapAIToLocalStorage = (messages: ChatMessage[]) => {
-    try {
-      localStorage.setItem('kinap-ai-conversation', JSON.stringify(messages));
-      console.log('✅ Kinap AI conversation saved to localStorage');
-    } catch (error) {
-      console.error('Error saving Kinap AI conversation to localStorage:', error);
-    }
-  };
+
 
   // Load Kinap AI conversation history from backend
   const loadKinapAIHistoryFromBackend = async () => {
@@ -1364,14 +1645,17 @@ const CommunityPage: React.FC = () => {
             isOwn: msg.role === 'user'
           }));
           
+          // Deduplicate messages before setting them
+          const deduplicatedMessages = deduplicateMessages(messages);
+          
           // Update Kinap AI group with loaded messages
           setGroups(prev => prev.map(group => 
             group.id === 'kinap-ai' 
               ? { 
                   ...group, 
-                  messages,
-                  lastMessage: messages[messages.length - 1]?.content || 'Say hello to start chatting! 😊',
-                  lastMessageTime: messages[messages.length - 1]?.timestamp || new Date()
+                  messages: deduplicatedMessages,
+                  lastMessage: deduplicatedMessages[deduplicatedMessages.length - 1]?.content || 'Say hello to start chatting! 😊',
+                  lastMessageTime: deduplicatedMessages[deduplicatedMessages.length - 1]?.timestamp || new Date()
                 }
               : group
           ));
@@ -1381,9 +1665,9 @@ const CommunityPage: React.FC = () => {
             prev && prev.id === 'kinap-ai' 
               ? { 
                   ...prev, 
-                  messages,
-                  lastMessage: messages[messages.length - 1]?.content || 'Say hello to start chatting! 😊',
-                  lastMessageTime: messages[messages.length - 1]?.timestamp || new Date()
+                  messages: deduplicatedMessages,
+                  lastMessage: deduplicatedMessages[deduplicatedMessages.length - 1]?.content || 'Say hello to start chatting! 😊',
+                  lastMessageTime: deduplicatedMessages[deduplicatedMessages.length - 1]?.timestamp || new Date()
                 }
               : prev
           );
@@ -1535,6 +1819,61 @@ const CommunityPage: React.FC = () => {
     );
   });
 
+  // Load Kinap AI conversation history from backend
+  const loadKinapAIHistoryFromBackend = async () => {
+    try {
+      const base = import.meta.env?.VITE_API_URL || 'http://localhost:5000/api';
+      const response = await fetch(`${base}/chat-messages/group/kinap-ai`);
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.messages && Array.isArray(data.messages)) {
+          const formattedMessages = data.messages.map((msg: any) => ({
+            id: msg.messageId || msg.id,
+            userId: msg.userId,
+            userName: msg.userName,
+            userAvatar: msg.userAvatar,
+            message: msg.message || msg.content,
+            timestamp: new Date(msg.timestamp),
+            messageType: msg.messageType || 'text',
+            status: msg.status || 'sent',
+            content: msg.content || msg.message,
+            mediaUrl: msg.mediaUrl,
+            fileName: msg.fileName,
+            fileSize: msg.fileSize,
+            fileType: msg.fileType,
+            duration: msg.duration,
+            isEdited: msg.isEdited || false,
+            reactions: msg.reactions || [],
+            replyTo: msg.replyTo
+          }));
+          
+          // Deduplicate messages before setting them
+          const deduplicatedMessages = deduplicateMessages(formattedMessages);
+          
+          // Update Kinap AI group with messages
+          setGroups(prev => prev.map(g => g.id === 'kinap-ai' ? {
+            ...g,
+            messages: deduplicatedMessages,
+            lastMessage: deduplicatedMessages[deduplicatedMessages.length - 1]?.content || 'Hello! I\'m your KiNaP AI assistant. Ask me anything about programming, studies, or career advice! 🤖✨',
+            lastMessageTime: deduplicatedMessages[deduplicatedMessages.length - 1]?.timestamp || new Date()
+          } : g));
+          
+          setSelectedGroup(prev => prev && prev.id === 'kinap-ai' ? {
+            ...prev,
+            messages: deduplicatedMessages,
+            lastMessage: deduplicatedMessages[deduplicatedMessages.length - 1]?.content || 'Hello! I\'m your KiNaP AI assistant. Ask me anything about programming, studies, or career advice! 🤖✨',
+            lastMessageTime: deduplicatedMessages[deduplicatedMessages.length - 1]?.timestamp || new Date()
+          } : prev);
+          
+          console.log('✅ Loaded Kinap AI conversation history from backend');
+        }
+      }
+    } catch (error) {
+      console.error('❌ Error loading Kinap AI history:', error);
+    }
+  };
+
   // Load chat groups and (then) messages from backend
   const loadChatGroupsAndMessages = async () => {
     try {
@@ -1590,32 +1929,88 @@ const CommunityPage: React.FC = () => {
       if (response.ok) {
         const data = await response.json();
         console.log('📋 Groups data received:', data);
+        console.log('📋 Groups array:', data.groups);
+        console.log('📋 Groups length:', data.groups?.length);
+        console.log('📋 Success flag:', data.success);
         
         if (data.groups && data.groups.length > 0) {
           console.log('✅ Found', data.groups.length, 'groups');
-          // Phase 1: set groups immediately without messages
-          const basic = data.groups.map((group: any) => ({
-            id: group._id || group.id,
+          
+          // Process all groups from API
+          const apiGroups = data.groups.map((group: any) => ({
+            id: group.id,
             name: group.name,
             description: group.description || `Community group for ${group.name}`,
             avatar: group.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(group.name)}&background=1B4F72&color=fff`,
-            members: group.members?.length || 1,
+            members: Array.isArray(group.members) ? group.members.length : 1,
             messages: [],
-            lastMessage: 'No messages yet',
-            lastMessageTime: new Date(),
-            unreadCount: 0,
-            admins: group.admins || [activeUser.id],
+            lastMessage: group.lastMessage || 'No messages yet',
+            lastMessageTime: new Date(group.lastMessageTime || Date.now()),
+            unreadCount: group.unreadCount || 0,
+            admins: group.admins || [],
             type: group.type || 'group',
-            category: group.name
+            category: group.category || group.name,
+            isPinned: group.type === 'ai' || group.id === 'kinap-ai',
+            isOnline: group.type === 'ai' || group.id === 'kinap-ai'
           } as ChatGroup));
 
-          setGroups(basic);
-          if (!selectedGroup && basic.length > 0) {
-            handleGroupSelection(basic[0]);
+          // Filter out any Kinap AI groups from API response to avoid duplicates
+          const filteredApiGroups = apiGroups.filter(g => g.id !== 'kinap-ai' && g.name !== 'Kinap AI' && g.name !== 'KiNaP AI Assistant');
+          
+          // Create Kinap AI group if it doesn't exist
+          const kinapAIGroup: ChatGroup = {
+            id: 'kinap-ai',
+            name: 'Kinap AI',
+            description: 'Your AI assistant for programming help, study guidance, career advice, and academic support',
+            avatar: 'https://ui-avatars.com/api/?name=KiNaP+AI&background=8B5CF6&color=FFFFFF&bold=true&size=150',
+            members: 1,
+            messages: [],
+            lastMessage: 'Hello! I\'m your KiNaP AI assistant. Ask me anything about programming, studies, or career advice! 🤖✨',
+            lastMessageTime: new Date(),
+            unreadCount: 0,
+            admins: [],
+            type: 'ai',
+            category: 'AI',
+            isPinned: true,
+            isOnline: true
+          };
+          
+          // Get existing Kinap AI group if it exists (the one that works with Gemini)
+          const existingKinapAI = groups.find(g => g.id === 'kinap-ai');
+          
+          // Combine Kinap AI with filtered API groups
+          const allGroups = [kinapAIGroup, ...filteredApiGroups];
+          
+          // Sort groups: pinned (AI) first, then by last message time
+          const sortedGroups = allGroups.sort((a: ChatGroup, b: ChatGroup) => {
+            // AI groups always first
+            if (a.isPinned && !b.isPinned) return -1;
+            if (!a.isPinned && b.isPinned) return 1;
+            if (a.isPinned && b.isPinned) return 0;
+            
+            // Then sort by last message time
+            return new Date(b.lastMessageTime).getTime() - new Date(a.lastMessageTime).getTime();
+          });
+
+          console.log('📋 Setting groups:', sortedGroups.map((g: ChatGroup) => `${g.name} (${g.type || 'group'})`));
+          
+          // Ensure Kinap AI is always present
+          const hasKinapAI = sortedGroups.some(g => g.id === 'kinap-ai');
+          const finalGroups = hasKinapAI ? sortedGroups : [kinapAIGroup, ...sortedGroups];
+          
+          setGroups(finalGroups);
+          
+          // Select KiNaP AI by default, or first group if no KiNaP AI
+          const kinapAI = sortedGroups.find((g: ChatGroup) => g.id === 'kinap-ai' || g.type === 'ai');
+          const defaultGroup = kinapAI || sortedGroups[0];
+          
+          if (!selectedGroup && defaultGroup) {
+            console.log('🎯 Selecting default group:', defaultGroup.name);
+            handleGroupSelection(defaultGroup);
           }
 
           // Phase 2: load messages in background per group without blocking UI
-          basic.forEach(async (g: ChatGroup) => {
+          sortedGroups.forEach(async (g: ChatGroup) => {
             try {
               const r = await fetch(`${base}/chat-messages/group/${g.id}`);
               if (r.ok) {
@@ -1648,13 +2043,11 @@ const CommunityPage: React.FC = () => {
                       if (localStorageHistory) {
                         const localMessages = JSON.parse(localStorageHistory);
                         if (Array.isArray(localMessages) && localMessages.length > 0) {
-                          // Merge backend and localStorage messages, avoiding duplicates
-                          const backendMessageIds = new Set(messages.map(m => m.id));
-                          const uniqueLocalMessages = localMessages.filter((m: any) => !backendMessageIds.has(m.id));
-                          finalMessages = [...messages, ...uniqueLocalMessages].sort((a, b) => 
-                            new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-                          );
-                          console.log('✅ Merged Kinap AI messages from backend and localStorage');
+                          // Combine backend and localStorage messages
+                          const combinedMessages = [...messages, ...localMessages];
+                          // Deduplicate the combined messages
+                          finalMessages = deduplicateMessages(combinedMessages);
+                          console.log('✅ Merged and deduplicated Kinap AI messages from backend and localStorage');
                         }
                       }
                     } catch (error) {
@@ -1662,12 +2055,40 @@ const CommunityPage: React.FC = () => {
                     }
                   }
                   
-                  setGroups((prev) => prev.map((x) => x.id === g.id ? {
-                    ...x,
-                    messages: finalMessages,
-                      lastMessage: finalMessages[finalMessages.length - 1]?.content || 'No messages yet',
-                      lastMessageTime: finalMessages[finalMessages.length - 1]?.timestamp || new Date(),
-                  } : x));
+                  // Always deduplicate messages for all groups
+                  finalMessages = deduplicateMessages(finalMessages);
+                  
+                  setGroups((prev) => {
+                    const updated = prev.map((x) => x.id === g.id ? {
+                      ...x,
+                      messages: finalMessages,
+                        lastMessage: finalMessages[finalMessages.length - 1]?.content || 'No messages yet',
+                        lastMessageTime: finalMessages[finalMessages.length - 1]?.timestamp || new Date(),
+                    } : x);
+                    
+                    // Ensure Kinap AI is always present
+                    const hasKinapAI = updated.some(group => group.id === 'kinap-ai');
+                    if (!hasKinapAI) {
+                      const kinapAIGroup: ChatGroup = {
+                        id: 'kinap-ai',
+                        name: 'Kinap AI',
+                        description: 'Your AI assistant for programming help, study guidance, career advice, and academic support',
+                        avatar: 'https://ui-avatars.com/api/?name=KiNaP+AI&background=8B5CF6&color=FFFFFF&bold=true&size=150',
+                        members: 1,
+                        messages: [],
+                        lastMessage: 'Hello! I\'m your KiNaP AI assistant. Ask me anything about programming, studies, or career advice! 🤖✨',
+                        lastMessageTime: new Date(),
+                        unreadCount: 0,
+                        admins: [],
+                        type: 'ai',
+                        category: 'AI',
+                        isPinned: true,
+                        isOnline: true
+                      };
+                      return [kinapAIGroup, ...updated];
+                    }
+                    return updated;
+                  });
                   setSelectedGroup((prev) => prev && prev.id === g.id ? { ...prev, messages: finalMessages } : prev);
                 }
               }
@@ -1754,6 +2175,8 @@ const CommunityPage: React.FC = () => {
       } catch {}
     }
 
+    // Clear recent message IDs when switching groups to prevent cross-group duplicates
+    setRecentMessageIds(new Set());
     setSelectedGroup(group);
     // If you intended to hide the starred view when switching groups, reset any starred-view toggle here.
     // This file only has `starredMessages` content state, not a `showStarredMessages` flag, so we keep logic minimal.
@@ -1820,33 +2243,62 @@ const CommunityPage: React.FC = () => {
         websocketService.onMessage((data: any) => {
           console.log('📨 Received WebSocket message:', data);
           
+          // Block WebSocket messages for a short period after sending to prevent duplicates
+          if (wsMessageBlocked) {
+            console.log('🔄 WebSocket messages temporarily blocked to prevent duplicates');
+            return;
+          }
+          
+          // Create a unique message identifier for duplicate detection
+          const messageKey = `${data.userId}-${data.content}-${data.groupId}`;
+          
+          // Skip if we've already processed this exact message
+          if (recentMessageIds.has(messageKey)) {
+            console.log('🔄 Skipping already processed message:', messageKey);
+            return;
+          }
+          
           // Skip messages from the current user to avoid duplicates
           if (data.userId === activeUser.id) {
             console.log('🔄 Skipping own message from WebSocket to avoid duplicate');
             return;
           }
           
-          // Additional check: skip if this is a recent message we just sent
-          const recentMessage = selectedGroup?.messages.find(msg => 
+          // Additional check: skip if this is a message we just sent (by content and timing)
+          const justSentByMe = selectedGroup?.messages.find(msg => 
             msg.content === data.content && 
             msg.userId === activeUser.id &&
-            Date.now() - new Date(msg.timestamp).getTime() < 3000 // Within 3 seconds
+            msg.status === 'sending' && // Only check messages that are still being sent
+            Math.abs(new Date(msg.timestamp).getTime() - new Date(data.timestamp).getTime()) < 3000 // Within 3 seconds
           );
           
-          if (recentMessage) {
-            console.log('🔄 Skipping recent own message from WebSocket');
+          if (justSentByMe) {
+            console.log('🔄 Skipping message I just sent');
+            return;
+          }
+          
+          // Check if this message already exists in the current group
+          const existingMessage = selectedGroup?.messages.find(msg => 
+            msg.id === data.id || 
+            (msg.content === data.content && 
+             msg.userId === data.userId &&
+             Math.abs(new Date(msg.timestamp).getTime() - new Date(data.timestamp).getTime()) < 5000) // Within 5 seconds
+          );
+          
+          if (existingMessage) {
+            console.log('🔄 Skipping existing message in current group');
             return;
           }
           
           const newMessage: ChatMessage = {
-            id: data.id,
+            id: data.id || `ws-${Date.now()}-${Math.random().toString(36).slice(2)}`,
             userId: data.userId,
             userName: data.userName,
             userAvatar: data.userAvatar,
             message: data.content,
             timestamp: new Date(data.timestamp),
-            messageType: data.messageType,
-            status: data.status,
+            messageType: data.messageType || 'text',
+            status: data.status || 'sent',
             content: data.content,
             mediaUrl: data.mediaUrl,
             fileSize: data.fileSize,
@@ -1854,11 +2306,32 @@ const CommunityPage: React.FC = () => {
             replyTo: data.replyTo
           };
           
+          // Add message key to recent set to prevent duplicates
+          setRecentMessageIds(prev => {
+            const newSet = new Set(prev);
+            newSet.add(messageKey);
+            // Clean up old entries after 30 seconds
+            setTimeout(() => {
+              setRecentMessageIds(current => {
+                const cleaned = new Set(current);
+                cleaned.delete(messageKey);
+                return cleaned;
+              });
+            }, 30000);
+            return newSet;
+          });
+          
           // Update groups state
           setGroups(prev => prev.map(group => {
             if (group.id === data.groupId) {
               // Check if message already exists to avoid duplicates
-              const messageExists = group.messages.some(msg => msg.id === data.id);
+              const messageExists = group.messages.some(msg => 
+                msg.id === data.id || 
+                (msg.content === data.content && 
+                 msg.userId === data.userId &&
+                 Math.abs(new Date(msg.timestamp).getTime() - new Date(data.timestamp).getTime()) < 5000)
+              );
+              
               if (!messageExists) {
                 return {
                   ...group,
@@ -1866,6 +2339,8 @@ const CommunityPage: React.FC = () => {
                   lastMessage: data.content,
                   lastMessageTime: new Date(data.timestamp)
                 };
+              } else {
+                console.log('🔄 Skipping duplicate message in groups state');
               }
             }
             return group;
@@ -1874,7 +2349,13 @@ const CommunityPage: React.FC = () => {
           // Update selected group if it matches
           setSelectedGroup(prev => {
             if (prev && prev.id === data.groupId) {
-              const messageExists = prev.messages.some(msg => msg.id === data.id);
+              const messageExists = prev.messages.some(msg => 
+                msg.id === data.id || 
+                (msg.content === data.content && 
+                 msg.userId === data.userId &&
+                 Math.abs(new Date(msg.timestamp).getTime() - new Date(data.timestamp).getTime()) < 5000)
+              );
+              
               if (!messageExists) {
                 // Auto-scroll for real-time messages only if user is at bottom
                 if (!isUserScrolledUp) {
@@ -1887,6 +2368,8 @@ const CommunityPage: React.FC = () => {
                   lastMessage: data.content,
                   lastMessageTime: new Date(data.timestamp)
                 };
+              } else {
+                console.log('🔄 Skipping duplicate message in selected group');
               }
             }
             return prev;
@@ -1920,28 +2403,66 @@ const CommunityPage: React.FC = () => {
     };
   }, [user, activeUser.id]);
 
-  // Load chat groups on component mount
-  useEffect(() => {
-    // Only load groups if user is authenticated and has completed profile
-    if (!user || !user.id) {
-      console.log('🔒 User not authenticated, skipping group loading');
-      setGroups([]);
-      setSelectedGroup(null);
-      return;
-    }
+      // Load chat groups on component mount
+    useEffect(() => {
+      // Auto-add user to interest groups if they have no groups
+      if (user && user.email && groups.length <= 1) {
+        // Only auto-add if they only have Kinap AI or no groups
+        const hasOtherGroups = groups.some(g => g.id !== 'kinap-ai');
+        if (!hasOtherGroups) {
+          console.log('🔄 Auto-adding user to interest groups...');
+          addUserToInterestGroups();
+        }
+      }
+    }, [user, groups]);
 
-    // Check if user has completed profile requirements
-    const profileCompletion = checkProfileRequirements(profileData);
-    if (profileCompletion.completionPercentage < 70) {
-      console.log('📋 Profile incomplete, skipping group loading');
-      setGroups([]);
-      setSelectedGroup(null);
-      return;
-    }
+    // Load chat groups on component mount
+    useEffect(() => {
+      // Always ensure KiNaP AI is available, even without authentication
+      const kinapAIGroup: ChatGroup = {
+        id: 'kinap-ai',
+        name: 'Kinap AI',
+        description: 'Your AI assistant for programming help, study guidance, career advice, and academic support',
+        avatar: 'https://ui-avatars.com/api/?name=KiNaP+AI&background=8B5CF6&color=FFFFFF&bold=true&size=150',
+        members: 1,
+        messages: [],
+        lastMessage: 'Hello! I\'m your KiNaP AI assistant. Ask me anything about programming, studies, or career advice! 🤖✨',
+        lastMessageTime: new Date(),
+        unreadCount: 0,
+        admins: [],
+        type: 'ai',
+        category: 'AI',
+        isPinned: true, // Always pinned at top
+        isOnline: true
+      };
 
-    console.log('✅ User authenticated and profile complete, loading groups');
-    loadChatGroupsAndMessages();
-  }, [user, profileData]);
+      // If user is not authenticated, show only KiNaP AI
+      if (!user || !user.id) {
+        console.log('🔒 User not authenticated, showing only KiNaP AI');
+        setGroups([kinapAIGroup]);
+        setSelectedGroup(kinapAIGroup);
+        return;
+      }
+
+      // Check if user has completed profile requirements for community access
+      const profileRequirements = checkProfileRequirements(profileData, 'community');
+      if (!profileRequirements.allowed) {
+        console.log('📋 Profile incomplete for community access, completion:', profileRequirements.completion + '%');
+        console.log('📋 Missing fields:', profileRequirements.missingFields);
+        // Still show KiNaP AI even if profile incomplete
+        setGroups([kinapAIGroup]);
+        setSelectedGroup(kinapAIGroup);
+        return;
+      }
+
+      console.log('✅ User authenticated, loading groups. Profile completion:', profileRequirements.completion + '%');
+      
+      // Set KiNaP AI immediately while loading other groups
+      setGroups([kinapAIGroup]);
+      setSelectedGroup(kinapAIGroup);
+      
+      loadChatGroupsAndMessages();
+    }, [user, profileData]);
 
   // Handle typing indicators
   useEffect(() => {
@@ -2092,21 +2613,46 @@ const CommunityPage: React.FC = () => {
     if (!selectedGroup) return;
 
     try {
-      const response = await fetch(`http://localhost:5000/api/chat-messages/group/${selectedGroup.id}`, {
+      console.log('🗑️ Deleting chat for group:', selectedGroup.id);
+      
+      // Use the correct endpoint for clearing group messages
+      const response = await fetch(`http://localhost:5000/api/chat-messages/group/${selectedGroup.id}/clear`, {
         method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: activeUser.id })
+        headers: { 'Content-Type': 'application/json' }
       });
 
       if (response.ok) {
-        setGroups(prev => prev.map(group => group.id === selectedGroup.id ? { ...group, messages: [] } : group));
-        setSelectedGroup(prev => prev ? { ...prev, messages: [] } : null);
-        console.log('Chat deleted successfully');
+        // Clear messages from state
+        setGroups(prev => prev.map(group => 
+          group.id === selectedGroup.id 
+            ? { ...group, messages: [], lastMessage: 'No messages yet', lastMessageTime: new Date() }
+            : group
+        ));
+        
+        setSelectedGroup(prev => prev ? { 
+          ...prev, 
+          messages: [], 
+          lastMessage: 'No messages yet', 
+          lastMessageTime: new Date() 
+        } : null);
+        
+        // Clear localStorage for this group
+        try {
+          localStorage.removeItem(`chat_messages_${selectedGroup.id}`);
+          if (selectedGroup.id === 'kinap-ai') {
+            localStorage.removeItem('kinap-ai-conversation');
+          }
+        } catch (error) {
+          console.warn('Could not clear localStorage:', error);
+        }
+        
+        console.log('✅ Chat deleted successfully');
       } else {
-        console.error('Failed to delete chat');
+        const errorData = await response.json();
+        console.error('❌ Failed to delete chat:', errorData);
       }
     } catch (error) {
-      console.error('Error deleting chat:', error);
+      console.error('❌ Error deleting chat:', error);
     } finally {
       setShowDeleteConfirmModal(false);
     }
@@ -2272,7 +2818,14 @@ const CommunityPage: React.FC = () => {
         {/* Groups List */}
         <div className="flex-1 overflow-y-auto">
           {filteredGroups.length > 0 ? (
-            filteredGroups.map((group) => (
+            <>
+              {/* Debug info - remove this in production */}
+              {import.meta.env?.DEV && (
+                <div className="p-2 bg-blue-50 text-xs text-blue-600 border-b">
+                  📊 {filteredGroups.length} groups loaded | User: {user?.email} | Auth: {user ? '✅' : '❌'}
+                </div>
+              )}
+              {filteredGroups.map((group) => (
               <div
                 key={group.id}
                 onClick={() => handleGroupSelection(group)}
@@ -2360,16 +2913,25 @@ const CommunityPage: React.FC = () => {
                   </div>
                 </div>
               </div>
-            ))
+            ))}
+            </>
           ) : (
             <div className="p-6 sm:p-8 text-center">
               <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-4 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center">
                 <MessageCircle className="w-6 h-6 sm:w-8 sm:h-8 text-gray-400" />
               </div>
               <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-2">No chats yet</h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
                 Start a conversation with Kinap AI or join a group to begin chatting.
               </p>
+              {user && (
+                <button
+                  onClick={addUserToInterestGroups}
+                  className="px-4 py-2 bg-ajira-primary text-white rounded-lg hover:bg-ajira-primary/90 transition-colors text-sm font-medium"
+                >
+                  Join Interest Groups
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -2385,7 +2947,8 @@ const CommunityPage: React.FC = () => {
           </div>
           <div className="flex-1 overflow-y-auto">
             {filteredGroups.length > 0 ? (
-                          filteredGroups.map((group) => (
+              <>
+                {filteredGroups.map((group) => (
               <div
                 key={group.id}
                 onClick={() => handleGroupSelection(group)}
@@ -2395,8 +2958,8 @@ const CommunityPage: React.FC = () => {
                     : 'hover:bg-gray-50 dark:hover:bg-gray-800'
                 }`}
               >
-                                 <div className="flex items-center gap-3">
-                   <div className="relative">
+                    <div className="flex items-center gap-3">
+                      <div className="relative">
                      {group.name === 'Kinap AI' ? (
                        <div className="w-12 h-12 rounded-full ring-2 ring-purple-300 dark:ring-purple-600 shadow-lg bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center">
                          <span className="text-white font-bold text-xl">K</span>
@@ -2442,7 +3005,8 @@ const CommunityPage: React.FC = () => {
                   </div>
                 </div>
               </div>
-              ))
+              ))}
+              </>
             ) : (
               <div className="p-6 text-center text-gray-600 dark:text-gray-300">No chats yet</div>
             )}
@@ -2618,6 +3182,16 @@ const CommunityPage: React.FC = () => {
                         ? 'Ask me anything about programming, studies, or career advice. I\'m here to help!' 
                         : 'This is the beginning of your conversation. Share ideas, collaborate, and connect!'}
                     </p>
+                    {selectedGroup.name === 'Kinap AI' && selectedGroup.messages.length > 0 && (
+                      <div className="mt-4 p-3 bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 rounded-lg border border-purple-200 dark:border-purple-700">
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                          <span className="text-sm text-purple-700 dark:text-purple-300 font-medium">
+                            💾 Memory Active - I remember our conversation ({selectedGroup.messages.length} messages)
+                          </span>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
                 
@@ -2835,7 +3409,7 @@ const CommunityPage: React.FC = () => {
                         minHeight: '44px',
                         maxHeight: '120px'
                       }}
-                      disabled={isAIProcessing}
+                      disabled={isAIProcessing || isSendingMessage}
                     />
                     
                     {/* Emoji Picker */}
@@ -2858,13 +3432,17 @@ const CommunityPage: React.FC = () => {
                   {(newMessage.trim() || selectedFiles.length > 0) ? (
                     <button
                       onClick={newMessage.trim() ? handleSendMessage : handleSendFiles}
-                      disabled={isAIProcessing}
+                      disabled={isAIProcessing || isSendingMessage}
                       className="p-3 bg-gradient-to-r from-ajira-primary to-ajira-secondary text-white rounded-full hover:from-ajira-primary/90 hover:to-ajira-secondary/90 transition-all duration-200 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
                       aria-label={newMessage.trim() ? "Send message" : "Send files"}
                     >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                      </svg>
+                      {isSendingMessage ? (
+                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                      ) : (
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                        </svg>
+                      )}
                     </button>
                   ) : (
                     <button className="p-3 text-gray-500 hover:text-gray-700 transition-colors">

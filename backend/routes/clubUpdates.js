@@ -1,5 +1,6 @@
 const express = require('express');
 const ClubUpdate = require('../models/ClubUpdate');
+const { Op } = require('sequelize');
 
 const router = express.Router();
 
@@ -18,9 +19,9 @@ router.get('/', async (req, res) => {
     let query = {
       status: 'Published',
       isActive: true,
-      $or: [
-        { expiryDate: { $exists: false } },
-        { expiryDate: { $gt: new Date() } }
+      [Op.or]: [
+        { expiryDate: { [Op.is]: null } },
+        { expiryDate: { [Op.gt]: new Date() } }
       ]
     };
 
@@ -39,26 +40,32 @@ router.get('/', async (req, res) => {
     }
 
     if (search) {
-      query.$and = [
-        query.$or || {},
+      query[Op.and] = [
+        query,
         {
-          $or: [
-            { title: { $regex: search, $options: 'i' } },
-            { excerpt: { $regex: search, $options: 'i' } },
-            { content: { $regex: search, $options: 'i' } },
-            { tags: { $regex: search, $options: 'i' } }
+          [Op.or]: [
+            { title: { [Op.like]: `%${search}%` } },
+            { excerpt: { [Op.like]: `%${search}%` } },
+            { content: { [Op.like]: `%${search}%` } },
+            { tags: { [Op.like]: `%${search}%` } }
           ]
         }
       ];
     }
 
-    const updates = await ClubUpdate.find(query)
-      .sort({ featured: -1, priority: -1, publishDate: -1 })
-      .limit(parseInt(limit))
-      .skip(parseInt(skip))
-      .select('-lastUpdatedBy -__v');
+    const updates = await ClubUpdate.findAll({
+      where: query,
+      order: [
+        ['featured', 'DESC'],
+        ['priority', 'DESC'],
+        ['publishDate', 'DESC']
+      ],
+      limit: parseInt(limit),
+      offset: parseInt(skip),
+      attributes: { exclude: ['lastUpdatedBy'] }
+    });
 
-    const total = await ClubUpdate.countDocuments(query);
+    const total = await ClubUpdate.count({ where: query });
 
     res.json({
       updates,

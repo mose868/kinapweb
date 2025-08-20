@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { Github, Linkedin, Mail, MapPin, Calendar, Users } from 'lucide-react';
 import axios from 'axios';
 import LoadingState from '../../components/common/LoadingState';
+import JoinTeamForm from '../../components/team/JoinTeamForm';
 
 const BASEURL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
@@ -11,6 +12,7 @@ const TeamPage = () => {
   const [teamMembers, setTeamMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showJoinForm, setShowJoinForm] = useState(false);
 
   useEffect(() => {
     const fetchTeamMembers = async () => {
@@ -379,7 +381,10 @@ const TeamPage = () => {
                   Want to join our amazing team? We're always looking for passionate individuals!
                 </p>
                 <div className='flex flex-col sm:flex-row gap-4 justify-center'>
-                  <button className='px-8 py-3 bg-gradient-to-r from-ajira-primary to-ajira-secondary text-white font-semibold rounded-lg hover:shadow-lg transition-all duration-200 transform hover:scale-105'>
+                  <button 
+                    onClick={() => setShowJoinForm(true)}
+                    className='px-8 py-3 bg-gradient-to-r from-ajira-primary to-ajira-secondary text-white font-semibold rounded-lg hover:shadow-lg transition-all duration-200 transform hover:scale-105'
+                  >
                     Join Our Team
                   </button>
                   <button className='px-8 py-3 border-2 border-ajira-primary text-ajira-primary font-semibold rounded-lg hover:bg-ajira-primary hover:text-white transition-all duration-200'>
@@ -391,6 +396,12 @@ const TeamPage = () => {
           </div>
         )}
       </div>
+
+      {/* Join Team Form Modal */}
+      <JoinTeamForm 
+        isOpen={showJoinForm} 
+        onClose={() => setShowJoinForm(false)} 
+      />
     </div>
   );
 };

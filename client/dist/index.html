@@ -40,8 +40,18 @@
         min-height: 100vh;
       }
     </style>
-    <script type="module" crossorigin src="/assets/index-1d7796d8.js"></script>
-    <link rel="stylesheet" href="/assets/index-7dcf8dfa.css">
+    <script>
+      // Force light mode before React mounts to avoid dark flash
+      try {
+        document.documentElement.classList.remove('dark');
+        var saved = localStorage.getItem('theme');
+        if (!saved || saved === 'light') {
+          document.documentElement.classList.remove('dark');
+        }
+      } catch (e) { /* no-op */ }
+    </script>
+    <script type="module" crossorigin src="/assets/index-3a398417.js"></script>
+    <link rel="stylesheet" href="/assets/index-b4006ccb.css">
   </head>
   <body>
     <div id="root"></div>

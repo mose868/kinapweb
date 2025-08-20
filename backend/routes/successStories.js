@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const SuccessStory = require('../models/SuccessStory');
+const { Op } = require('sequelize');
 
 // GET all stories
 router.get('/', async (req, res) => {
@@ -9,12 +10,15 @@ router.get('/', async (req, res) => {
     let filter = {};
     if (tag) filter.tags = tag;
     if (featured) filter.featured = featured === 'true';
-    if (search) filter.$or = [
-      { title: { $regex: search, $options: 'i' } },
-      { content: { $regex: search, $options: 'i' } },
-      { authorName: { $regex: search, $options: 'i' } }
+    if (search) filter[Op.or] = [
+      { title: { [Op.like]: `%${search}%` } },
+      { content: { [Op.like]: `%${search}%` } },
+      { authorName: { [Op.like]: `%${search}%` } }
     ];
-    const stories = await SuccessStory.find(filter).sort({ date: -1 });
+    const stories = await SuccessStory.findAll({
+      where: filter,
+      order: [['date', 'DESC']]
+    });
     res.json(stories);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -24,7 +28,7 @@ router.get('/', async (req, res) => {
 // GET by id
 router.get('/:id', async (req, res) => {
   try {
-    const story = await SuccessStory.findById(req.params.id);
+    const story = await SuccessStory.findByPk(req.params.id);
     if (!story) return res.status(404).json({ error: 'Not found' });
     res.json(story);
   } catch (err) {
@@ -45,8 +49,9 @@ router.post('/', async (req, res) => {
 // PUT update
 router.put('/:id', async (req, res) => {
   try {
-    const story = await SuccessStory.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const story = await SuccessStory.findByPk(req.params.id);
     if (!story) return res.status(404).json({ error: 'Not found' });
+    await story.update(req.body);
     res.json(story);
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -56,8 +61,9 @@ router.put('/:id', async (req, res) => {
 // DELETE
 router.delete('/:id', async (req, res) => {
   try {
-    const story = await SuccessStory.findByIdAndDelete(req.params.id);
+    const story = await SuccessStory.findByPk(req.params.id);
     if (!story) return res.status(404).json({ error: 'Not found' });
+    await story.destroy();
     res.json({ success: true });
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -67,8 +73,10 @@ router.delete('/:id', async (req, res) => {
 // POST like
 router.post('/:id/like', async (req, res) => {
   try {
-    const story = await SuccessStory.findByIdAndUpdate(req.params.id, { $inc: { likes: 1 } }, { new: true });
+    const story = await SuccessStory.findByPk(req.params.id);
     if (!story) return res.status(404).json({ error: 'Not found' });
+    await story.increment('likes');
+    await story.reload();
     res.json(story);
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -80,12 +88,13 @@ router.post('/:id/comment', async (req, res) => {
   try {
     const { user, comment } = req.body;
     if (!user || !comment) return res.status(400).json({ error: 'User and comment required' });
-    const story = await SuccessStory.findByIdAndUpdate(
-      req.params.id,
-      { $push: { comments: { user, comment } } },
-      { new: true }
-    );
+    const story = await SuccessStory.findByPk(req.params.id);
     if (!story) return res.status(404).json({ error: 'Not found' });
+    
+    const comments = story.comments || [];
+    comments.push({ user, comment, timestamp: new Date() });
+    await story.update({ comments });
+    await story.reload();
     res.json(story);
   } catch (err) {
     res.status(400).json({ error: err.message });

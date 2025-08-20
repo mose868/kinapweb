@@ -2,6 +2,7 @@ const express = require('express');
 const { auth } = require('../auth'); // Changed from '../betterAuth' to '../auth'
 const { sendEmail } = require('../config/email');
 const crypto = require('crypto');
+const { Op } = require('sequelize');
 const User = require('../models/User');
 const router = express.Router();
 
@@ -30,7 +31,7 @@ const updateUserActivity = async (req, res, next) => {
     }
     
     // Find user and check session
-    const user = await User.findById(decoded.userId);
+    const user = await User.findByPk(decoded.userId);
     if (!user) {
       return next();
     }
@@ -169,7 +170,7 @@ router.post('/signin', async (req, res) => {
     console.log('🔐 Processing signin for email:', email);
     
     // Find user by email
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ where: { email } });
     if (!user) {
       return res.status(401).json({
         success: false,
@@ -382,17 +383,28 @@ router.post('/signin', async (req, res) => {
 
 router.post('/signup', async (req, res) => {
   try {
-    const { email, password, displayName, ...otherFields } = req.body;
+    const { email, password, displayName, username, ...otherFields } = req.body;
     
     console.log('📝 Processing signup for email:', email);
     
     // Check if user already exists
-    const existingUser = await User.findOne({ email });
+    const existingUser = await User.findOne({ where: { email } });
     if (existingUser) {
       return res.status(400).json({
         success: false,
         message: 'An account with this email already exists'
       });
+    }
+    
+    // Check if username already exists
+    if (username) {
+      const existingUsername = await User.findOne({ where: { username } });
+      if (existingUsername) {
+        return res.status(400).json({
+          success: false,
+          message: 'This username is already taken'
+        });
+      }
     }
     
     // Generate verification code (6 digits)
@@ -406,8 +418,12 @@ router.post('/signup', async (req, res) => {
     const saltRounds = 12;
     const hashedPassword = await bcrypt.hash(password, saltRounds);
     
+    // Generate username from email if not provided
+    const generatedUsername = username || email.split('@')[0] + '_' + Math.random().toString(36).substr(2, 5);
+    
     // Create new user with verification code
     const newUser = new User({
+      username: generatedUsername,
       email,
       password: hashedPassword,
       displayName,
@@ -547,7 +563,9 @@ router.get('/session', async (req, res) => {
     }
     
     // Find user
-    const user = await User.findById(decoded.userId).select('-password');
+    const user = await User.findByPk(decoded.userId, {
+      attributes: { exclude: ['password'] }
+    });
     if (!user) {
       return res.status(401).json({
         success: false,
@@ -596,7 +614,7 @@ router.post('/forgot-password', async (req, res) => {
     console.log('Processing forgot password request for:', email);
     
     // Find user by email
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ where: { email } });
     
     if (!user) {
       // Don't reveal if user exists or not for security
@@ -720,9 +738,11 @@ router.post('/reset-password', async (req, res) => {
     
     // Find user by email and verification code
     const user = await User.findOne({
-      email: email,
-      verificationCode: code,
-      verificationCodeExpires: { $gt: Date.now() }
+      where: {
+        email: email,
+        verificationCode: code,
+        verificationCodeExpires: { [Op.gt]: Date.now() }
+      }
     });
     
     if (!user) {
@@ -779,9 +799,11 @@ router.post('/verify-code', async (req, res) => {
     
     // Find user by email and verification code
     const user = await User.findOne({
-      email: email,
-      verificationCode: code,
-      verificationCodeExpires: { $gt: Date.now() }
+      where: {
+        email: email,
+        verificationCode: code,
+        verificationCodeExpires: { [Op.gt]: Date.now() }
+      }
     });
     
     console.log('🔍 User found:', !!user);
@@ -832,9 +854,11 @@ router.post('/verify-account', async (req, res) => {
     
     // Find user by email and verification code
     const user = await User.findOne({
-      email: email,
-      verificationCode: code,
-      verificationCodeExpires: { $gt: Date.now() }
+      where: {
+        email: email,
+        verificationCode: code,
+        verificationCodeExpires: { [Op.gt]: Date.now() }
+      }
     });
     
     if (!user) {
@@ -884,7 +908,7 @@ router.post('/verify-account', async (req, res) => {
     const jwt = require('jsonwebtoken');
     const token = jwt.sign(
       { 
-        userId: user._id, 
+        userId: user.id, 
         email: user.email,
         sessionExpiresAt: user.sessionExpiresAt
       },
@@ -896,12 +920,12 @@ router.post('/verify-account', async (req, res) => {
       success: true,
       message: wasNewUser ? 'Account verified successfully' : 'Sign in successful',
       data: {
-      user: {
-          id: user._id,
-        email: user.email,
-        displayName: user.displayName,
+              user: {
+          id: user.id,
+          email: user.email,
+          displayName: user.displayName,
           role: user.role,
-        isVerified: user.isVerified
+          isVerified: user.isVerified
         },
         token,
         sessionExpiresAt: user.sessionExpiresAt
@@ -935,7 +959,7 @@ router.post('/resend-code', async (req, res) => {
     console.log('📧 Resending verification code for email:', email);
     
     // Find user by email
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ where: { email } });
     
     if (!user) {
       return res.status(404).json({
@@ -1101,7 +1125,7 @@ router.get('/check-session', async (req, res) => {
     }
     
     // Find user and check session
-    const user = await User.findById(decoded.userId);
+    const user = await User.findByPk(decoded.userId);
     if (!user) {
       return res.status(401).json({
         success: false,
@@ -1130,7 +1154,7 @@ router.get('/check-session', async (req, res) => {
       message: 'Session is valid',
       data: {
         user: {
-          id: user._id,
+          id: user.id,
           email: user.email,
           displayName: user.displayName,
           role: user.role,
@@ -1146,6 +1170,272 @@ router.get('/check-session', async (req, res) => {
       success: false,
       message: 'Session check failed',
       sessionExpired: true
+    });
+  }
+});
+
+// Get user profile
+router.post('/get-profile', async (req, res) => {
+  try {
+    const { email } = req.body;
+    
+    console.log('📝 Get profile request for:', email);
+    
+    // Validate required fields
+    if (!email) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Email is required' 
+      });
+    }
+    
+    // Find user by email
+    const user = await User.findOne({ 
+      where: { email },
+      attributes: { exclude: ['password'] }
+    });
+    
+    if (!user) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'User not found' 
+      });
+    }
+    
+    console.log('✅ Profile found for:', email);
+    console.log('✅ Avatar present:', !!user.avatar);
+    
+    // Map user fields to match expected profile structure
+    const profile = {
+      displayName: user.displayName, // Fixed: use displayName instead of fullname
+      email: user.email,
+      course: user.course,
+      year: user.year,
+      skills: user.skills,
+      experienceLevel: user.experienceLevel, // Fixed: use experienceLevel instead of experience
+      phoneNumber: user.phoneNumber, // Fixed: use phoneNumber instead of phone
+      idNumber: user.idNumber, // Fixed: use idNumber instead of idNo
+      bio: user.bio,
+      location: user.location,
+      ajiraGoals: user.ajiraGoals,
+      linkedinProfile: user.linkedinProfile,
+      photoURL: user.avatar, // Map avatar to photoURL for frontend compatibility
+      lastActive: user.lastActivity,
+      interests: user.interests || []
+    };
+    
+    res.json({ 
+      success: true,
+      message: 'Profile retrieved successfully', 
+      ...profile
+    });
+  } catch (error) {
+    console.error('❌ Get profile error:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Server error',
+      error: error.message 
+    });
+  }
+});
+
+// Update user profile
+router.post('/update-profile', async (req, res) => {
+  try {
+    const { email, ...updateData } = req.body;
+    
+    console.log('📝 Update profile request for:', email);
+    console.log('📝 Update data keys:', Object.keys(updateData));
+    
+    // Validate required fields
+    if (!email) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Email is required' 
+      });
+    }
+    
+    // Find user by email
+    const user = await User.findOne({ where: { email } });
+    if (!user) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'User not found' 
+      });
+    }
+    
+    // Log specific profile fields
+    const profileFields = ['bio', 'location', 'ajiraGoals', 'linkedinProfile', 'photoURL', 'avatar'];
+    profileFields.forEach(field => {
+      if (updateData[field]) {
+        console.log(`✅ ${field}: ${field === 'photoURL' || field === 'avatar' ? 'Image data (' + updateData[field].length + ' chars)' : updateData[field].substring(0, 50)}${updateData[field].length > 50 ? '...' : ''}`);
+      } else {
+        console.log(`❌ ${field}: Not provided`);
+      }
+    });
+    
+    // Handle photoURL/avatar field mapping
+    if (updateData.photoURL) {
+      updateData.avatar = updateData.photoURL;
+      delete updateData.photoURL;
+    }
+    
+    // Update user profile
+    await user.update({ 
+      ...updateData, 
+      updatedAt: new Date() 
+    });
+    
+    const updatedUser = await User.findOne({ 
+      where: { email },
+      attributes: { exclude: ['password'] }
+    });
+    
+    // Auto-add to interest groups if interests are updated
+    try {
+      console.log('🔍 Checking for interests:', updateData.interests);
+      if (updateData.interests && Array.isArray(updateData.interests) && updateData.interests.length > 0) {
+        console.log('✅ Interests found:', updateData.interests);
+        const Group = require('../models/Group');
+        console.log('📦 Group model loaded successfully');
+        
+        // First ensure default groups exist
+        const { createDefaultGroups } = require('../scripts/createDefaultGroups');
+        try {
+          await createDefaultGroups(true); // Skip connection management since we're already connected
+          console.log('✅ Default groups ensured');
+        } catch (err) {
+          console.warn('⚠️ Could not create default groups:', err.message);
+        }
+        
+        for (const interest of updateData.interests) {
+          console.log(`🎯 Processing interest: ${interest}`);
+          let group = await Group.findOne({ where: { name: interest } });
+          
+          if (!group) {
+            console.log(`📝 Creating new group for interest: ${interest}`);
+            group = await Group.create({ 
+              name: interest, 
+              members: [user.id], 
+              admins: [user.id], 
+              description: `${interest} community group`, 
+              createdById: user.id,
+              avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(interest)}&background=1B4F72&color=FFFFFF&bold=true&size=150`,
+              category: 'User Interest',
+              isPrivate: false
+            });
+            console.log(`✅ Created group: ${interest} with ID: ${group.id}`);
+          } else {
+            console.log(`📋 Found existing group: ${interest}`);
+            let updated = false;
+            const members = group.members || [];
+            const admins = group.admins || [];
+            
+            if (!members.includes(user.id)) {
+              members.push(user.id);
+              group.members = members;
+              updated = true;
+              console.log(`👤 Added user to group: ${interest}`);
+            }
+            
+            // Don't auto-add as admin to existing groups unless they created it
+            if (group.createdById === user.id && !admins.includes(user.id)) {
+              admins.push(user.id);
+              group.admins = admins;
+              updated = true;
+              console.log(`👑 Made user admin of their created group: ${interest}`);
+            }
+            
+            if (updated) {
+              await group.save();
+              console.log(`💾 Saved group updates for: ${interest}`);
+            } else {
+              console.log(`ℹ️ User already in group: ${interest}`);
+            }
+          }
+        }
+        
+        console.log(`🎯 Successfully processed ${updateData.interests.length} interests`);
+      } else {
+        console.log('❌ No interests found or interests is not an array');
+        console.log('Interests data:', updateData.interests);
+      }
+    } catch (groupError) {
+      console.error('❌ Error adding user to interest groups:', groupError);
+      console.error('Error stack:', groupError.stack);
+      // Don't fail the profile update if group assignment fails
+    }
+
+    // Auto-add to skill groups if skills are updated
+    try {
+      console.log('🔍 Checking for skills:', updateData.skills);
+      if (updateData.skills && Array.isArray(updateData.skills)) {
+        console.log('✅ Skills found:', updateData.skills);
+        const Group = require('../models/Group');
+        
+        for (const skill of updateData.skills) {
+          console.log(`🛠️ Processing skill: ${skill}`);
+          let group = await Group.findOne({ where: { name: skill } });
+          
+          if (!group) {
+            console.log(`📝 Creating new group for skill: ${skill}`);
+            group = await Group.create({ 
+              name: skill, 
+              members: [user.id], 
+              admins: [user.id], 
+              description: `Community group for ${skill} enthusiasts`, 
+              createdById: user.id,
+              avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(skill)}&background=2E8B57&color=FFFFFF&bold=true&size=150`
+            });
+            console.log(`✅ Created skill group: ${skill} with ID: ${group.id}`);
+          } else {
+            console.log(`📋 Found existing skill group: ${skill}`);
+            let updated = false;
+            const members = group.members || [];
+            const admins = group.admins || [];
+            
+            if (!members.includes(user.id)) {
+              members.push(user.id);
+              group.members = members;
+              updated = true;
+              console.log(`👤 Added user to skill group: ${skill}`);
+            }
+            if (!admins.includes(user.id)) {
+              admins.push(user.id);
+              group.admins = admins;
+              updated = true;
+              console.log(`👑 Made user admin of skill group: ${skill}`);
+            }
+            if (updated) {
+              await group.save();
+              console.log(`💾 Saved skill group updates for: ${skill}`);
+            }
+          }
+        }
+      } else {
+        console.log('❌ No skills found or skills is not an array');
+        console.log('Skills data:', updateData.skills);
+      }
+    } catch (groupError) {
+      console.error('❌ Error adding user to skill groups:', groupError);
+      console.error('Error stack:', groupError.stack);
+      // Don't fail the profile update if group assignment fails
+    }
+
+    console.log('✅ Profile updated successfully for:', email);
+    console.log('✅ Avatar saved:', !!updatedUser.avatar);
+    
+    res.json({ 
+      success: true,
+      message: 'Profile updated successfully', 
+      user: updatedUser 
+    });
+  } catch (error) {
+    console.error('❌ Update profile error:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Server error',
+      error: error.message 
     });
   }
 });

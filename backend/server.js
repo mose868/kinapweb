@@ -10,6 +10,7 @@ const WebSocketServer = require('./websocketServer');
 const studentRoutes = require('./routes/students');
 const aboutUsRoutes = require('./routes/aboutUs');
 const teamRoutes = require('./routes/team');
+const teamApplicationRoutes = require('./routes/teamApplications');
 const clubUpdatesRoutes = require('./routes/clubUpdates');
 const faqRoutes = require('./routes/faq');
 const contactRoutes = require('./routes/contact');
@@ -89,6 +90,7 @@ app.get('/videos/kinap-promo.webm', (req, res) => {
 app.use('/api/students', studentRoutes);
 app.use('/api/about-us', aboutUsRoutes);
 app.use('/api/team', teamRoutes);
+app.use('/api/team-applications', teamApplicationRoutes);
 app.use('/api/updates', clubUpdatesRoutes);
 app.use('/api/faq', faqRoutes);
 app.use('/api/contact', contactRoutes);

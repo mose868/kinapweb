@@ -22,8 +22,7 @@ router.get('/', async (req, res) => {
     } = req.query;
 
     let query = {
-      isActive: true,
-      status: 'active'
+      isActive: true
     };
 
     // Add filters
@@ -60,19 +59,16 @@ router.get('/', async (req, res) => {
       ];
     }
 
-    const mentors = await Mentor.find(query)
-      .populate('userId', 'username email displayName')
-      .sort({ 
-        isFeatured: -1, 
-        'ratings.overall': -1,
-        displayOrder: -1,
-        createdAt: -1 
-      })
-      .limit(parseInt(limit))
-      .skip(parseInt(skip))
-      .select('-__v');
+    const mentors = await Mentor.findAll({
+      where: query,
+      order: [
+        ['createdAt', 'DESC']
+      ],
+      limit: parseInt(limit),
+      offset: parseInt(skip)
+    });
 
-    const total = await Mentor.countDocuments(query);
+    const total = await Mentor.count({ where: query });
 
     res.json({
       mentors,

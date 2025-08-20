@@ -167,7 +167,7 @@ router.post('/login-student', async (req, res) => {
       user: {
         id: student._id,
         email: student.email,
-        fullname: student.fullname,
+        displayName: student.fullname, // Map fullname to displayName for consistency
       },
     });
   } catch (error) {

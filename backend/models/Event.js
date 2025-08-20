@@ -22,4 +22,30 @@ const Event = sequelize.define('Event', {
   timestamps: true
 });
 
+// Static method to get upcoming events
+Event.getUpcomingEvents = function(limit = 10) {
+  const { Op } = require('sequelize');
+  return this.findAll({
+    where: {
+      isPublished: true,
+      status: 'Published'
+    },
+    order: [['createdAt', 'DESC']],
+    limit: limit
+  });
+};
+
+// Static method to get featured events
+Event.getFeaturedEvents = function(limit = 5) {
+  return this.findAll({
+    where: {
+      isPublished: true,
+      isFeatured: true,
+      status: 'Published'
+    },
+    order: [['schedule.startDate', 'ASC']],
+    limit: limit
+  });
+};
+
 module.exports = Event;

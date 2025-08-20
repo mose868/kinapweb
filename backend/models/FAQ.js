@@ -106,9 +106,6 @@ const FAQ = sequelize.define('FAQ', {
       fields: ['isPopular', 'priority']
     },
     {
-      fields: ['tags']
-    },
-    {
       fields: ['viewCount']
     },
     {

@@ -164,15 +164,20 @@ Group.getPublicGroups = function() {
 
 Group.getUserGroups = function(userId) {
   const { Op } = sequelize.Sequelize;
-  return sequelize.query(`
-    SELECT * FROM groups 
-    WHERE JSON_CONTAINS(members, ?)
-    ORDER BY createdAt DESC
-  `, {
-    replacements: [`"${userId}"`],
-    type: sequelize.QueryTypes.SELECT,
-    model: Group,
-    mapToModel: true
+  
+  // Use proper JSON search for MySQL - handle both string and number IDs
+  return this.findAll({
+    where: {
+      [Op.or]: [
+        sequelize.literal(`JSON_CONTAINS(members, '"${userId}"')`),
+        sequelize.literal(`JSON_CONTAINS(members, '${userId}')`),
+        sequelize.literal(`JSON_SEARCH(members, 'one', '${userId}') IS NOT NULL`),
+        // Fallback for cases where JSON functions might not work
+        sequelize.literal(`members LIKE '%"${userId}"%'`),
+        sequelize.literal(`members LIKE '%${userId}%'`)
+      ]
+    },
+    order: [['createdAt', 'DESC']]
   });
 };
 

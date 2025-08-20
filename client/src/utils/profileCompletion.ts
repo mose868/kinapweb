@@ -43,27 +43,25 @@ export const calculateProfileCompletion = (
   // Ensure profileData is not undefined
   const safeProfileData = profileData || {};
   
-  // Define all required fields for 100% completion (removed location and preferredLearningMode)
+  // Define only the fields that users can actually edit in the profile form
   const requiredFields = [
-    'displayName',
-    'email',
-    'photoURL',
-    'bio',
-    // 'location', // Remove location
-    'course',
-    'year',
-    'skills',
-    'experienceLevel',
-    'ajiraGoals',
-    // 'preferredLearningMode', // Remove preferredLearningMode
-    'linkedinProfile',
-    'phoneNumber',
-    'idNumber',
+    'photoURL',       // User can upload profile photo
+    'bio',            // User can edit bio
+    'ajiraGoals',     // User can edit their goals
+    'linkedinProfile' // User can edit LinkedIn profile
+  ];
+  
+  // Optional fields that contribute to completion but aren't required
+  const optionalFields = [
+    'displayName', // Comes from auth, usually filled
+    'email',       // Comes from auth, usually filled
+    'interests'    // User can select interests
   ];
 
   let completed = 0;
   let total = requiredFields.length;
 
+  // Check required fields
   requiredFields.forEach((field) => {
     const value = safeProfileData[field as keyof ProfileData];
 
@@ -91,7 +89,27 @@ export const calculateProfileCompletion = (
     }
   });
 
-  return Math.round((completed / total) * 100);
+  // Add bonus points for optional fields (up to 20% bonus)
+  let bonusPoints = 0;
+  const maxBonus = 0.2; // 20% bonus for optional fields
+  
+  optionalFields.forEach((field) => {
+    const value = safeProfileData[field as keyof ProfileData];
+    if (value !== undefined && value !== null && value !== '') {
+      if (Array.isArray(value) && value.length > 0) {
+        bonusPoints += maxBonus / optionalFields.length;
+      } else if (typeof value === 'string' && value.trim() !== '') {
+        bonusPoints += maxBonus / optionalFields.length;
+      } else if (typeof value !== 'string') {
+        bonusPoints += maxBonus / optionalFields.length;
+      }
+    }
+  });
+
+  const baseCompletion = (completed / total) * 100;
+  const finalCompletion = Math.min(100, baseCompletion + (bonusPoints * 100));
+  
+  return Math.round(finalCompletion);
 };
 
 // Check if profile meets minimum requirements for specific features
@@ -108,48 +126,31 @@ export const checkProfileRequirements = (
   const safeProfileData = profileData || {};
   const completion = calculateProfileCompletion(safeProfileData);
 
-  // Define requirements for each feature (removed location and preferredLearningMode)
+  // Define requirements for each feature - only require fields users can actually edit
   const requirements = {
     community: {
-      requiredCompletion: 70,
+      requiredCompletion: 50, // Lower requirement since fewer fields
       requiredFields: [
-        'displayName',
-        'email',
         'photoURL',
         'bio',
-        'course',
-        'year',
-        'skills',
-        'experienceLevel',
         'ajiraGoals',
       ],
     },
     ambassador: {
-      requiredCompletion: 100,
+      requiredCompletion: 100, // Full completion for ambassador role
       requiredFields: [
-        'displayName',
-        'email',
         'photoURL',
         'bio',
-        'course',
-        'year',
-        'skills',
-        'experienceLevel',
         'ajiraGoals',
         'linkedinProfile',
-        'phoneNumber',
-        'idNumber',
       ],
     },
     marketplace: {
-      requiredCompletion: 70,
+      requiredCompletion: 75, // Moderate requirement for marketplace
       requiredFields: [
-        'displayName',
-        'email',
         'photoURL',
         'bio',
-        'skills',
-        'experienceLevel',
+        'ajiraGoals',
       ],
     },
   };
@@ -196,23 +197,16 @@ export const checkProfileRequirements = (
   };
 };
 
-// Get human-readable field names
+// Get human-readable field names - focus on editable fields
 export const getFieldDisplayName = (field: string): string => {
   const fieldNames: Record<string, string> = {
-    displayName: 'Display Name',
-    email: 'Email Address',
     photoURL: 'Profile Photo',
     bio: 'Bio/About Me',
-    // location: 'Location', // Remove location
-    course: 'Course of Study',
-    year: 'Year of Study',
-    skills: 'Skills',
-    experienceLevel: 'Experience Level',
-    ajiraGoals: 'Ajira Goals',
-    // preferredLearningMode: 'Preferred Learning Mode', // Remove preferredLearningMode
+    ajiraGoals: 'Your Digital Goals',
     linkedinProfile: 'LinkedIn Profile',
-    phoneNumber: 'Phone Number',
-    idNumber: 'ID Number',
+    displayName: 'Display Name',
+    email: 'Email Address',
+    interests: 'Interests/Skills',
   };
 
   return fieldNames[field] || field;

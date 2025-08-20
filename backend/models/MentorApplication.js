@@ -7,19 +7,83 @@ const MentorApplication = sequelize.define('MentorApplication', {
     primaryKey: true,
     autoIncrement: true,
   },
-  name: { type: DataTypes.STRING(255), allowNull: false },
-  email: { type: DataTypes.STRING(255), allowNull: false },
-  phone: { type: DataTypes.STRING(50) },
-  expertise: { type: DataTypes.JSON, defaultValue: [] },
-  experience: { type: DataTypes.TEXT },
-  motivation: { type: DataTypes.TEXT },
-  availability: { type: DataTypes.JSON, defaultValue: {} },
-  status: { type: DataTypes.STRING(50), defaultValue: 'Pending' },
-  reviewedBy: { type: DataTypes.STRING(255) },
-  reviewNotes: { type: DataTypes.TEXT }
+  userId: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    references: {
+      model: 'users',
+      key: 'id'
+    }
+  },
+  personalInfo: {
+    type: DataTypes.JSON,
+    allowNull: false,
+    defaultValue: {}
+  },
+  professionalInfo: {
+    type: DataTypes.JSON,
+    allowNull: false,
+    defaultValue: {}
+  },
+  mentorshipInfo: {
+    type: DataTypes.JSON,
+    allowNull: false,
+    defaultValue: {}
+  },
+  applicationContent: {
+    type: DataTypes.JSON,
+    allowNull: false,
+    defaultValue: {}
+  },
+  documents: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: {}
+  },
+  aiVetting: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: {}
+  },
+  status: {
+    type: DataTypes.ENUM('pending', 'approved', 'rejected', 'under_review'),
+    allowNull: false,
+    defaultValue: 'pending'
+  },
+  review: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: {}
+  },
+  submittedAt: {
+    type: DataTypes.DATE,
+    allowNull: false,
+    defaultValue: DataTypes.NOW
+  },
+  updatedAt: {
+    type: DataTypes.DATE,
+    allowNull: false,
+    defaultValue: DataTypes.NOW
+  },
+  isActive: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: true
+  }
 }, {
   tableName: 'mentor_applications',
-  timestamps: true
+  timestamps: true,
+  indexes: [
+    {
+      fields: ['userId']
+    },
+    {
+      fields: ['status']
+    },
+    {
+      fields: ['submittedAt']
+    }
+  ]
 });
 
 module.exports = MentorApplication;

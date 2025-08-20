@@ -107,19 +107,24 @@ router.post('/user', async (req, res) => {
       await sequelize.authenticate();
     } catch (dbError) {
       console.warn('Database not connected, returning default groups');
-      return res.json([{
-        id: 'kinap-ai',
-        name: 'Kinap AI',
-        description: 'Your AI assistant for programming help, study guidance, and career advice',
-        avatar: 'https://ui-avatars.com/api/?name=Kinap+AI&background=8B5CF6&color=FFFFFF&bold=true&size=150',
-        members: [1],
-        lastMessage: 'Say hello to start chatting! 😊',
-        lastMessageTime: new Date(),
-        unreadCount: 0,
-        admins: [],
-        type: 'ai',
-        category: 'AI'
-      }]);
+      return res.json({
+        success: false,
+        groups: [{
+          id: 'kinap-ai',
+          name: 'KiNaP AI Assistant',
+          description: 'Your AI assistant for programming help, study guidance, career advice, and academic support',
+          avatar: 'https://ui-avatars.com/api/?name=KiNaP+AI&background=8B5CF6&color=FFFFFF&bold=true&size=150',
+          members: [1],
+          lastMessage: 'Hello! I\'m your KiNaP AI assistant. Ask me anything about programming, studies, or career advice! 🤖✨',
+          lastMessageTime: new Date(),
+          unreadCount: 0,
+          admins: [],
+          type: 'ai',
+          category: 'AI'
+        }],
+        count: 1,
+        message: 'Database not connected'
+      });
     }
 
     let userId = id;
@@ -133,19 +138,24 @@ router.post('/user', async (req, res) => {
     }
 
     if (!userId) {
-      return res.json([{
-        id: 'kinap-ai',
-        name: 'Kinap AI',
-        description: 'Your AI assistant for programming help, study guidance, and career advice',
-        avatar: 'https://ui-avatars.com/api/?name=Kinap+AI&background=8B5CF6&color=FFFFFF&bold=true&size=150',
-        members: [1],
-        lastMessage: 'Say hello to start chatting! 😊',
-        lastMessageTime: new Date(),
-        unreadCount: 0,
-        admins: [],
-        type: 'ai',
-        category: 'AI'
-      }]);
+      return res.json({
+        success: false,
+        groups: [{
+          id: 'kinap-ai',
+          name: 'KiNaP AI Assistant',
+          description: 'Your AI assistant for programming help, study guidance, career advice, and academic support',
+          avatar: 'https://ui-avatars.com/api/?name=KiNaP+AI&background=8B5CF6&color=FFFFFF&bold=true&size=150',
+          members: [1],
+          lastMessage: 'Hello! I\'m your KiNaP AI assistant. Ask me anything about programming, studies, or career advice! 🤖✨',
+          lastMessageTime: new Date(),
+          unreadCount: 0,
+          admins: [],
+          type: 'ai',
+          category: 'AI'
+        }],
+        count: 1,
+        message: 'No user ID found'
+      });
     }
 
     // Get user's groups
@@ -154,11 +164,11 @@ router.post('/user', async (req, res) => {
     // Always include Kinap AI group
     const defaultGroups = [{
       id: 'kinap-ai',
-      name: 'Kinap AI',
-      description: 'Your AI assistant for programming help, study guidance, and career advice',
-      avatar: 'https://ui-avatars.com/api/?name=Kinap+AI&background=8B5CF6&color=FFFFFF&bold=true&size=150',
+      name: 'KiNaP AI Assistant',
+      description: 'Your AI assistant for programming help, study guidance, career advice, and academic support',
+      avatar: 'https://ui-avatars.com/api/?name=KiNaP+AI&background=8B5CF6&color=FFFFFF&bold=true&size=150',
       members: [userId],
-      lastMessage: 'Say hello to start chatting! 😊',
+      lastMessage: 'Hello! I\'m your KiNaP AI assistant. Ask me anything about programming, studies, or career advice! 🤖✨',
       lastMessageTime: new Date(),
       unreadCount: 0,
       admins: [],
@@ -166,24 +176,47 @@ router.post('/user', async (req, res) => {
       category: 'AI'
     }];
 
-    const allGroups = [...defaultGroups, ...groups];
-    res.json(allGroups);
+    // Filter out any duplicate KiNaP AI groups from the user groups
+    const filteredGroups = groups.filter(group => 
+      group.id !== 'kinap-ai' && 
+      group.name !== 'KiNaP AI Assistant' && 
+      group.name !== 'Kinap AI'
+    );
+
+    const allGroups = [...defaultGroups, ...filteredGroups];
+    
+    console.log(`📊 Returning ${allGroups.length} groups for user ${userId}:`);
+    allGroups.forEach(group => {
+      console.log(`  - ${group.name} (${group.type || 'community'})`);
+    });
+    
+    // Return in the format expected by frontend
+    res.json({
+      success: true,
+      groups: allGroups,
+      count: allGroups.length
+    });
   } catch (err) {
     console.error('Error fetching user groups:', err);
-    // Return safe default on any error
-    res.json([{
-      id: 'kinap-ai',
-      name: 'Kinap AI',
-      description: 'Your AI assistant for programming help, study guidance, and career advice',
-      avatar: 'https://ui-avatars.com/api/?name=Kinap+AI&background=8B5CF6&color=FFFFFF&bold=true&size=150',
-      members: [1],
-      lastMessage: 'Say hello to start chatting! 😊',
-      lastMessageTime: new Date(),
-      unreadCount: 0,
-      admins: [],
-      type: 'ai',
-      category: 'AI'
-    }]);
+    // Return safe default on any error in expected format
+    res.json({
+      success: false,
+      groups: [{
+        id: 'kinap-ai',
+        name: 'KiNaP AI Assistant',
+        description: 'Your AI assistant for programming help, study guidance, career advice, and academic support',
+        avatar: 'https://ui-avatars.com/api/?name=KiNaP+AI&background=8B5CF6&color=FFFFFF&bold=true&size=150',
+        members: [1],
+        lastMessage: 'Hello! I\'m your KiNaP AI assistant. Ask me anything about programming, studies, or career advice! 🤖✨',
+        lastMessageTime: new Date(),
+        unreadCount: 0,
+        admins: [],
+        type: 'ai',
+        category: 'AI'
+      }],
+      count: 1,
+      error: err.message
+    });
   }
 });
 

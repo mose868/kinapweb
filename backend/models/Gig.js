@@ -23,7 +23,7 @@ const Gig = sequelize.define('Gig', {
   },
   
   description: {
-    type: DataTypes.TEXT(2000),
+    type: DataTypes.TEXT,
     allowNull: false,
   },
   
