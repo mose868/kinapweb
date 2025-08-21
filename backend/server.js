@@ -135,13 +135,15 @@ const writeLimiter = rateLimit({
 });
 
 // Middleware
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:5173',
+  'https://kinapweb.vercel.app',
+  'https://kinapweb.onrender.com',
+  process.env.CLIENT_ORIGIN,
+].filter(Boolean);
 app.use(cors({ 
-  origin: [
-    'http://localhost:3000',
-    'http://localhost:5173',
-    'https://kinapweb.vercel.app',
-    'https://kinapweb.onrender.com'
-  ],
+  origin: allowedOrigins,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
@@ -217,14 +219,7 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Health check endpoint for Railway
-app.get('/api/health', (req, res) => {
-  res.json({
-    status: 'healthy',
-    timestamp: new Date().toISOString(),
-    mongodb: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected'
-  });
-});
+// Note: Removed duplicate /api/health that referenced mongoose
 
 // Root health check
 app.get('/', (req, res) => {
@@ -274,7 +269,7 @@ app.get('/api/chatbot-debug', (req, res) => {
 });
 
 // MySQL Connection & Server start
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 3000;
 
 // Start server even if MySQL fails (for WebSocket and chatbot functionality)
 const startServer = () => {
