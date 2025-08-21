@@ -23,6 +23,8 @@ import {
   Zap,
   Shield,
   Sparkles,
+  AlertCircle,
+  X,
 } from 'lucide-react';
 import {
   CategoryShowcase,
@@ -276,6 +278,7 @@ const MarketplacePage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [stats, setStats] = useState<any>(null);
+  const [showMarketplaceBanner, setShowMarketplaceBanner] = useState(true);
 
   // Profile completion check
   const { user } = useBetterAuthContext();
@@ -287,6 +290,12 @@ const MarketplacePage = () => {
 
   // Fetch gigs from API
   useEffect(() => {
+    // Initialize stability banner from localStorage
+    try {
+      const dismissed = localStorage.getItem('marketplaceStabilityBannerDismissed') === 'true';
+      if (dismissed) setShowMarketplaceBanner(false);
+    } catch {}
+
     const loadGigs = async () => {
       try {
         setIsLoading(true);
@@ -442,6 +451,31 @@ const MarketplacePage = () => {
 
   return (
     <div className='bg-ajira-light min-h-screen'>
+      {showMarketplaceBanner && (
+        <div className='max-w-7xl mx-auto px-4 pt-4'>
+          <div className='mb-4 rounded-lg border border-yellow-300 bg-yellow-50 p-3 text-yellow-800'>
+            <div className='flex items-start gap-3'>
+              <AlertCircle className='w-4 h-4 mt-0.5' />
+              <div className='flex-1'>
+                <p className='text-sm'>
+                  Marketplace uploads are currently limited. Our team is working on enabling service publishing and payments. Some actions may not work yet.
+                </p>
+              </div>
+              <button
+                type='button'
+                onClick={() => {
+                  setShowMarketplaceBanner(false);
+                  try { localStorage.setItem('marketplaceStabilityBannerDismissed', 'true'); } catch {}
+                }}
+                className='text-yellow-700 hover:text-yellow-900'
+                aria-label='Dismiss'
+              >
+                <X className='w-4 h-4' />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Enhanced Ajira Digital Hero Section - Single Search */}
       <section className='relative bg-gradient-ajira text-white py-24 px-4 overflow-hidden'>
         {/* Background Pattern */}

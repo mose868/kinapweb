@@ -15,13 +15,31 @@ const sequelize = new Sequelize(
     dialectOptions: {
       charset: 'utf8mb4',
       collate: 'utf8mb4_unicode_ci',
+      connectTimeout: 60000,
+      enableKeepAlive: true,
+      keepAliveInitialDelay: 10000,
     },
     logging: process.env.NODE_ENV === 'development' ? console.log : false,
     pool: {
       max: 10,
       min: 0,
-      acquire: 30000,
+      acquire: 60000,
       idle: 10000,
+      evict: 10000,
+    },
+    retry: {
+      max: 5,
+      match: [
+        /SequelizeConnectionError/,
+        /SequelizeConnectionRefusedError/,
+        /SequelizeHostNotFoundError/,
+        /SequelizeHostNotReachableError/,
+        /SequelizeInvalidConnectionError/,
+        /SequelizeConnectionTimedOutError/,
+        /ETIMEDOUT/,
+        /ECONNRESET/,
+        /EPIPE/
+      ],
     },
     define: {
       charset: 'utf8mb4',
@@ -49,9 +67,10 @@ const testConnection = async (retries = 3) => {
       console.log('✅ MySQL connected successfully');
       
       // Sync database (create tables if they don't exist)
-      if (process.env.NODE_ENV !== 'production') {
-        await sequelize.sync({ alter: false }); // Set to true for development if you want auto-migration
-        console.log('✅ Database synchronized');
+      const alterSchema = process.env.SEQUELIZE_ALTER === 'true';
+      if (alterSchema || process.env.NODE_ENV !== 'production') {
+        await sequelize.sync({ alter: alterSchema });
+        console.log(`✅ Database synchronized${alterSchema ? ' with ALTER' : ''}`);
       }
       
       return true;
@@ -83,6 +102,16 @@ sequelize.addHook('afterConnect', () => {
 sequelize.addHook('beforeDisconnect', () => {
   console.log('⚠️ MySQL disconnecting...');
 });
+
+// Keep the pool warm to avoid idle disconnects (does not block event loop)
+const KEEP_ALIVE_MS = 45000;
+setInterval(async () => {
+  try {
+    await sequelize.query('SELECT 1');
+  } catch (e) {
+    console.warn('MySQL keep-alive ping failed:', e.message);
+  }
+}, KEEP_ALIVE_MS).unref();
 
 module.exports = {
   sequelize,

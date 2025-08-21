@@ -11,10 +11,10 @@ const auth = async (req, res, next) => {
       return res.status(401).json({ error: 'No token, authorization denied' });
     }
 
-    // Verify token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    // Verify token using Better Auth secret
+    const decoded = jwt.verify(token, process.env.BETTER_AUTH_SECRET || 'your-secret-key-change-this-in-production');
     
-    // Get user from database
+    // Get user from database using userId from token
     const user = await User.findByPk(decoded.userId, {
       attributes: { exclude: ['password'] }
     });
@@ -27,7 +27,7 @@ const auth = async (req, res, next) => {
     next();
   } catch (error) {
     console.error('Auth middleware error:', error);
-    res.status(401).json({ error: 'Token is not valid' });
+    res.status(401).json({ error: 'Authentication required. Please log in again.' });
   }
 };
 
@@ -38,7 +38,7 @@ const optionalAuth = async (req, res, next) => {
                   req.cookies?.token;
 
     if (token) {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const decoded = jwt.verify(token, process.env.BETTER_AUTH_SECRET || 'your-secret-key-change-this-in-production');
       const user = await User.findByPk(decoded.userId, {
         attributes: { exclude: ['password'] }
       });
@@ -64,7 +64,7 @@ const adminAuth = async (req, res, next) => {
       return res.status(401).json({ error: 'No token, authorization denied' });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.BETTER_AUTH_SECRET || 'your-secret-key-change-this-in-production');
     const user = await User.findByPk(decoded.userId, {
       attributes: { exclude: ['password'] }
     });
@@ -81,7 +81,7 @@ const adminAuth = async (req, res, next) => {
     next();
   } catch (error) {
     console.error('Admin auth middleware error:', error);
-    res.status(401).json({ error: 'Token is not valid' });
+    res.status(401).json({ error: 'Authentication required. Please log in again.' });
   }
 };
 

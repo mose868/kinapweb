@@ -30,6 +30,8 @@ const SuccessStory = require('./SuccessStory');
 const MentorSession = require('./MentorSession');
 const MentorshipRequest = require('./MentorshipRequest');
 const Mentorship = require('./Mentorship');
+const SellerProfile = require('./SellerProfile');
+const Booking = require('./Booking');
 
 // Define associations
 User.hasMany(Gig, {
@@ -40,6 +42,48 @@ User.hasMany(Gig, {
 Gig.belongsTo(User, {
   foreignKey: 'sellerId',
   as: 'seller'
+});
+
+// Seller Profile associations
+User.hasOne(SellerProfile, {
+  foreignKey: 'sellerId',
+  as: 'sellerProfile'
+});
+
+SellerProfile.belongsTo(User, {
+  foreignKey: 'sellerId',
+  as: 'user'
+});
+
+// Booking associations
+User.hasMany(Booking, {
+  foreignKey: 'clientId',
+  as: 'clientBookings'
+});
+
+User.hasMany(Booking, {
+  foreignKey: 'sellerId',
+  as: 'sellerBookings'
+});
+
+Booking.belongsTo(User, {
+  foreignKey: 'clientId',
+  as: 'client'
+});
+
+Booking.belongsTo(User, {
+  foreignKey: 'sellerId',
+  as: 'seller'
+});
+
+SellerProfile.hasMany(Booking, {
+  foreignKey: 'sellerId',
+  as: 'profileBookings'
+});
+
+Booking.belongsTo(SellerProfile, {
+  foreignKey: 'sellerId',
+  as: 'sellerProfile'
 });
 
 User.hasMany(Order, {
@@ -113,5 +157,7 @@ module.exports = {
   SuccessStory,
   MentorSession,
   MentorshipRequest,
-  Mentorship
+  Mentorship,
+  SellerProfile,
+  Booking
 };

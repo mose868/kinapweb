@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import EmojiPicker from '../common/EmojiPicker';
 import FileUpload from '../common/FileUpload';
+import { useBetterAuthContext } from '../../contexts/BetterAuthContext';
 
 interface Message {
   id: string;
@@ -33,6 +34,7 @@ interface Message {
 }
 
 const Chatbot: React.FC = () => {
+  const { user } = useBetterAuthContext();
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -42,13 +44,29 @@ const Chatbot: React.FC = () => {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showFileUpload, setShowFileUpload] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<any[]>([]);
+  const [conversationId, setConversationId] = useState<string>('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
+  // Generate user-specific storage keys and conversation ID
+  const getUserStorageKey = () => {
+    const userId = user?.id || user?.email || 'anonymous';
+    return `kinap-chatbot-messages-${userId}`;
+  };
+
+  const getConversationId = () => {
+    const userId = user?.id || user?.email || 'anonymous';
+    return `conv_${userId}_${Date.now()}`;
+  };
+
   // Load messages from localStorage on component mount
   useEffect(() => {
-    const savedMessages = localStorage.getItem('kinap-chatbot-messages');
+    if (!user) return; // Wait for user to load
+    
+    const userStorageKey = getUserStorageKey();
+    const savedMessages = localStorage.getItem(userStorageKey);
+    
     if (savedMessages) {
       const parsedMessages = JSON.parse(savedMessages).map((msg: any) => ({
         ...msg,
@@ -59,25 +77,28 @@ const Chatbot: React.FC = () => {
       // Initialize with welcome message if no saved messages
       const welcomeMessage: Message = {
         id: '1',
-        text: "Hello! I'm your Ajira Digital assistant. How can I help you today? 🚀",
+        text: `Hello${user?.name ? ` ${user.name}` : ''}! I'm your Ajira Digital assistant. How can I help you today? 🚀`,
         sender: 'bot',
         timestamp: new Date(),
         status: 'read',
       };
       setMessages([welcomeMessage]);
-      localStorage.setItem(
-        'kinap-chatbot-messages',
-        JSON.stringify([welcomeMessage])
-      );
+      localStorage.setItem(userStorageKey, JSON.stringify([welcomeMessage]));
     }
-  }, []);
+
+    // Set conversation ID for this user
+    if (!conversationId) {
+      setConversationId(getConversationId());
+    }
+  }, [user]);
 
   // Save messages to localStorage whenever messages change
   useEffect(() => {
-    if (messages.length > 0) {
-      localStorage.setItem('kinap-chatbot-messages', JSON.stringify(messages));
+    if (messages.length > 0 && user) {
+      const userStorageKey = getUserStorageKey();
+      localStorage.setItem(userStorageKey, JSON.stringify(messages));
     }
-  }, [messages]);
+  }, [messages, user]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -146,7 +167,11 @@ const Chatbot: React.FC = () => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ message: userMessage.text }),
+        body: JSON.stringify({ 
+          message: userMessage.text,
+          userId: user?.id || user?.email || null,
+          conversationId: conversationId
+        }),
       });
 
       if (!response.ok) {
@@ -208,16 +233,16 @@ const Chatbot: React.FC = () => {
   const clearChat = () => {
     const welcomeMessage: Message = {
       id: '1',
-      text: "Hello! I'm your Ajira Digital assistant. How can I help you today? 🚀",
+      text: `Hello${user?.name ? ` ${user.name}` : ''}! I'm your Ajira Digital assistant. How can I help you today? 🚀`,
       sender: 'bot',
       timestamp: new Date(),
       status: 'read',
     };
     setMessages([welcomeMessage]);
-    localStorage.setItem(
-      'kinap-chatbot-messages',
-      JSON.stringify([welcomeMessage])
-    );
+    if (user) {
+      const userStorageKey = getUserStorageKey();
+      localStorage.setItem(userStorageKey, JSON.stringify([welcomeMessage]));
+    }
   };
 
   const getStatusIcon = (status?: string) => {

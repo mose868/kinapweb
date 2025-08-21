@@ -5,7 +5,6 @@ import {
   Search, 
   X, 
   Bell,
-  Key,
   Keyboard,
   MessageCircle,
   User,
@@ -49,7 +48,7 @@ interface ChatGroup {
   name: string;
   description: string;
   avatar: string;
-  members: number;
+  members?: number; // Optional for AI groups
   lastMessage: string;
   lastMessageTime: Date;
   unreadCount: number;
@@ -74,7 +73,6 @@ interface User {
 }
 
 const SETTINGS_CATEGORIES = [
-  { id: 'account', name: 'Account', icon: Key, description: 'Security notifications, account info' },
   { id: 'chats', name: 'Chats', icon: MessageCircle, description: 'Theme, wallpaper, chat settings' },
   { id: 'notifications', name: 'Notifications', icon: Bell, description: 'Message notifications' },
   { id: 'keyboard', name: 'Keyboard shortcuts', icon: Keyboard, description: 'Quick actions' }
@@ -1654,7 +1652,7 @@ Please use the conversation history to provide contextual and helpful responses.
               ? { 
                   ...group, 
                   messages: deduplicatedMessages,
-                  lastMessage: deduplicatedMessages[deduplicatedMessages.length - 1]?.content || 'Say hello to start chatting! 😊',
+                  lastMessage: deduplicatedMessages[deduplicatedMessages.length - 1]?.content || 'Hello! I\'m your KiNaP AI assistant. Ask me anything! 🤖✨',
                   lastMessageTime: deduplicatedMessages[deduplicatedMessages.length - 1]?.timestamp || new Date()
                 }
               : group
@@ -1666,7 +1664,7 @@ Please use the conversation history to provide contextual and helpful responses.
               ? { 
                   ...prev, 
                   messages: deduplicatedMessages,
-                  lastMessage: deduplicatedMessages[deduplicatedMessages.length - 1]?.content || 'Say hello to start chatting! 😊',
+                  lastMessage: deduplicatedMessages[deduplicatedMessages.length - 1]?.content || 'Hello! I\'m your KiNaP AI assistant. Ask me anything! 🤖✨',
                   lastMessageTime: deduplicatedMessages[deduplicatedMessages.length - 1]?.timestamp || new Date()
                 }
               : prev
@@ -1814,7 +1812,9 @@ Please use the conversation history to provide contextual and helpful responses.
             ) : null}
           </div>
         </div>
-        {setting.hasArrow && <ArrowRight className="w-5 h-5 text-gray-400 group-hover:text-ajira-primary transition-colors duration-200" />}
+        {setting.hasArrow && setting.id !== 'display' && setting.id !== 'chat_settings' && (
+          <ArrowRight className="w-5 h-5 text-gray-400 group-hover:text-ajira-primary transition-colors duration-200" />
+        )}
       </div>
     );
   });
@@ -1822,8 +1822,14 @@ Please use the conversation history to provide contextual and helpful responses.
   // Load Kinap AI conversation history from backend
   const loadKinapAIHistoryFromBackend = async () => {
     try {
+      const userId = user?.id || user?.email;
+      if (!userId) {
+        console.log('No user ID available, skipping message load');
+        return;
+      }
+      
       const base = import.meta.env?.VITE_API_URL || 'http://localhost:5000/api';
-      const response = await fetch(`${base}/chat-messages/group/kinap-ai`);
+      const response = await fetch(`${base}/chat-messages/group/kinap-ai?userId=${encodeURIComponent(userId)}`);
       
       if (response.ok) {
         const data = await response.json();
@@ -1909,9 +1915,9 @@ Please use the conversation history to provide contextual and helpful responses.
             name: 'Kinap AI',
             description: 'Your AI assistant for programming help, study guidance, and career advice',
             avatar: 'https://ui-avatars.com/api/?name=Kinap+AI&background=8B5CF6&color=FFFFFF&bold=true&size=150',
-            members: 1,
+
             messages: [],
-            lastMessage: 'Say hello to start chatting! 😊',
+            lastMessage: 'Hello! I\'m your KiNaP AI assistant. Ask me anything! 🤖✨',
             lastMessageTime: new Date(),
             unreadCount: 0,
             admins: [],
@@ -1955,7 +1961,7 @@ Please use the conversation history to provide contextual and helpful responses.
           } as ChatGroup));
 
           // Filter out any Kinap AI groups from API response to avoid duplicates
-          const filteredApiGroups = apiGroups.filter(g => g.id !== 'kinap-ai' && g.name !== 'Kinap AI' && g.name !== 'KiNaP AI Assistant');
+          const filteredApiGroups = apiGroups.filter((g: ChatGroup) => g.id !== 'kinap-ai' && g.name !== 'Kinap AI' && g.name !== 'KiNaP AI Assistant');
           
           // Create Kinap AI group if it doesn't exist
           const kinapAIGroup: ChatGroup = {
@@ -1963,7 +1969,7 @@ Please use the conversation history to provide contextual and helpful responses.
             name: 'Kinap AI',
             description: 'Your AI assistant for programming help, study guidance, career advice, and academic support',
             avatar: 'https://ui-avatars.com/api/?name=KiNaP+AI&background=8B5CF6&color=FFFFFF&bold=true&size=150',
-            members: 1,
+
             messages: [],
             lastMessage: 'Hello! I\'m your KiNaP AI assistant. Ask me anything about programming, studies, or career advice! 🤖✨',
             lastMessageTime: new Date(),
@@ -2012,7 +2018,10 @@ Please use the conversation history to provide contextual and helpful responses.
           // Phase 2: load messages in background per group without blocking UI
           sortedGroups.forEach(async (g: ChatGroup) => {
             try {
-              const r = await fetch(`${base}/chat-messages/group/${g.id}`);
+              const userId = user?.id || user?.email;
+              if (!userId) return;
+              
+              const r = await fetch(`${base}/chat-messages/group/${g.id}?userId=${encodeURIComponent(userId)}`);
               if (r.ok) {
                 const md = await r.json();
                 if (md.success && md.messages.length > 0) {
@@ -2074,7 +2083,7 @@ Please use the conversation history to provide contextual and helpful responses.
                         name: 'Kinap AI',
                         description: 'Your AI assistant for programming help, study guidance, career advice, and academic support',
                         avatar: 'https://ui-avatars.com/api/?name=KiNaP+AI&background=8B5CF6&color=FFFFFF&bold=true&size=150',
-                        members: 1,
+            
                         messages: [],
                         lastMessage: 'Hello! I\'m your KiNaP AI assistant. Ask me anything about programming, studies, or career advice! 🤖✨',
                         lastMessageTime: new Date(),
@@ -2104,9 +2113,9 @@ Please use the conversation history to provide contextual and helpful responses.
               name: 'Kinap AI',
               description: 'Your AI assistant for programming help, study guidance, and career advice',
               avatar: 'https://ui-avatars.com/api/?name=Kinap+AI&background=8B5CF6&color=FFFFFF&bold=true&size=150',
-              members: 1,
+  
               messages: [],
-              lastMessage: 'Say hello to start chatting! 😊',
+              lastMessage: 'Hello! I\'m your KiNaP AI assistant. Ask me anything! 🤖✨',
               lastMessageTime: new Date(),
               unreadCount: 0,
               admins: [],
@@ -2128,9 +2137,9 @@ Please use the conversation history to provide contextual and helpful responses.
             name: 'Kinap AI',
             description: 'Your AI assistant for programming help, study guidance, and career advice',
             avatar: 'https://ui-avatars.com/api/?name=Kinap+AI&background=8B5CF6&color=FFFFFF&bold=true&size=150',
-            members: 1,
+
             messages: [],
-            lastMessage: 'Say hello to start chatting! 😊',
+            lastMessage: 'Hello! I\'m your KiNaP AI assistant. Ask me anything! 🤖✨',
             lastMessageTime: new Date(),
             unreadCount: 0,
             admins: [],
@@ -2152,9 +2161,9 @@ Please use the conversation history to provide contextual and helpful responses.
             name: 'Kinap AI',
             description: 'Your AI assistant for programming help, study guidance, and career advice',
             avatar: 'https://ui-avatars.com/api/?name=Kinap+AI&background=8B5CF6&color=FFFFFF&bold=true&size=150',
-            members: 1,
+
             messages: [],
-            lastMessage: 'Say hello to start chatting! 😊',
+            lastMessage: 'Hello! I\'m your KiNaP AI assistant. Ask me anything! 🤖✨',
             lastMessageTime: new Date(),
             unreadCount: 0,
             admins: [],
@@ -2615,8 +2624,14 @@ Please use the conversation history to provide contextual and helpful responses.
     try {
       console.log('🗑️ Deleting chat for group:', selectedGroup.id);
       
+      const userId = user?.id || user?.email;
+      if (!userId) {
+        console.error('User authentication required to clear messages');
+        return;
+      }
+      
       // Use the correct endpoint for clearing group messages
-      const response = await fetch(`http://localhost:5000/api/chat-messages/group/${selectedGroup.id}/clear`, {
+      const response = await fetch(`http://localhost:5000/api/chat-messages/group/${selectedGroup.id}/clear?userId=${encodeURIComponent(userId)}`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' }
       });
@@ -3087,7 +3102,9 @@ Please use the conversation history to provide contextual and helpful responses.
                     {selectedGroup.name}
                   </h2>
                   <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 truncate">
-                    {selectedGroup.members} members
+                    {selectedGroup.type === 'ai' || selectedGroup.id === 'kinap-ai' 
+                      ? selectedGroup.description 
+                      : `${selectedGroup.members || 0} members`}
                   </p>
                 </div>
                 </div>
@@ -3825,6 +3842,159 @@ Please use the conversation history to provide contextual and helpful responses.
                       >
                         Set as Ringtone
                       </button>
+                    </div>
+                  </div>
+                )}
+
+                {selectedSetting === 'keyboard' && (
+                  <div className="space-y-6">
+                    <div className="p-6 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700">
+                      <h4 className="font-semibold text-gray-900 dark:text-white mb-4">Chat Shortcuts</h4>
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between py-3 border-b border-gray-100 dark:border-gray-600 last:border-b-0">
+                          <div>
+                            <div className="font-medium text-gray-900 dark:text-white">Send message</div>
+                            <div className="text-sm text-gray-500 dark:text-gray-400">Send your typed message</div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <kbd className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm rounded border">Enter</kbd>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between py-3 border-b border-gray-100 dark:border-gray-600 last:border-b-0">
+                          <div>
+                            <div className="font-medium text-gray-900 dark:text-white">New line</div>
+                            <div className="text-sm text-gray-500 dark:text-gray-400">Add a line break in your message</div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <kbd className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm rounded border">Shift</kbd>
+                            <span className="text-gray-400">+</span>
+                            <kbd className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm rounded border">Enter</kbd>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between py-3 border-b border-gray-100 dark:border-gray-600 last:border-b-0">
+                          <div>
+                            <div className="font-medium text-gray-900 dark:text-white">Search messages</div>
+                            <div className="text-sm text-gray-500 dark:text-gray-400">Focus on search input</div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <kbd className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm rounded border">Ctrl</kbd>
+                            <span className="text-gray-400">+</span>
+                            <kbd className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm rounded border">F</kbd>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between py-3 border-b border-gray-100 dark:border-gray-600 last:border-b-0">
+                          <div>
+                            <div className="font-medium text-gray-900 dark:text-white">Open emoji picker</div>
+                            <div className="text-sm text-gray-500 dark:text-gray-400">Add emojis to your message</div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <kbd className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm rounded border">Ctrl</kbd>
+                            <span className="text-gray-400">+</span>
+                            <kbd className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm rounded border">;</kbd>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="p-6 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700">
+                      <h4 className="font-semibold text-gray-900 dark:text-white mb-4">Navigation Shortcuts</h4>
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between py-3 border-b border-gray-100 dark:border-gray-600 last:border-b-0">
+                          <div>
+                            <div className="font-medium text-gray-900 dark:text-white">Open settings</div>
+                            <div className="text-sm text-gray-500 dark:text-gray-400">Quick access to settings</div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <kbd className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm rounded border">Ctrl</kbd>
+                            <span className="text-gray-400">+</span>
+                            <kbd className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm rounded border">,</kbd>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between py-3 border-b border-gray-100 dark:border-gray-600 last:border-b-0">
+                          <div>
+                            <div className="font-medium text-gray-900 dark:text-white">Toggle theme</div>
+                            <div className="text-sm text-gray-500 dark:text-gray-400">Switch between light and dark mode</div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <kbd className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm rounded border">Ctrl</kbd>
+                            <span className="text-gray-400">+</span>
+                            <kbd className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm rounded border">D</kbd>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between py-3 border-b border-gray-100 dark:border-gray-600 last:border-b-0">
+                          <div>
+                            <div className="font-medium text-gray-900 dark:text-white">Escape/Close</div>
+                            <div className="text-sm text-gray-500 dark:text-gray-400">Close modals, menus, or go back</div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <kbd className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm rounded border">Esc</kbd>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between py-3 border-b border-gray-100 dark:border-gray-600 last:border-b-0">
+                          <div>
+                            <div className="font-medium text-gray-900 dark:text-white">Focus message input</div>
+                            <div className="text-sm text-gray-500 dark:text-gray-400">Quickly start typing a message</div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <kbd className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm rounded border">Tab</kbd>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="p-6 bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700">
+                      <h4 className="font-semibold text-gray-900 dark:text-white mb-4">File & Media Shortcuts</h4>
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between py-3 border-b border-gray-100 dark:border-gray-600 last:border-b-0">
+                          <div>
+                            <div className="font-medium text-gray-900 dark:text-white">Upload file</div>
+                            <div className="text-sm text-gray-500 dark:text-gray-400">Open file picker to attach files</div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <kbd className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm rounded border">Ctrl</kbd>
+                            <span className="text-gray-400">+</span>
+                            <kbd className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm rounded border">U</kbd>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between py-3 border-b border-gray-100 dark:border-gray-600 last:border-b-0">
+                          <div>
+                            <div className="font-medium text-gray-900 dark:text-white">Paste clipboard</div>
+                            <div className="text-sm text-gray-500 dark:text-gray-400">Paste text or images from clipboard</div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <kbd className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm rounded border">Ctrl</kbd>
+                            <span className="text-gray-400">+</span>
+                            <kbd className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm rounded border">V</kbd>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between py-3 border-b border-gray-100 dark:border-gray-600 last:border-b-0">
+                          <div>
+                            <div className="font-medium text-gray-900 dark:text-white">Take screenshot</div>
+                            <div className="text-sm text-gray-500 dark:text-gray-400">Capture and share screenshot</div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <kbd className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm rounded border">Ctrl</kbd>
+                            <span className="text-gray-400">+</span>
+                            <kbd className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm rounded border">Shift</kbd>
+                            <span className="text-gray-400">+</span>
+                            <kbd className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm rounded border">S</kbd>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl border border-blue-200 dark:border-blue-700">
+                      <div className="flex items-start gap-3">
+                        <div className="p-2 bg-blue-100 dark:bg-blue-800 rounded-lg">
+                          <Keyboard className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                        </div>
+                        <div>
+                          <h5 className="font-medium text-blue-900 dark:text-blue-100">Pro Tip</h5>
+                          <p className="text-sm text-blue-700 dark:text-blue-200 mt-1">
+                            Most shortcuts work across the entire Community Hub. You can use these shortcuts to navigate faster and improve your chatting experience!
+                          </p>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 )}

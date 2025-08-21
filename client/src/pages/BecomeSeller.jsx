@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   User,
@@ -26,6 +26,15 @@ const BecomeSeller = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [aiAnalysis, setAiAnalysis] = useState(null);
+  const [showStabilityBanner, setShowStabilityBanner] = useState(true);
+
+  // Initialize banner state from localStorage
+  useEffect(() => {
+    try {
+      const dismissed = localStorage.getItem('becomeSellerStabilityBannerDismissed') === 'true';
+      if (dismissed) setShowStabilityBanner(false);
+    } catch {}
+  }, []);
 
   const [formData, setFormData] = useState({
     // Personal Info
@@ -1067,6 +1076,30 @@ const BecomeSeller = () => {
             animate={{ opacity: 1, y: 0 }}
             className='bg-white rounded-2xl shadow-ajira p-8'
           >
+            {showStabilityBanner && (
+              <div className='mb-6 rounded-lg border border-yellow-300 bg-yellow-50 p-4 text-yellow-800'>
+                <div className='flex items-start gap-3'>
+                  <AlertCircle className='w-5 h-5 mt-0.5' />
+                  <div className='flex-1'>
+                    <p className='font-semibold'>Heads up: Seller profile is in beta</p>
+                    <p className='text-sm mt-1'>
+                      Profile creation may be unstable and could fail intermittently. Our team is actively working on it as we prepare for today’s deployment. Payments are also being integrated. It might work or not for now.
+                    </p>
+                  </div>
+                  <button
+                    type='button'
+                    onClick={() => {
+                      setShowStabilityBanner(false);
+                      try { localStorage.setItem('becomeSellerStabilityBannerDismissed', 'true'); } catch {}
+                    }}
+                    className='text-yellow-700 hover:text-yellow-900'
+                    aria-label='Dismiss'
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+            )}
             {/* Progress Bar */}
             <div className='mb-8'>
               <div className='flex items-center justify-between mb-2'>

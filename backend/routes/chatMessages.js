@@ -7,7 +7,15 @@ const router = express.Router();
 router.get('/group/:groupId', async (req, res) => {
   try {
     const { groupId } = req.params;
-    const { limit = 50, offset = 0 } = req.query;
+    const { limit = 50, offset = 0, userId } = req.query;
+
+    // Validate user authentication
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'User authentication required'
+      });
+    }
 
     // Check if database is connected
     try {
@@ -22,6 +30,26 @@ router.get('/group/:groupId', async (req, res) => {
           offset: parseInt(offset),
           hasMore: false,
         },
+      });
+    }
+
+    // Check if user is a member of the group
+    const { Group } = require('../models');
+    const group = await Group.findByPk(groupId);
+    
+    if (!group) {
+      return res.status(404).json({
+        success: false,
+        message: 'Group not found'
+      });
+    }
+
+    // Verify user membership
+    const members = group.members || [];
+    if (!members.includes(userId)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied: You are not a member of this group'
       });
     }
 
@@ -77,6 +105,14 @@ router.post('/', async (req, res) => {
       metadata
     } = req.body;
 
+    // Validate user authentication (except for AI messages)
+    if (!isAIMessage && !userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'User authentication required'
+      });
+    }
+
     // Check if database is connected
     try {
       await sequelize.authenticate();
@@ -87,6 +123,22 @@ router.post('/', async (req, res) => {
         message: 'Message received but not saved (database unavailable)',
         messageId: messageId || Date.now().toString()
       });
+    }
+
+    // Check if user is a member of the group (except for AI messages and certain group types)
+    if (!isAIMessage && groupId && groupId !== 'kinap-ai') {
+      const { Group } = require('../models');
+      const group = await Group.findByPk(groupId);
+      
+      if (group) {
+        const members = group.members || [];
+        if (!members.includes(userId)) {
+          return res.status(403).json({
+            success: false,
+            message: 'Access denied: You are not a member of this group'
+          });
+        }
+      }
     }
 
     const chatMessage = await ChatMessage.create({

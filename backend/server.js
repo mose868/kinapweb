@@ -6,6 +6,10 @@ const cookieParser = require('cookie-parser');
 const http = require('http');
 const path = require('path');
 const WebSocketServer = require('./websocketServer');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+const hpp = require('hpp');
+const xssClean = require('xss-clean');
 
 const studentRoutes = require('./routes/students');
 const aboutUsRoutes = require('./routes/aboutUs');
@@ -37,6 +41,7 @@ const authRoutes = require('./routes/auth');
 const betterAuthRoutes = require('./routes/betterAuth');
 const biometricAuthRoutes = require('./routes/biometricAuth');
 const sellerApplicationRoutes = require('./routes/sellerApplications');
+const sellersRoutes = require('./routes/sellers');
 const fileUploadRoutes = require('./routes/fileUpload');
 const chatRoutes = require('./routes/chat');
 const chatMessagesRoutes = require('./routes/chatMessages');
@@ -56,6 +61,78 @@ const wss = new WebSocketServer(server);
 // WebSocket server handles upgrades automatically on the same port
 
 
+
+// Security: trust proxy (needed for secure cookies and HTTPS detection behind proxies)
+app.set('trust proxy', 1);
+// Hide tech stack header
+app.disable('x-powered-by');
+
+// Global security headers via Helmet (with a conservative CSP)
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      useDefaults: true,
+      directives: {
+        "default-src": ["'self'"],
+        "base-uri": ["'self'"],
+        "font-src": ["'self'", "https:", "data:"],
+        "img-src": ["'self'", "data:", "https:"],
+        "object-src": ["'none'"],
+        "script-src": ["'self'", "'unsafe-inline'"],
+        "script-src-attr": ["'none'"],
+        "style-src": ["'self'", "https:", "'unsafe-inline'"],
+        "connect-src": [
+          "'self'",
+          process.env.CLIENT_ORIGIN || 'http://localhost:5173',
+          'https://kinapweb.vercel.app',
+          'https://kinapweb.onrender.com'
+        ],
+        "media-src": ["'self'", "https:"],
+      },
+    },
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+    referrerPolicy: { policy: 'no-referrer' },
+    frameguard: { action: 'deny' },
+  })
+);
+
+// Basic hardening middlewares
+app.use(hpp()); // Prevent HTTP Parameter Pollution
+app.use(xssClean()); // Sanitize user input from XSS
+
+// Optional: Enforce HTTPS in production (behind proxy)
+if (process.env.NODE_ENV === 'production' && process.env.FORCE_HTTPS === 'true') {
+  app.use((req, res, next) => {
+    if (req.headers['x-forwarded-proto'] !== 'https') {
+      return res.redirect('https://' + req.headers.host + req.url);
+    }
+    next();
+  });
+}
+
+// Rate limiting
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 300, // max requests per IP per window
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use(generalLimiter);
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Too many attempts. Please try again later.' },
+});
+
+const writeLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 // Middleware
 app.use(cors({ 
@@ -87,6 +164,14 @@ app.get('/videos/kinap-promo.webm', (req, res) => {
 });
 
 // Routes
+// Apply stricter rate limits to sensitive endpoints
+app.use('/api/auth', authLimiter);
+app.use('/api/better-auth', authLimiter);
+app.use('/api/verification', authLimiter);
+app.use('/api/files', writeLimiter);
+app.use('/api/sellers', writeLimiter);
+app.use('/api/marketplace', writeLimiter);
+
 app.use('/api/students', studentRoutes);
 app.use('/api/about-us', aboutUsRoutes);
 app.use('/api/team', teamRoutes);
@@ -115,6 +200,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/better-auth', betterAuthRoutes);
 app.use('/api/biometric', biometricAuthRoutes);
 app.use('/api/seller-applications', sellerApplicationRoutes);
+app.use('/api/sellers', sellersRoutes);
 app.use('/api/mentor-applications', require('./routes/mentorApplications'));
 app.use('/api/files', fileUploadRoutes);
 app.use('/api/chat', chatRoutes);
